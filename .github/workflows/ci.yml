@@ -76,6 +76,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build Lambda image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.lambda
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   sam-validate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
