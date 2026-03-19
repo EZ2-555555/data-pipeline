@@ -192,6 +192,7 @@ jobs:
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM \
             --region "${{ env.AWS_REGION }}" \
             --resolve-s3 \
+            --resolve-image-repos \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --template-file infra/template-freetier.yaml \
