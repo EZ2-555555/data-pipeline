@@ -19,7 +19,7 @@ from src.observability import record_ingestion
 
 logger = logging.getLogger(__name__)
 
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
 
 def compute_content_hash(title: str, abstract: str, published: str) -> str:

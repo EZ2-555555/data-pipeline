@@ -6,6 +6,7 @@ Uses fastembed (ONNX Runtime) for lightweight, local embeddings.
 """
 
 import logging
+import threading
 
 from fastembed import TextEmbedding
 
@@ -15,14 +16,18 @@ MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
 _model: TextEmbedding | None = None
+_model_lock = threading.Lock()
 
 
 def get_model() -> TextEmbedding:
     """Lazy-load the embedding model (singleton)."""
     global _model
-    if _model is None:
-        logger.info("Loading embedding model: %s", MODEL_NAME)
-        _model = TextEmbedding(model_name=MODEL_NAME)
+    if _model is not None:
+        return _model
+    with _model_lock:
+        if _model is None:
+            logger.info("Loading embedding model: %s", MODEL_NAME)
+            _model = TextEmbedding(model_name=MODEL_NAME)
     return _model
 
 

@@ -82,11 +82,11 @@ def _check_budget_exceeded() -> bool:
         logger.debug("boto3 not available — skipping budget check")
         return False
     try:
-        from datetime import date as _date
+        from datetime import date as _date, timedelta
         ce = boto3.client("ce", region_name=settings.AWS_REGION)
         today = _date.today()
         start = today.replace(day=1).isoformat()
-        end = today.isoformat()
+        end = (today + timedelta(days=1)).isoformat()
         resp = ce.get_cost_and_usage(
             TimePeriod={"Start": start, "End": end},
             Granularity="MONTHLY",
