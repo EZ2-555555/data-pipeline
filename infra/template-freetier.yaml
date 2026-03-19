@@ -255,7 +255,7 @@ Resources:
               SSEAlgorithm: AES256
       Tags:
         - Key: Purpose
-          Value: "Medallion data lake (raw/<source>/, processed/, embeddings/)"
+          Value: "Medallion data lake"
 
   FrontendBucket:
     Type: AWS::S3::Bucket
