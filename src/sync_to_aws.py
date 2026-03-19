@@ -86,12 +86,18 @@ def _get_remote_dsn() -> dict:
             "REMOTE_DB_HOST is not set. "
             "Set it to your RDS endpoint (e.g. techpulse-dev.xxxxxx.us-east-1.rds.amazonaws.com)."
         )
+    password = os.getenv("REMOTE_DB_PASSWORD")
+    if not password:
+        raise EnvironmentError(
+            "REMOTE_DB_PASSWORD is not set. "
+            "Set it to your RDS master password."
+        )
     return {
         "host": host,
         "port": int(os.getenv("REMOTE_DB_PORT", "5432")),
         "dbname": os.getenv("REMOTE_DB_NAME", "techpulse"),
         "user": os.getenv("REMOTE_DB_USER", "postgres"),
-        "password": os.getenv("REMOTE_DB_PASSWORD", ""),
+        "password": password,
     }
 
 

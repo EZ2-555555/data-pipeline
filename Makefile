@@ -1,43 +1,55 @@
 # ---------------------------------------------------------------------------
-# SAM Makefile build - shared across all Lambda functions
+# SAM Makefile build — Lambda Layer + thin function packages
+# ---------------------------------------------------------------------------
+#
+# Heavy ML deps (torch, sentence-transformers, tiktoken) are built once
+# into a shared Lambda Layer.  Each function only packages lightweight
+# deps + src/, reducing per-function build from ~700 MB copy to ~20 MB.
+#
+# Build graph:  build-DepsLayer (layer, changes rarely)
+#               build-*Function → install-light-deps → cp + src/
 # ---------------------------------------------------------------------------
 
-# All four Lambda functions share the same source and dependencies.
-# Install once into a cached directory, then copy per-function.
-# This avoids 4x redundant torch + pip installs during `sam build --parallel`.
+# ---------------------------------------------------------------------------
+# Lambda Layer — heavy ML dependencies (changes rarely)
+# ---------------------------------------------------------------------------
+build-DepsLayer:
+	mkdir -p "$(ARTIFACTS_DIR)/python"
+	pip install torch --index-url https://download.pytorch.org/whl/cpu \
+		-t "$(ARTIFACTS_DIR)/python/" --no-cache-dir
+	pip install -r requirements-layer.txt \
+		-t "$(ARTIFACTS_DIR)/python/" --no-cache-dir
 
-DEPS_DIR := $(CURDIR)/.lambda-deps
+# ---------------------------------------------------------------------------
+# Function packages — lightweight deps + src/ (Layer provides the rest)
+# ---------------------------------------------------------------------------
+LIGHT_DEPS := $(CURDIR)/.lambda-light-deps
 
-.PHONY: install-deps
-install-deps:
-	@if [ ! -f "$(DEPS_DIR)/.installed" ]; then \
-		echo "Installing shared Lambda dependencies..."; \
-		mkdir -p $(DEPS_DIR); \
-		pip install torch --index-url https://download.pytorch.org/whl/cpu -t $(DEPS_DIR)/; \
-		pip install -r requirements-lambda.txt -t $(DEPS_DIR)/; \
-		touch $(DEPS_DIR)/.installed; \
+.PHONY: install-light-deps
+install-light-deps:
+	@if [ ! -f "$(LIGHT_DEPS)/.installed" ]; then \
+		echo "Installing lightweight Lambda dependencies..."; \
+		mkdir -p $(LIGHT_DEPS); \
+		pip install -r requirements-lambda.txt -t $(LIGHT_DEPS)/; \
+		touch $(LIGHT_DEPS)/.installed; \
 	else \
-		echo "Shared dependencies already cached, skipping install."; \
+		echo "Lightweight dependencies already cached, skipping install."; \
 	fi
 
-build-IngestionFunction: install-deps
-	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+build-IngestionFunction: install-light-deps
+	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
-build-PreprocessFunction: install-deps
-	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+build-PreprocessFunction: install-light-deps
+	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
-build-RagApiFunction: install-deps
-	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+build-RagApiFunction: install-light-deps
+	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
-build-HealthCheckFunction: install-deps
-	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+build-HealthCheckFunction: install-light-deps
+	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
 # ---------------------------------------------------------------------------

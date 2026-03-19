@@ -8,7 +8,7 @@ import numpy as np
 # get_model
 # ---------------------------------------------------------------------------
 
-@patch("src.embedding.embedder.SentenceTransformer")
+@patch("sentence_transformers.SentenceTransformer")
 def test_get_model_creates_singleton(mock_st_cls):
     import src.embedding.embedder as emb_mod
     emb_mod._model = None  # reset singleton
@@ -21,15 +21,13 @@ def test_get_model_creates_singleton(mock_st_cls):
     mock_st_cls.assert_called_once_with("all-MiniLM-L6-v2")
 
 
-@patch("src.embedding.embedder.SentenceTransformer")
-def test_get_model_reuses_existing(mock_st_cls):
+def test_get_model_reuses_existing():
     import src.embedding.embedder as emb_mod
     existing = MagicMock()
     emb_mod._model = existing
 
     result = emb_mod.get_model()
     assert result == existing
-    mock_st_cls.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

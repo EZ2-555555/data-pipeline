@@ -48,10 +48,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+VALID_SOURCES = {"arxiv", "hn", "github", "devto", "rss"}
+
+
 class AskRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="Your technology question")
     mode: str = Field("hybrid", pattern=r"^(baseline|hybrid)$", description="Retrieval mode")
-    sources: list[str] | None = Field(None, description="Filter by source types, e.g. ['arxiv','hn']")
+    sources: list[str] | None = Field(None, max_length=5, description="Filter by source types, e.g. ['arxiv','hn']")
 
 
 @app.get("/health")
@@ -70,6 +73,13 @@ def drift_endpoint(request: Request):
 @limiter.limit("10/minute")
 def ask_endpoint(req: AskRequest, request: Request):
     logger.info("Received /ask query=%s mode=%s", req.query[:50], req.mode)
+    if req.sources:
+        invalid = set(req.sources) - VALID_SOURCES
+        if invalid:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": f"Invalid sources: {sorted(invalid)}. Valid: {sorted(VALID_SOURCES)}"},
+            )
     start = time.perf_counter()
     try:
         result = ask(query=req.query, mode=req.mode, sources=req.sources)

@@ -1,0 +1,24 @@
+# Exclude non-Lambda files from SAM build context
+.git
+.github
+.venv
+.env*
+__pycache__
+*.pyc
+
+# Frontend (deployed separately to S3)
+frontend
+
+# Docs / reports
+*.md
+*.tex
+report
+evaluation
+
+# Tests
+tests
+
+# Docker (not used by SAM)
+Dockerfile
+docker-compose.yml
+.dockerignore

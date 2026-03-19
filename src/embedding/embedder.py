@@ -2,24 +2,32 @@
 
 Loads the sentence-transformer model and provides batch
 embedding functionality for document chunks.
+
+sentence_transformers is imported lazily so that modules which
+import embedder (e.g. during test collection) don't require
+torch/sentence-transformers to be installed.
 """
 
 import logging
+from typing import TYPE_CHECKING
 
-from sentence_transformers import SentenceTransformer
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
-_model = None
+_model: "SentenceTransformer | None" = None
 
 
-def get_model() -> SentenceTransformer:
+def get_model() -> "SentenceTransformer":
     """Lazy-load the embedding model (singleton)."""
     global _model
     if _model is None:
+        from sentence_transformers import SentenceTransformer
+
         logger.info("Loading embedding model: %s", MODEL_NAME)
         _model = SentenceTransformer(MODEL_NAME)
     return _model

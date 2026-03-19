@@ -47,7 +47,9 @@ def _s3_key(tier: str, source: str, content_hash: str, date_str: str | None = No
 
 def _write_local(key: str, payload: dict) -> str:
     """Fallback: write JSON to a local directory mirroring the S3 layout."""
-    path = _LOCAL_LAKE / key
+    path = (_LOCAL_LAKE / key).resolve()
+    if not str(path).startswith(str(_LOCAL_LAKE.resolve())):
+        raise ValueError(f"Path traversal detected in key: {key}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, default=str), encoding="utf-8")
     logger.debug("Local lake write: %s", path)
@@ -56,7 +58,9 @@ def _write_local(key: str, payload: dict) -> str:
 
 def _read_local(key: str) -> dict | None:
     """Fallback: read JSON from the local data lake."""
-    path = _LOCAL_LAKE / key
+    path = (_LOCAL_LAKE / key).resolve()
+    if not str(path).startswith(str(_LOCAL_LAKE.resolve())):
+        raise ValueError(f"Path traversal detected in key: {key}")
     if not path.exists():
         return None
     return json.loads(path.read_text(encoding="utf-8"))

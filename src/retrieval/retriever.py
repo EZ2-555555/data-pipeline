@@ -39,6 +39,9 @@ def baseline_retrieve(query: str, top_k: int | None = None) -> list[dict]:
                 (query_emb, query_emb, top_k),
             )
             rows = cur.fetchall()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 
@@ -126,6 +129,9 @@ def hybrid_retrieve(
 
             cur.execute(base_sql, params)
             rows = cur.fetchall()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 

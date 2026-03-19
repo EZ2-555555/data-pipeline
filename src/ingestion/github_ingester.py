@@ -185,6 +185,9 @@ def ingest_repos(repos: list[dict]) -> int:
                     s3_key = write_raw(r)
                     send_document_message(doc_id, s3_key, r["source"])
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 

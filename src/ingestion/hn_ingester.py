@@ -104,6 +104,9 @@ def ingest_stories(stories: list[dict]) -> int:
                     # Send SQS message for async processing
                     send_document_message(doc_id, s3_key, s["source"])
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 

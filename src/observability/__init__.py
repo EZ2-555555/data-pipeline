@@ -158,6 +158,7 @@ def deep_health_check() -> dict:
         else:
             result["checks"]["s3"] = {"status": "skipped", "reason": "S3_ENABLED=false"}
     except Exception as exc:
+        result["status"] = "degraded"
         result["checks"]["s3"] = {"status": "error", "detail": str(exc)}
 
     # SQS reachability
@@ -183,6 +184,7 @@ def deep_health_check() -> dict:
         else:
             result["checks"]["sqs"] = {"status": "skipped", "reason": "SQS_ENABLED=false"}
     except Exception as exc:
+        result["status"] = "degraded"
         result["checks"]["sqs"] = {"status": "error", "detail": str(exc)}
 
     # LLM backend reachability

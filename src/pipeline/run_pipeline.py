@@ -165,6 +165,7 @@ def process_sqs_batch() -> int:
     for msg in messages:
         doc_id = msg["body"].get("document_id")
         if doc_id is None:
+            logger.warning("SQS message %s missing document_id, skipping", msg.get("message_id", "?"))
             continue
 
         conn = get_connection()
@@ -260,6 +261,7 @@ def preprocess_handler(event, context):
             body = _json.loads(record["body"])
             doc_id = body.get("document_id")
             if doc_id is None:
+                logger.warning("SQS record %s missing document_id, skipping", msg_id)
                 continue
 
             conn = get_connection()

@@ -71,6 +71,7 @@ def init_schema():
             try:
                 cur.execute(SCHEMA_SQL)
             except Exception as exc:
+                conn.rollback()
                 if "vector" in str(exc).lower():
                     logger.error(
                         "pgvector extension is not available on this PostgreSQL instance. "

@@ -35,7 +35,8 @@ _ENC = tiktoken.get_encoding("cl100k_base")
 # Responses below this threshold are flagged as potentially hallucinated.
 # Default 0.0 for local dev (small models can't reliably cite); set higher
 # (e.g. 0.5) in production with capable models.
-CITATION_GROUNDING_THRESHOLD = settings.CITATION_GROUNDING_THRESHOLD
+# NOTE: Read dynamically via settings.CITATION_GROUNDING_THRESHOLD at call
+# time so env-var changes are picked up without process restart.
 # Regex matching citation tags the model is instructed to produce.
 _CITATION_RE = re.compile(r"\[Source\s+\d+\]")
 
@@ -126,7 +127,8 @@ def _check_citation_grounding(answer: str, num_sources: int) -> dict:
             cited_count += 1
 
     citation_ratio = cited_count / len(sentences)
-    flagged = citation_ratio < CITATION_GROUNDING_THRESHOLD
+    threshold = settings.CITATION_GROUNDING_THRESHOLD
+    flagged = citation_ratio < threshold
 
     # Also check for hallucinated source indices (e.g. [Source 12] when only 5 sources)
     all_cited_ids = [int(m) for m in re.findall(r"\[Source\s+(\d+)\]", answer)]
@@ -248,7 +250,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
             "Hallucination flag: citation_ratio=%.2f (threshold=%.2f), "
             "invalid_refs=%s — returning abstention",
             check["citation_ratio"],
-            CITATION_GROUNDING_THRESHOLD,
+            settings.CITATION_GROUNDING_THRESHOLD,
             check.get("invalid_source_refs", []),
         )
         # Preserve the original answer for logging / evaluation, but serve

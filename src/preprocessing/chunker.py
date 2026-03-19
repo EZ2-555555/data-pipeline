@@ -97,6 +97,10 @@ def chunk_text(
     if len(tokens) <= chunk_size:
         return [text.strip()]
 
+    # Ensure overlap is strictly less than chunk_size to guarantee progress
+    if overlap >= chunk_size:
+        overlap = chunk_size - 1
+
     chunks = []
     start = 0
     while start < len(tokens):

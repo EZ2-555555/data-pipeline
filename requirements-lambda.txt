@@ -1,16 +1,11 @@
-# Runtime-only dependencies for AWS Lambda (CPU environment).
-# NOTE: torch is installed separately in the Makefile to guarantee
-# the CPU-only wheel is used (avoids NVIDIA/CUDA transitive deps).
+# Lightweight runtime dependencies for Lambda function code.
+# Heavy ML deps (torch, sentence-transformers, tiktoken) are in the Lambda Layer.
+# boto3 is provided by the Lambda runtime — do not bundle it.
 
 # Core
-boto3>=1.34.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 feedparser>=6.0.0
-
-# NLP & Embeddings  (torch pulled from CPU index above)
-sentence-transformers>=2.2.2
-tiktoken>=0.5.0
 defusedxml>=0.7.1
 
 # Database

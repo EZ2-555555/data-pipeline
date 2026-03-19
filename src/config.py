@@ -27,7 +27,10 @@ class _Settings:
 
     @property
     def DB_PASSWORD(self) -> str:
-        return os.getenv("DB_PASSWORD", "dev")
+        val = os.getenv("DB_PASSWORD")
+        if not val:
+            raise EnvironmentError("DB_PASSWORD environment variable is required")
+        return val
 
     @property
     def AWS_REGION(self) -> str:

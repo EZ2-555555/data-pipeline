@@ -16,8 +16,10 @@ def test_normalize_collapses_whitespace():
 def test_normalize_unescapes_html_entities():
     raw = "AT&amp;T is a &lt;company&gt;"
     result = normalize_text(raw)
-    assert "&" in result
-    assert "<" not in result or "company" in result
+    # &amp; is unescaped to &; &lt;company&gt; becomes <company> which is stripped as HTML tag
+    assert "AT&T" in result
+    assert "&amp;" not in result
+    assert "&lt;" not in result
 
 
 def test_normalize_strips_code_blocks():

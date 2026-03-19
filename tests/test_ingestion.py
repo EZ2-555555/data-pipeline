@@ -1,10 +1,19 @@
-"""Tests for SHA-256 content hashing (deduplication)."""
+"""Tests for ingestion modules — hashing, fetching, and ingesting."""
+
+from unittest.mock import MagicMock, patch
+from datetime import datetime, timezone
 
 from src.ingestion.arxiv_ingester import compute_content_hash as arxiv_hash
 from src.ingestion.devto_ingester import compute_content_hash as devto_hash
 from src.ingestion.github_ingester import compute_content_hash as github_hash
 from src.ingestion.hn_ingester import compute_content_hash as hn_hash
-from src.ingestion.rss_ingester import compute_content_hash as rss_hash
+from src.ingestion.rss_ingester import (
+    compute_content_hash as rss_hash,
+    _strip_html,
+    _parse_published,
+    fetch_rss_articles,
+    ingest_articles,
+)
 
 
 def test_arxiv_hash_deterministic():
@@ -89,3 +98,128 @@ def test_rss_hash_different_content():
     h1 = rss_hash("Article A", "Summary A", "https://example.com/a")
     h2 = rss_hash("Article B", "Summary B", "https://example.com/b")
     assert h1 != h2
+
+
+# ---------------------------------------------------------------------------
+# RSS ingester — _strip_html
+# ---------------------------------------------------------------------------
+
+def test_strip_html_removes_tags():
+    assert _strip_html("<p>Hello <b>world</b></p>") == "Hello world"
+
+
+def test_strip_html_plain_text():
+    assert _strip_html("No HTML here") == "No HTML here"
+
+
+def test_strip_html_collapses_whitespace():
+    assert _strip_html("<div>  too   many   spaces  </div>") == "too many spaces"
+
+
+# ---------------------------------------------------------------------------
+# RSS ingester — _parse_published
+# ---------------------------------------------------------------------------
+
+def test_parse_published_from_published_parsed():
+    entry = {"published_parsed": (2026, 3, 15, 12, 0, 0, 0, 0, 0)}
+    assert _parse_published(entry) == "2026-03-15"
+
+
+def test_parse_published_from_updated_parsed():
+    entry = {"updated_parsed": (2026, 1, 10, 8, 30, 0, 0, 0, 0)}
+    assert _parse_published(entry) == "2026-01-10"
+
+
+def test_parse_published_fallback_to_today():
+    entry = {}
+    result = _parse_published(entry)
+    assert result == datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+# ---------------------------------------------------------------------------
+# RSS ingester — fetch_rss_articles
+# ---------------------------------------------------------------------------
+
+@patch("src.ingestion.rss_ingester.feedparser")
+def test_fetch_rss_articles_basic(mock_fp):
+    mock_fp.parse.return_value = MagicMock(
+        bozo=False,
+        entries=[
+            {
+                "link": "https://example.com/art1",
+                "title": "AI Breakthrough",
+                "summary": "<p>A new model.</p>",
+                "published_parsed": (2026, 3, 15, 0, 0, 0, 0, 0, 0),
+            },
+        ],
+        feed={"title": "TechFeed"},
+    )
+    articles = fetch_rss_articles(feeds=["https://example.com/rss"])
+    assert len(articles) == 1
+    assert articles[0]["source"] == "rss"
+    assert articles[0]["title"] == "[TechFeed] AI Breakthrough"
+    assert articles[0]["url"] == "https://example.com/art1"
+
+
+@patch("src.ingestion.rss_ingester.feedparser")
+def test_fetch_rss_articles_deduplicates_by_link(mock_fp):
+    entry = {
+        "link": "https://example.com/same",
+        "title": "Duplicate",
+        "summary": "Desc",
+        "published_parsed": (2026, 1, 1, 0, 0, 0, 0, 0, 0),
+    }
+    mock_fp.parse.return_value = MagicMock(
+        bozo=False,
+        entries=[entry, entry],
+        feed={"title": "Feed"},
+    )
+    articles = fetch_rss_articles(feeds=["https://example.com/rss"])
+    assert len(articles) == 1
+
+
+@patch("src.ingestion.rss_ingester.feedparser")
+def test_fetch_rss_articles_skips_bozo_no_entries(mock_fp):
+    mock_fp.parse.return_value = MagicMock(
+        bozo=True,
+        entries=[],
+        feed={"title": "BadFeed"},
+    )
+    articles = fetch_rss_articles(feeds=["https://bad.com/rss"])
+    assert articles == []
+
+
+# ---------------------------------------------------------------------------
+# RSS ingester — ingest_articles
+# ---------------------------------------------------------------------------
+
+@patch("src.ingestion.rss_ingester.record_ingestion")
+@patch("src.ingestion.rss_ingester.send_document_message")
+@patch("src.ingestion.rss_ingester.write_raw", return_value="raw/rss/key.json")
+@patch("src.ingestion.rss_ingester.put_connection")
+@patch("src.ingestion.rss_ingester.get_connection")
+def test_ingest_rss_articles(mock_get_conn, mock_put_conn, mock_write_raw, mock_send, mock_record):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.fetchone.return_value = (42,)
+    mock_cursor.__enter__ = lambda s: s
+    mock_cursor.__exit__ = MagicMock(return_value=False)
+    mock_conn.cursor.return_value = mock_cursor
+    mock_get_conn.return_value = mock_conn
+
+    articles = [{
+        "source": "rss",
+        "title": "Test Article",
+        "content": "Some content",
+        "url": "https://example.com/art",
+        "published_at": "2026-03-15",
+        "content_hash": "abc123",
+    }]
+
+    result = ingest_articles(articles)
+    assert result == 1
+    mock_conn.commit.assert_called_once()
+    mock_write_raw.assert_called_once()
+    mock_send.assert_called_once_with(42, "raw/rss/key.json", "rss")
+    mock_record.assert_called_once_with("rss", 1)

@@ -134,6 +134,9 @@ def ingest_articles(articles: list[dict]) -> int:
                     s3_key = write_raw(a)
                     send_document_message(doc_id, s3_key, a["source"])
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 

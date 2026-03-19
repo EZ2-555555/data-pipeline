@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   PYTHON_VERSION: "3.11"
   AWS_REGION: us-east-1
@@ -21,6 +25,7 @@ jobs:
   # ---------------------------------------------------------------
   lint-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -29,11 +34,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+          cache-dependency-path: requirements-test.txt
 
       - name: Install dependencies
-        run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements.txt
+        run: pip install -r requirements-test.txt
 
       - name: Lint with ruff
         run: ruff check src/ tests/
@@ -43,6 +47,12 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.modified, 'Dockerfile') ||
+      contains(github.event.head_commit.modified, 'requirements') ||
+      contains(github.event.head_commit.modified, 'docker-compose')
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +77,7 @@ jobs:
 
   sam-validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -91,8 +102,9 @@ jobs:
   # ---------------------------------------------------------------
   build-frontend:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [lint-and-test, docker-build, sam-validate]
+    needs: [lint-and-test, sam-validate]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -121,8 +133,9 @@ jobs:
   # ---------------------------------------------------------------
   sam-deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [lint-and-test, docker-build, sam-validate]
+    needs: [lint-and-test, sam-validate]
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     environment: dev
     steps:
       - uses: actions/checkout@v4
@@ -131,6 +144,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-lambda.txt
 
       - name: Set up SAM CLI
         uses: aws-actions/setup-sam@v2
@@ -145,13 +160,19 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Restore SAM build cache
+        uses: actions/cache@v4
+        with:
+          path: .aws-sam/build
+          key: sam-build-${{ hashFiles('requirements-lambda.txt', 'requirements-layer.txt', 'Makefile', 'src/**/*.py') }}
+          restore-keys: sam-build-
+
       - name: SAM build
         run: sam build --cached --parallel --template-file infra/template-freetier.yaml
 
       - name: SAM deploy (dev)
         run: |
           sam deploy \
-            --template-file infra/template-freetier.yaml \
             --stack-name ${{ env.SAM_STACK_NAME }}-dev \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM \
             --region ${{ env.AWS_REGION }} \
@@ -177,6 +198,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [build-frontend, sam-deploy]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     environment: dev
     steps:
       - name: Configure AWS credentials

@@ -46,7 +46,11 @@ def fetch_arxiv_papers(categories: list[str], max_results: int = 100) -> list[di
     resp.raise_for_status()
 
     ns = {"atom": "http://www.w3.org/2005/Atom"}
-    root = ET.fromstring(resp.text)
+    try:
+        root = ET.fromstring(resp.text)
+    except ET.ParseError:
+        logger.error("Failed to parse ArXiv XML response")
+        return []
 
     papers = []
     for entry in root.findall("atom:entry", ns):
@@ -93,6 +97,9 @@ def ingest_papers(papers: list[dict]) -> int:
                     s3_key = write_raw(p)
                     send_document_message(doc_id, s3_key, p["source"])
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 

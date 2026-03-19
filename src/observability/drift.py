@@ -87,6 +87,7 @@ def run_drift_check() -> dict:
         alert = False
         alert_reason = None
 
+
         if baseline is not None and baseline > 0:
             # --- Check 1: simple relative-drop threshold (10%) ---
             drop = (baseline - mean_sim) / baseline
@@ -118,6 +119,9 @@ def run_drift_check() -> dict:
                     )
 
         _record_run(conn, mean_sim, std_sim, len(probes), alert)
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         put_connection(conn)
 
