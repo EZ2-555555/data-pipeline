@@ -173,23 +173,23 @@ jobs:
       - name: SAM deploy (dev)
         run: |
           sam deploy \
-            --stack-name ${{ env.SAM_STACK_NAME }}-dev \
+            --stack-name "${{ env.SAM_STACK_NAME }}-dev" \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM \
-            --region ${{ env.AWS_REGION }} \
+            --region "${{ env.AWS_REGION }}" \
             --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
-              Stage=dev \
-              DBMasterUsername=${{ secrets.DB_USERNAME }} \
-              DBMasterPassword=${{ secrets.DB_PASSWORD }} \
-              HFApiToken=${{ secrets.HF_API_TOKEN }} \
-              HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }} \
-              DBAllowedCidrIp=${{ secrets.DB_ALLOWED_CIDR || '0.0.0.0/0' }} \
-              DefaultVpcId=${{ secrets.DEFAULT_VPC_ID }} \
-              DefaultSubnetA=${{ secrets.DEFAULT_SUBNET_A }} \
-              DefaultSubnetB=${{ secrets.DEFAULT_SUBNET_B }} \
-              AlertEmail=${{ secrets.ALERT_EMAIL }}
+              "Stage=dev" \
+              "DBMasterUsername=${{ secrets.DB_USERNAME }}" \
+              "DBMasterPassword=${{ secrets.DB_PASSWORD }}" \
+              "HFApiToken=${{ secrets.HF_API_TOKEN }}" \
+              "HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }}" \
+              "DBAllowedCidrIp=${{ secrets.DB_ALLOWED_CIDR || '0.0.0.0/0' }}" \
+              "DefaultVpcId=${{ secrets.DEFAULT_VPC_ID }}" \
+              "DefaultSubnetA=${{ secrets.DEFAULT_SUBNET_A }}" \
+              "DefaultSubnetB=${{ secrets.DEFAULT_SUBNET_B }}" \
+              "AlertEmail=${{ secrets.ALERT_EMAIL || 'noreply@example.com' }}"
 
   # ---------------------------------------------------------------
   # Stage 3 — Upload frontend to S3 (after both deploy + build)
