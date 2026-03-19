@@ -34,7 +34,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **SHA-256 content-addressed deduplication** across all ingesters
 - **S3 medallion data lake** — raw / processed / embeddings tiers (local fallback for dev)
 - **SQS-decoupled pipeline** — ingesters produce messages, pipeline consumes asynchronously
-- **MiniLM semantic embeddings** (all-MiniLM-L6-v2, 384-dim, L2-normalised)
+- **MiniLM semantic embeddings** via fastembed (all-MiniLM-L6-v2, 384-dim, ONNX Runtime — no PyTorch needed)
 - **HNSW vector index** — fast approximate nearest-neighbour search (works on empty tables)
 - **3-stage hybrid retrieval**: metadata filter → cosine similarity → recency-aware reranking
 - **Reranking weight grid search** — automated α/β/γ optimisation via evaluation framework
@@ -206,22 +206,20 @@ Go to your repo → **Settings → Environments → dev → Secrets** and add al
 ```
 push to main
     │
-    ├── Stage 1: lint-and-test
-    │   ├── ruff check src/ tests/
-    │   └── pytest --cov=src --cov-fail-under=60
+    ├── Stage 1 (parallel):
+    │   ├── lint-and-test
+    │   │   ├── ruff check src/ tests/
+    │   │   └── pytest --cov=src --cov-fail-under=60
+    │   └── sam-validate
+    │       ├── sam validate infra/template-freetier.yaml
+    │       └── sam validate infra/template.yaml
     │
-    ├── Stage 2: docker-build (parallel with Stage 3)
-    │   ├── docker build backend
-    │   └── docker build frontend
+    ├── Stage 2 (parallel, main branch only):
+    │   ├── build-frontend (npm ci → npm run build → upload artifact)
+    │   └── sam-deploy (sam build --cached --parallel → sam deploy)
     │
-    ├── Stage 3: sam-build (parallel with Stage 2)
-    │   ├── sam validate infra/template-freetier.yaml
-    │   └── sam validate infra/template.yaml
-    │
-    └── Stage 4: deploy-dev (main branch only)
-        ├── npm ci && npm run build   ← frontend built first (fail fast)
-        ├── sam build + sam deploy
-        └── aws s3 sync frontend/dist/ → S3
+    └── Stage 3 (main branch only):
+        └── upload-frontend (aws s3 sync frontend/dist/ → S3)
 ```
 
 ### After Deploy
@@ -245,7 +243,6 @@ AWS Console → Lambda → `techpulse-dev-ingestion` → Test → send `{}`
 python -m venv .venv
 source .venv/bin/activate        # Linux / Mac
 # .venv\Scripts\activate         # Windows
-pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 ```
 
@@ -284,7 +281,7 @@ data-pipeline/
 │   ├── preprocessing/
 │   │   └── chunker.py                # Text normalisation + tiktoken chunking
 │   ├── embedding/
-│   │   └── embedder.py               # all-MiniLM-L6-v2 (384-dim, normalised)
+│   │   └── embedder.py               # fastembed all-MiniLM-L6-v2 (384-dim, ONNX Runtime)
 │   ├── storage/
 │   │   └── __init__.py               # S3 medallion layer (raw/processed/embeddings)
 │   ├── queue/
@@ -311,12 +308,22 @@ data-pipeline/
 │   └── queries/
 │       ├── eval_queries.json         # 25 queries (3 categories)
 │       └── probe_queries.json        # 20 probe queries for drift detection
-├── tests/
-│   ├── test_ingestion.py
-│   ├── test_preprocessing.py
+├── tests/                            # 192 tests (15 test files, 60%+ coverage)
 │   ├── test_api.py
+│   ├── test_db.py
+│   ├── test_embedder.py
+│   ├── test_http.py
+│   ├── test_ingestion.py
+│   ├── test_llm_backends.py
+│   ├── test_observability.py
+│   ├── test_pipeline.py
+│   ├── test_preprocessing.py
+│   ├── test_queue.py
+│   ├── test_rag.py
 │   ├── test_retriever.py
-│   └── test_rag.py
+│   ├── test_scheduler.py
+│   ├── test_storage.py
+│   └── test_sync_to_aws.py
 └── infra/
     ├── template-freetier.yaml        # SAM template — active deployment (Free Tier, RDS db.t3.micro)
     ├── template.yaml                 # SAM template — production reference (Aurora Serverless v2)
@@ -391,7 +398,7 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 
 - [x] 5-source data ingestion pipeline (ArXiv, HN, DEV.to, GitHub, RSS)
 - [x] SHA-256 deduplication across all ingesters
-- [x] Token-based chunking + MiniLM embedding
+- [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
 - [x] Hybrid retrieval with 3-stage reranking + grid search
 - [x] Multi-backend LLM support (HuggingFace / Ollama / Bedrock)
 - [x] FastAPI backend with deep `/health`, `/ask`, `/drift` endpoints
@@ -404,7 +411,7 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] 3-layer hallucination verification (prompt + RAGAS + citation grounding)
 - [x] Retrieval quality drift detection (probe queries + `/drift` API)
 - [x] AWS IaC — SAM template for Free Tier (RDS db.t3.micro) + production (Aurora Serverless v2)
-- [x] GitHub Actions CI/CD — lint → test (60% coverage gate) → docker build → SAM validate → deploy
+- [x] GitHub Actions CI/CD — lint → test (60% coverage gate) → SAM validate → SAM deploy → S3 frontend upload
 - [x] Frontend auto-deploy to S3 via CI/CD (Vite build + S3 sync)
 - [x] Lambda `health_handler` proper response format (statusCode + body)
 - [x] pgvector extension error detection with actionable log message
