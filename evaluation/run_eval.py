@@ -345,7 +345,7 @@ def run_grid_search(queries: list[dict]) -> dict:
         logger.info(
             "  %s → mean_sim=%.4f  mean_lat=%.3fs  p95_lat=%.3fs  %s",
             label, mean_sim, mean_lat, p95_lat,
-            "✓" if entry["within_threshold"] else "✗ EXCEEDS THRESHOLD",
+            "PASS" if entry["within_threshold"] else "FAIL EXCEEDS THRESHOLD",
         )
 
     # Select best: highest mean_similarity among configs within threshold

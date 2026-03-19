@@ -2,28 +2,42 @@
 # SAM Makefile build - shared across all Lambda functions
 # ---------------------------------------------------------------------------
 
-# 1. Install CPU-only PyTorch first (avoids nvidia-cu*/triton deps).
-# 2. Install remaining Lambda deps from requirements-lambda.txt.
-# 3. Copy application source.
+# All four Lambda functions share the same source and dependencies.
+# Install once into a cached directory, then copy per-function.
+# This avoids 4x redundant torch + pip installs during `sam build --parallel`.
 
-build-IngestionFunction:
-	pip install torch --index-url https://download.pytorch.org/whl/cpu -t $(ARTIFACTS_DIR)/
-	pip install -r requirements-lambda.txt -t $(ARTIFACTS_DIR)/
+DEPS_DIR := $(CURDIR)/.lambda-deps
+
+.PHONY: install-deps
+install-deps:
+	@if [ ! -f "$(DEPS_DIR)/.installed" ]; then \
+		echo "Installing shared Lambda dependencies..."; \
+		mkdir -p $(DEPS_DIR); \
+		pip install torch --index-url https://download.pytorch.org/whl/cpu -t $(DEPS_DIR)/; \
+		pip install -r requirements-lambda.txt -t $(DEPS_DIR)/; \
+		touch $(DEPS_DIR)/.installed; \
+	else \
+		echo "Shared dependencies already cached, skipping install."; \
+	fi
+
+build-IngestionFunction: install-deps
+	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
-build-PreprocessFunction:
-	pip install torch --index-url https://download.pytorch.org/whl/cpu -t $(ARTIFACTS_DIR)/
-	pip install -r requirements-lambda.txt -t $(ARTIFACTS_DIR)/
+build-PreprocessFunction: install-deps
+	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
-build-RagApiFunction:
-	pip install torch --index-url https://download.pytorch.org/whl/cpu -t $(ARTIFACTS_DIR)/
-	pip install -r requirements-lambda.txt -t $(ARTIFACTS_DIR)/
+build-RagApiFunction: install-deps
+	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
-build-HealthCheckFunction:
-	pip install torch --index-url https://download.pytorch.org/whl/cpu -t $(ARTIFACTS_DIR)/
-	pip install -r requirements-lambda.txt -t $(ARTIFACTS_DIR)/
+build-HealthCheckFunction: install-deps
+	cp -r $(DEPS_DIR)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
+	cp -r $(DEPS_DIR)/.* $(ARTIFACTS_DIR)/ 2>/dev/null || true
 	cp -r src $(ARTIFACTS_DIR)/src
 
 # ---------------------------------------------------------------------------

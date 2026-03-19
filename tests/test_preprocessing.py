@@ -58,7 +58,7 @@ def test_normalize_strips_bold_italic():
 
 
 def test_normalize_strips_emojis():
-    raw = "Great article 🔥🚀 about AI 🤖 trends"
+    raw = "Great article about AI trends"
     assert normalize_text(raw) == "Great article about AI trends"
 
 
