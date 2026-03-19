@@ -1,0 +1,179 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+  AWS_REGION: us-east-1
+  SAM_STACK_NAME: techpulse
+
+jobs:
+  # ---------------------------------------------------------------
+  # Stage 1 — Lint + Unit Tests (quality gate)
+  # ---------------------------------------------------------------
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Lint with ruff
+        run: ruff check src/ tests/
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-fail-under=60
+
+  # ---------------------------------------------------------------
+  # Stage 2 — Docker Build Verification (depends on lint-and-test)
+  # ---------------------------------------------------------------
+  docker-build:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t techpulse-backend .
+
+      - name: Build frontend image
+        run: docker build -t techpulse-frontend ./frontend
+
+  # ---------------------------------------------------------------
+  # Stage 3 — SAM Build + Validate (depends on lint-and-test)
+  # ---------------------------------------------------------------
+  sam-build:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM validate (Free Tier template)
+        run: sam validate --template-file infra/template-freetier.yaml --lint
+
+      - name: SAM validate (production template)
+        run: sam validate --template-file infra/template.yaml --lint
+
+  # ---------------------------------------------------------------
+  # Stage 4 — Deploy to dev (push to main only, after all checks)
+  # ---------------------------------------------------------------
+  deploy-dev:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [docker-build, sam-build]
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Build frontend first so we fail fast before touching AWS ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build React frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      # --- AWS + SAM deploy ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # AWS_SESSION_TOKEN is only needed for Learner Lab (rotating credentials).
+          # Free Tier uses permanent IAM user credentials — leave this secret empty
+          # in your GitHub environment if deploying to a personal Free Tier account.
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: SAM build
+        run: sam build --template-file infra/template-freetier.yaml
+
+      - name: SAM deploy (dev)
+        run: |
+          sam deploy \
+            --template-file infra/template-freetier.yaml \
+            --stack-name ${{ env.SAM_STACK_NAME }}-dev \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM \
+            --region ${{ env.AWS_REGION }} \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              Stage=dev \
+              DBMasterUsername=${{ secrets.DB_USERNAME }} \
+              DBMasterPassword=${{ secrets.DB_PASSWORD }} \
+              HFApiToken=${{ secrets.HF_API_TOKEN }} \
+              HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }} \
+              DBAllowedCidrIp=${{ secrets.DB_ALLOWED_CIDR || '0.0.0.0/0' }} \
+              DefaultVpcId=${{ secrets.DEFAULT_VPC_ID }} \
+              DefaultSubnetA=${{ secrets.DEFAULT_SUBNET_A }} \
+              DefaultSubnetB=${{ secrets.DEFAULT_SUBNET_B }} \
+              AlertEmail=${{ secrets.ALERT_EMAIL }}
+
+      # --- Upload pre-built frontend to S3 ---
+      - name: Get stack outputs
+        id: stack
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.SAM_STACK_NAME }}-dev \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+            --output text)
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+
+          URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.SAM_STACK_NAME }}-dev \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Upload frontend to S3
+        run: |
+          aws s3 sync frontend/dist/ s3://${{ steps.stack.outputs.bucket }}/ \
+            --delete \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Print frontend URL
+        run: echo "Frontend live at ${{ steps.stack.outputs.url }}"

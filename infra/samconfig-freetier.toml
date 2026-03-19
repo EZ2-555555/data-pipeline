@@ -1,0 +1,41 @@
+version = 0.1
+
+# ---------------------------------------------------------------------------
+# AWS Free Tier deployment configuration
+# ---------------------------------------------------------------------------
+# Before deploying, gather these from your AWS console:
+#   1. Default VPC ID — VPC Dashboard → Your VPCs → copy vpc-xxxxx
+#   2. Two subnet IDs — VPC Dashboard → Subnets → pick 2 in different AZs
+#   3. Set a strong DB password (replace CHANGE_ME)
+#
+# Note: No LabRole needed — this template creates its own IAM role.
+# Note: No AWS_SESSION_TOKEN needed — use permanent IAM user credentials.
+#
+# Deploy with:
+#   cd infra
+#   sam build --template-file template-freetier.yaml --config-file samconfig-freetier.toml
+#   sam deploy --config-file samconfig-freetier.toml
+# ---------------------------------------------------------------------------
+
+[default.build.parameters]
+template_file = "template-freetier.yaml"
+
+[default.deploy.parameters]
+stack_name = "techpulse-dev"
+resolve_s3 = true
+s3_prefix = "techpulse-dev"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM"
+confirm_changeset = true
+parameter_overrides = """
+  Stage=dev \
+  DBMasterUsername=postgres \
+  DBMasterPassword=CHANGE_ME \
+  LLMBackend=huggingface \
+  OllamaBaseUrl="" \
+  HFApiToken=hf_REPLACE_WITH_YOUR_TOKEN \
+  HFModelId=mistralai/Mistral-7B-Instruct-v0.2 \
+  DefaultVpcId=vpc-xxxxxxxxxxxxxxxxx \
+  DefaultSubnetA=subnet-xxxxxxxxxxxxxxxxx \
+  DefaultSubnetB=subnet-xxxxxxxxxxxxxxxxx
+"""

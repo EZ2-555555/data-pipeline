@@ -1,0 +1,22 @@
+[
+  {"id": 1, "query": "What are the latest advances in large language models?"},
+  {"id": 2, "query": "How does retrieval-augmented generation work?"},
+  {"id": 3, "query": "What are current best practices for MLOps pipelines?"},
+  {"id": 4, "query": "Explain transformer architecture innovations in 2024"},
+  {"id": 5, "query": "What is the state of open-source AI models?"},
+  {"id": 6, "query": "How are companies deploying machine learning at scale?"},
+  {"id": 7, "query": "What are emerging trends in developer tooling?"},
+  {"id": 8, "query": "Describe recent improvements to vector databases"},
+  {"id": 9, "query": "What programming languages are gaining popularity?"},
+  {"id": 10, "query": "How is AI being applied to software engineering?"},
+  {"id": 11, "query": "What are key challenges in data pipeline reliability?"},
+  {"id": 12, "query": "Explain the role of embeddings in semantic search"},
+  {"id": 13, "query": "What DevOps practices improve deployment frequency?"},
+  {"id": 14, "query": "How does fine-tuning compare to prompt engineering?"},
+  {"id": 15, "query": "What cloud services are popular for AI workloads?"},
+  {"id": 16, "query": "How do knowledge graphs complement LLMs?"},
+  {"id": 17, "query": "What are best practices for API design in 2024?"},
+  {"id": 18, "query": "Describe innovations in container orchestration"},
+  {"id": 19, "query": "How is edge computing evolving for ML inference?"},
+  {"id": 20, "query": "What security concerns exist for AI-powered applications?"}
+]

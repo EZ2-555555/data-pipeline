@@ -1,0 +1,8 @@
+{
+  "app": "python3 app.py",
+  "context": {
+    "stage": "dev",
+    "alert_email": "",
+    "monthly_budget_usd": 15
+  }
+}

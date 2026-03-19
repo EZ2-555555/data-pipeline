@@ -1,0 +1,27 @@
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces Mapping of Research Questions to Evaluation Metrics and Methodology.}}{4}{table.caption.18}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Comparison of Related Work and Positioning of TechPulse.}}{8}{table.caption.29}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Implemented Tools, Services, and Justification.}}{14}{table.caption.48}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces TechPulse Alignment with the AWS Well-Architected Framework Six Pillars.}}{17}{table.caption.55}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Implemented Data Sources and Roles.}}{18}{table.caption.57}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Document State Transition Model.}}{19}{table.caption.62}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Storage Layers and Responsibilities (Medallion Architecture).}}{21}{table.caption.84}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Implemented LLM Backend Fallback Hierarchy.}}{23}{table.caption.108}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Implemented LLM Generation Parameter Configuration.}}{25}{table.caption.112}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Experimental Configuration Comparison.}}{28}{table.caption.131}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Summary of Evaluation Metrics and Targets.}}{30}{table.caption.140}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Planned Evaluation Summary Dashboard: Baseline vs.\ Hybrid with Target Thresholds.}}{34}{table.caption.152}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Component Implementation Status Summary.}}{36}{table.caption.155}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Deviations from the Original Proposal and Rationale.}}{38}{table.caption.157}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Unit Test Distribution.}}{41}{table.caption.164}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces Remaining Work: Phase Overview.}}{50}{table.caption.192}%
+\contentsline {table}{\numberline {7.2}{\ignorespaces Team Member Contribution Summary.}}{54}{table.caption.224}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

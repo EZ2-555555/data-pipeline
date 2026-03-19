@@ -1,0 +1,2 @@
+ignore_checks:
+  - W1011  # REF parameter for secret — intentional, no Secrets Manager used (cost saving)

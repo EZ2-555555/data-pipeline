@@ -1,0 +1,2058 @@
+{
+  "baseline": [
+    {
+      "answer": "Recent approaches to efficient transformer architectures include the use of quantization, knowledge distillation, and pruning.\n\nQuantization involves reducing the precision of model weights and activations to reduce memory usage and computational complexity (Source: [Source 2]).\n\nKnowledge distillation involves training a smaller model to mimic the behavior of a larger, more complex model, which can help reduce computational requirements (Source: [Source 4]).\n\nPruning involves removing redundant or unnecessary connections in the transformer architecture to reduce its size and computational complexity (Source: [Source 5]).\n\nThese approaches have been shown to be effective in reducing the computational requirements of transformer models while maintaining their accuracy (Source: [Source 1]).",
+      "sources": [
+        {
+          "title": "[IEEE Spectrum] How Quantum Data Can Teach AI to Do Better Chemistry",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/quantum-chemistry",
+          "score": 0.1899239009664121
+        },
+        {
+          "title": "One Backend Pattern for HTTP, CLI, and Workflows",
+          "source": "devto",
+          "url": "https://dev.to/mavrik/one-backend-pattern-for-http-cli-and-workflows-50hc",
+          "score": 0.09621917627935572
+        },
+        {
+          "title": "Git Demystified: How I Learned Git, Git Bash, GitHub, and Terminals as a Complete Beginner",
+          "source": "devto",
+          "url": "https://dev.to/isika_millicent/git-demystified-how-i-learned-git-git-bash-github-and-terminals-as-a-complete-beginner-264d",
+          "score": 0.04827585528636846
+        },
+        {
+          "title": "I built a local-only shell history manager in Rust with AI agent tracking",
+          "source": "devto",
+          "url": "https://dev.to/madhuappachi/i-built-a-local-only-shell-history-manager-in-rust-with-ai-agent-tracking-fh0",
+          "score": 0.043811639022133475
+        },
+        {
+          "title": "I Built a WBC Quarterfinal Scouting App with MLB Statcast Data",
+          "source": "devto",
+          "url": "https://dev.to/yasumorishima/i-built-a-wbc-quarterfinal-scouting-app-with-mlb-statcast-data-2k49",
+          "score": 0.043423128520063914
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 37.089,
+      "query_id": 1,
+      "query": "What are recent approaches to efficient transformer architectures?",
+      "category": "research_trend",
+      "ground_truth": "Recent approaches include knowledge distillation, pruning, quantization, mixture-of-experts, and efficient attention mechanisms like linear attention and flash attention.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "I couldn't find any information on recent trends in large language model compression within the provided context documents. The documents only discuss research related to artificial intelligence, chatbots, tropical cyclone intensity forecasting, and a student's scholarship win.\n\nHowever, I can suggest that you may want to look into other sources for information on large language model compression, as it is not mentioned in the provided context documents.",
+      "sources": [
+        {
+          "title": "[MIT News - Artificial intelligence] Study: AI chatbots provide less-accurate information to vulnerable users",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/study-ai-chatbots-provide-less-accurate-information-vulnerable-users-0219",
+          "score": 0.2961667776107788
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] New MIT class uses anthropology to improve chatbots",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/mit-class-uses-anthropology-to-improve-chatbots-0311",
+          "score": 0.22473096998149378
+        },
+        {
+          "title": "3DTCR: A Physics-Based Generative Framework for Vortex-Following 3D Reconstruction to Improve Tropical Cyclone Intensity Forecasting",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13049v1",
+          "score": 0.1734666279991457
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] Katie Spivakovsky wins 2026 Churchill Scholarship",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/katie-spivakovsky-wins-churchill-scholarship-0203",
+          "score": 0.1644213846670759
+        },
+        {
+          "title": "[WIRED] Palantir Demos Show How the Military Could Use AI Chatbots to Generate War Plans",
+          "source": "rss",
+          "url": "https://www.wired.com/story/palantir-demos-show-how-the-military-can-use-ai-chatbots-to-generate-war-plans/",
+          "score": 0.15873169898986816
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 22.527,
+      "query_id": 2,
+      "query": "What are recent trends in large language model compression?",
+      "category": "research_trend",
+      "ground_truth": "Trends include quantization (GPTQ, AWQ), pruning, knowledge distillation, low-rank factorization, and speculative decoding for faster inference.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, I couldn't find any information on \"retrieval-augmented generation\" in the provided context documents. The documents mention various topics such as search algorithms (Sift), data stacks (The Modern Data Stack Has a Coherence Problem), state machines (Self-Healing State Machines: Resilient State Transitions in Go), real-time collaboration (Building Real-Time Collaboration: A Simple Guide to Operational Transformation in Go), and the impact of dyslexia on tech professionals (Does Dyslexia Hold You Back in Tech? Yes, but not for the reason you think).\n\nTherefore, I cannot determine any advances made in retrieval-augmented generation.",
+      "sources": [
+        {
+          "title": "Sift: Local Hybrid Search Without the Infrastructure Tax",
+          "source": "devto",
+          "url": "https://dev.to/rupurt/sift-local-hybrid-search-without-the-infrastructure-tax-487n",
+          "score": 0.295555454757485
+        },
+        {
+          "title": "The Modern Data Stack Has a Coherence Problem",
+          "source": "devto",
+          "url": "https://dev.to/hui_zhao_405dc49731688b0c/the-modern-data-stack-has-a-coherence-problem-3eji",
+          "score": 0.23038303969007534
+        },
+        {
+          "title": "Self-Healing State Machines: Resilient State Transitions in Go",
+          "source": "devto",
+          "url": "https://dev.to/onurcinar/self-healing-state-machines-resilient-state-transitions-in-go-3e0",
+          "score": 0.1980641217193535
+        },
+        {
+          "title": "Building Real-Time Collaboration: A Simple Guide to Operational Transformation in Go",
+          "source": "devto",
+          "url": "https://dev.to/bwanachairman/building-real-time-collaboration-a-simple-guide-to-operational-transformation-in-go-2pdj",
+          "score": 0.16181975164178108
+        },
+        {
+          "title": "Does Dyslexia Hold You Back in Tech? Yes, but not for the reason you think",
+          "source": "devto",
+          "url": "https://dev.to/chadders13/does-dyslexia-hold-you-back-in-tech-yes-but-not-for-the-reason-you-think-4bec",
+          "score": 0.15129467844963074
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 16.578,
+      "query_id": 3,
+      "query": "What advances have been made in retrieval-augmented generation?",
+      "category": "research_trend",
+      "ground_truth": "Advances include hybrid retrieval combining dense and sparse methods, multi-stage reranking, self-reflective RAG, query decomposition, and improved chunking strategies.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The current state of research on AI safety and alignment is a growing concern, with scientists investigating various methods to ensure AI models do not cause harm.\n\nAccording to MIT researchers, they are exploring ways to test AI models to prevent them from revealing anonymized patient health data, which could lead to harmful consequences (Source 2).\n\nAdditionally, there is a growing awareness of the risks associated with AI, including the potential for mass casualty cases due to AI-related psychosis and suicidal tendencies (Source 4). However, it's unclear if these risks are directly related to AI safety and alignment.\n\nOn the other hand, researchers at MIT are also working on using synthetic biology and AI to address global antimicrobial resistance threats (Source 5), which may be seen as a positive development in terms of AI safety and alignment.\n\nHowever, the \"are you sure?\" problem in AI refers to the issue of AI models changing their mind or providing uncertain responses, which is a challenge in ensuring AI safety and alignment (Source 3).\n\nIn summary, while there are efforts underway to address AI safety and alignment, more research is needed to fully understand the current state of this field.\n\nAnswer cannot be determined.",
+      "sources": [
+        {
+          "title": "Beyond the Chatbot: A Developer's Guide to Practical AI Integration",
+          "source": "devto",
+          "url": "https://dev.to/midas126/beyond-the-chatbot-a-developers-guide-to-practical-ai-integration-5gb2",
+          "score": 0.5174973011016846
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] MIT scientists investigate memorization risk in the age of clinical AI",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/mit-scientists-investigate-memorization-risk-clinical-ai-0105",
+          "score": 0.44569960560205035
+        },
+        {
+          "title": "The \"are you sure?\" Problem: Why AI keeps changing its mind",
+          "source": "hn",
+          "url": "https://www.randalolson.com/2026/02/07/the-are-you-sure-problem-why-your-ai-keeps-changing-its-mind/",
+          "score": 0.44412457942962646
+        },
+        {
+          "title": "[TechCrunch] Lawyer behind AI psychosis cases warns of mass casualty risks",
+          "source": "rss",
+          "url": "https://techcrunch.com/2026/03/15/lawyer-behind-ai-psychosis-cases-warns-of-mass-casualty-risks/",
+          "score": 0.43814408410454375
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] Using synthetic biology and AI to address global antimicrobial resistance threat",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/using-synthetic-biology-ai-address-global-antimicrobial-resistance-0211",
+          "score": 0.4089806079864502
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 23.617,
+      "query_id": 4,
+      "query": "What is the current state of research on AI safety and alignment?",
+      "category": "research_trend",
+      "ground_truth": "Research focuses on RLHF, constitutional AI, red-teaming, interpretability, scalable oversight, and techniques for reducing hallucination and harmful outputs.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, insufficient evidence exists to determine recent developments in multimodal AI models.\n\nThe provided context documents do not mention multimodal AI models specifically. However, they do discuss the importance of data-centric AI (Source 2) and the need for more researchers and developers to work on this area. Additionally, Source 3 mentions using three AI agents (Claude, Codex, and Gemini) on a real project, but it does not provide information on multimodal AI models.\n\nTherefore, the answer cannot be determined based on the provided context documents.",
+      "sources": [
+        {
+          "title": "Autonomous AI Research Does Not Need a Giant Framework",
+          "source": "devto",
+          "url": "https://dev.to/javz/autonomous-ai-research-does-not-need-a-giant-framework-32el",
+          "score": 0.4965682629861554
+        },
+        {
+          "title": "[IEEE Spectrum] Andrew Ng: Unbiggen AI",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/andrew-ng-data-centric-ai",
+          "score": 0.46922239661216736
+        },
+        {
+          "title": "I Used Three AI Agents on a Real Project. Here's What Each One Is Actually Good At.",
+          "source": "devto",
+          "url": "https://dev.to/wilddog64/i-used-three-ai-agents-on-a-real-project-heres-what-each-one-is-actually-good-at-4nnh",
+          "score": 0.45614525937168326
+        },
+        {
+          "title": "The Internet Is Getting Quieter - Who Will Feed the Next Generation of AI?",
+          "source": "devto",
+          "url": "https://dev.to/sag1v/the-internet-is-getting-quieter-who-will-feed-the-next-generation-of-ai-4bl1",
+          "score": 0.45373675778666367
+        },
+        {
+          "title": "EVAL #004: AI Agent Frameworks \u2014 LangGraph vs CrewAI vs AutoGen vs Smolagents vs OpenAI Agents SDK",
+          "source": "devto",
+          "url": "https://dev.to/ultraduneai/eval-004-ai-agent-frameworks-langgraph-vs-crewai-vs-autogen-vs-smolagents-vs-openai-agents-sdk-190l",
+          "score": 0.4396299123764038
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 22.52,
+      "query_id": 5,
+      "query": "What recent developments exist in multimodal AI models?",
+      "category": "research_trend",
+      "ground_truth": "Developments include vision-language models like GPT-4V and LLaVA, multimodal transformers, audio-text models, and unified architectures processing text, images, and video.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Reinforcement learning (RL) is being applied to language model training to mitigate reward hacking in multilingual translation, as seen in the paper \"Mending the Holes: Mitigating Reward Hacking in Reinforcement Learning for Multilingual Translation\" ([Source 2]). The authors introduce WALAR, a reinforcement training method using only monolingual text to elevate LLMs' translation capabilities on low-resource languages.\n\nAdditionally, RL is being used in test-time alignment methods to align language models to the task format and benchmark distribution, as described in \"Test-time RL alignment exposes task familiarity artifacts in LLM benchmarks\" ([Source 5]). This method aims to control for task familiarity artifacts that can affect direct evaluation of LLMs on benchmarks.\n\n[Source N] refers to the provided context documents.",
+      "sources": [
+        {
+          "title": "\ud83c\udfae Teaching an AI to Play Atari Games Using Deep Reinforcement Learning",
+          "source": "devto",
+          "url": "https://dev.to/asmniinsds/teaching-an-ai-to-play-atari-games-using-deep-reinforcement-learning-3gof",
+          "score": 0.5104312592487786
+        },
+        {
+          "title": "Mending the Holes: Mitigating Reward Hacking in Reinforcement Learning for Multilingual Translation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13045v1",
+          "score": 0.5026829838752747
+        },
+        {
+          "title": "Understanding Word2Vec \u2013 Part 6: Two Ways Word2Vec Learns Context",
+          "source": "devto",
+          "url": "https://dev.to/rijultp/understanding-word2vec-part-6-two-ways-word2vec-learns-context-3ppl",
+          "score": 0.4070855975151062
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] Guided learning lets \u201cuntrainable\u201d neural networks realize their potential",
+          "source": "rss",
+          "url": "https://news.mit.edu/2025/guided-learning-lets-untrainable-neural-networks-realize-their-potential-1218",
+          "score": 0.39530069259997125
+        },
+        {
+          "title": "Test-time RL alignment exposes task familiarity artifacts in LLM benchmarks",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12875v1",
+          "score": 0.3900861871139808
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 32.343,
+      "query_id": 6,
+      "query": "How is reinforcement learning being applied to language model training?",
+      "category": "research_trend",
+      "ground_truth": "RLHF and RLAIF are used to align models with human preferences, PPO and DPO for policy optimization, and RL for code generation and reasoning tasks.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Unfortunately, the provided context documents do not mention anything about reducing hallucination in LLMs.\n\nHowever, I can provide some general information on this topic. Hallucination in LLMs refers to the generation of false or nonsensical text. One approach to reducing hallucination is to use techniques such as:\n\n1. Denoising self-attention: This technique involves adding noise to the input and then removing it during training, which can help the model learn more robust representations.\n2. Adversarial training: This involves training the model on a dataset that includes adversarial examples, which can help the model learn to distinguish between real and fake data.\n\nUnfortunately, I couldn't find any specific information on these approaches in the provided context documents.\n\nIf you're looking for information on reducing hallucination in LLMs, I would recommend searching online or checking out research papers on this topic.",
+      "sources": [
+        {
+          "title": "NVlabs/cutile-rs",
+          "source": "github",
+          "url": "https://github.com/NVlabs/cutile-rs",
+          "score": 0.2291838539133163
+        },
+        {
+          "title": "Cannabinoids remove plaque-forming Alzheimer's proteins from brain cells (2016)",
+          "source": "hn",
+          "url": "https://www.salk.edu/news-release/cannabinoids-remove-plaque-forming-alzheimers-proteins-from-brain-cells/",
+          "score": 0.20940648261270067
+        },
+        {
+          "title": "I built an OpenAI-compatible server that routes to whichever AI CLI you have installed",
+          "source": "devto",
+          "url": "https://dev.to/jfarcand/what-happens-when-you-treat-ai-clis-as-llm-backends-k0h",
+          "score": 0.16204380989074707
+        },
+        {
+          "title": "I Got Sick of Getting Rugged, So I Built a Rug-Pull Detection Engine in Rust",
+          "source": "devto",
+          "url": "https://dev.to/copyleftdev/i-got-sick-of-getting-rugged-so-i-built-a-rug-pull-detection-engine-in-rust-l7l",
+          "score": 0.1263381912506707
+        },
+        {
+          "title": "Training a Neural Network in 16-bit Fixed Point on a 1982 BBC Micro",
+          "source": "devto",
+          "url": "https://dev.to/jamesrandall/training-a-neural-network-in-16-bit-fixed-point-on-a-1982-bbc-micro-2gd3",
+          "score": 0.06584665924310684
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 34.495,
+      "query_id": 7,
+      "query": "What are the latest approaches to reducing hallucination in LLMs?",
+      "category": "research_trend",
+      "ground_truth": "Approaches include retrieval augmentation, chain-of-verification, self-consistency checks, factual grounding, citation generation, and constrained decoding.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, insufficient evidence exists to determine the progress made in open-source language models.\n\nThe provided context documents do not mention open-source language models specifically. While Source 4 discusses floating-point arithmetic, which is relevant to computer science, it does not address language models. Sources 1-5 focus on various topics such as scientific publishing, multi-agent systems, AI research, and database comparison, but none of them discuss open-source language models.\n\nTherefore, the answer cannot be determined based on the provided context documents.",
+      "sources": [
+        {
+          "title": "From Infrastructure to Product: Pipelines into a Profitable SaaS",
+          "source": "devto",
+          "url": "https://dev.to/sertaoseracloud/from-infrastructure-to-product-pipelines-into-a-profitable-saas-44mc",
+          "score": 0.3910391460610454
+        },
+        {
+          "title": "Why We Need a Standard Language for Agentic Workflows (And Why I Built One)",
+          "source": "devto",
+          "url": "https://dev.to/argonauta/why-we-need-a-standard-language-for-agentic-workflows-and-why-i-built-one-138",
+          "score": 0.3751156180959203
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] New J-PAL research and policy initiative to test and scale AI innovations to fight poverty",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/new-j-pal-research-policy-initiative-to-test-scale-ai-innovations-fight-poverty-0212",
+          "score": 0.3679072041566853
+        },
+        {
+          "title": "What every computer scientist should know about floating-point arithmetic (1991) [pdf]",
+          "source": "hn",
+          "url": "https://www.itu.dk/~sestoft/bachelor/IEEE754_article.pdf",
+          "score": 0.22891652835410492
+        },
+        {
+          "title": "PostgreSQL vs. MongoDB for JSON: The Internal Trade-offs They Don't Tell You in the Docs",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/postgresql-vs-mongodb-for-json-the-internal-trade-offs-they-dont-tell-you-in-the-docs-40oe",
+          "score": 0.18414754460483262
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 15.916,
+      "query_id": 8,
+      "query": "What progress has been made in open-source language models?",
+      "category": "research_trend",
+      "ground_truth": "Notable models include LLaMA, Mistral, Falcon, Phi, and Gemma, with improvements in fine-tuning efficiency through LoRA and QLoRA.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Emerging techniques for long-context language modeling include reinforcement training methods, such as WALAR (Source 2), which uses only monolingual text to elevate Large Language Models' translation capabilities on massive low-resource languages.\n\nAnother approach is hybrid multi-task self-training frameworks, like HMS-BERT (Source 3), which integrates contextual representations with handcrafted linguistic features and jointly optimizes multiple tasks for multilingual and multi-label cyberbullying detection.\n\nAdditionally, machine learning-powered Karaoke apps, such as Nightingale (Source 4), use neural networks to separate lead vocals from instrumentals, transcribe lyrics with word-level timestamps, and play it all back with synchronized highlighting, pitch scoring, profiles, and dynamic backgrounds.\n\nThese techniques demonstrate the growing interest in developing more effective long-context language modeling approaches that can handle diverse tasks and languages.",
+      "sources": [
+        {
+          "title": "Understanding Word2Vec \u2013 Part 6: Two Ways Word2Vec Learns Context",
+          "source": "devto",
+          "url": "https://dev.to/rijultp/understanding-word2vec-part-6-two-ways-word2vec-learns-context-3ppl",
+          "score": 0.4037030694661703
+        },
+        {
+          "title": "Mending the Holes: Mitigating Reward Hacking in Reinforcement Learning for Multilingual Translation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13045v1",
+          "score": 0.38751427009616735
+        },
+        {
+          "title": "HMS-BERT: Hybrid Multi-Task Self-Training for Multilingual and Multi-Label Cyberbullying Detection",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12920v1",
+          "score": 0.3553847756752512
+        },
+        {
+          "title": "rzru/nightingale",
+          "source": "github",
+          "url": "https://github.com/rzru/nightingale",
+          "score": 0.28744038493151847
+        },
+        {
+          "title": "xodn348/han",
+          "source": "github",
+          "url": "https://github.com/xodn348/han",
+          "score": 0.28732380270958147
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 63.791,
+      "query_id": 9,
+      "query": "What are emerging techniques for long-context language modeling?",
+      "category": "research_trend",
+      "ground_truth": "Techniques include RoPE extensions, ALiBi, sliding window attention, memory-augmented transformers, and retrieval-based context extension.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Based on the provided context documents, LangGraph, CrewAI, Bedrock, SageMaker, and EKS are mentioned as emerging AI tools being discussed in the developer community for building production-ready agentic AI systems on AWS (Source 1).\n\nAdditionally, Bedrock is also mentioned as an AI tool being discussed in the developer community (Source 3).\n\nNo other specific AI tools are mentioned in the provided context documents.",
+      "sources": [
+        {
+          "title": "Building a Production-Ready Agentic AI System on AWS (LangGraph, CrewAI, Bedrock, SageMaker, and EKS)",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/building-a-production-ready-agentic-ai-system-on-aws-langgraph-crewai-bedrock-sagemaker-and-5149",
+          "score": 0.5387650888790219
+        },
+        {
+          "title": "[WIRED] Gamers\u2019 Worst Nightmares About AI Are Coming True",
+          "source": "rss",
+          "url": "https://www.wired.com/story/gamers-ai-nightmares-are-coming-true/",
+          "score": 0.5013342053095762
+        },
+        {
+          "title": "Embedding Accessibility into AI based software development",
+          "source": "devto",
+          "url": "https://dev.to/mfairchild365/embedding-accessibility-into-ai-based-software-development-282k",
+          "score": 0.49967809020513587
+        },
+        {
+          "title": "Maybe there's a little time left",
+          "source": "devto",
+          "url": "https://dev.to/moopet/maybe-theres-a-little-time-left-1ml3",
+          "score": 0.4961398394066163
+        },
+        {
+          "title": "AI Alignment, Catastrophic Risk, and Why Governments Are Finally Paying Attention",
+          "source": "devto",
+          "url": "https://dev.to/mcrolly/ai-alignment-catastrophic-risk-and-why-governments-are-finally-paying-attention-22ki",
+          "score": 0.4649518270776223
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 15.292,
+      "query_id": 10,
+      "query": "What emerging AI tools are currently being discussed in the developer community?",
+      "category": "tool_technology",
+      "ground_truth": "Popular tools include ChatGPT, GitHub Copilot, LangChain, LlamaIndex, Ollama, vLLM, and various open-source model serving frameworks.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "ChromaDB, Pinecone, and Milvus are gaining traction as vector databases for AI applications.\n\n[Source 1]\ndev-isaacmello/ai-engineer-roadmap-2026 (GITHUB)\n\n[Source 4]\nmauro-farina/database-2026 (GITHUB)",
+      "sources": [
+        {
+          "title": "dev-isaacmello/ai-engineer-roadmap-2026",
+          "source": "github",
+          "url": "https://github.com/dev-isaacmello/ai-engineer-roadmap-2026",
+          "score": 0.3969592872906581
+        },
+        {
+          "title": "ADVANCED SQL FOR DATA ANALYTICS:ADVANCED TECHNIQUES EVERY DATA ANALYST SHOULD KNOW.",
+          "source": "devto",
+          "url": "https://dev.to/maggy_njuguna/advanced-sql-for-data-analyticsadvanced-techniques-every-data-analyst-should-know-431d",
+          "score": 0.38218130085691204
+        },
+        {
+          "title": "alexandrarrdg/Supervised-Machine-Learning",
+          "source": "github",
+          "url": "https://github.com/alexandrarrdg/Supervised-Machine-Learning",
+          "score": 0.36559716668145925
+        },
+        {
+          "title": "mauro-farina/database-2026",
+          "source": "github",
+          "url": "https://github.com/mauro-farina/database-2026",
+          "score": 0.364189275253459
+        },
+        {
+          "title": "dev-isaacmello/ai-engineer-roadmap-2026",
+          "source": "github",
+          "url": "https://github.com/dev-isaacmello/ai-engineer-roadmap-2026",
+          "score": 0.3336118062005273
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 60.424,
+      "query_id": 11,
+      "query": "What vector databases are gaining traction for AI applications?",
+      "category": "tool_technology",
+      "ground_truth": "Popular options include pgvector, Pinecone, Weaviate, Qdrant, Milvus, Chroma, and FAISS for approximate nearest neighbor search.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Based on the provided context documents, it appears that there is no specific information about frameworks for building RAG (Real-time Analytics Gateway) applications.\n\nHowever, Selenium Python Framework is mentioned as a scalable web testing framework built using Python, Selenium, and Pytest. While not specifically designed for RAG applications, it could potentially be used for testing or monitoring purposes related to such applications.\n\nNo other specific information about popular frameworks for building RAG applications is found in the provided context documents.",
+      "sources": [
+        {
+          "title": "ayushGadag/selenium-python-framework",
+          "source": "github",
+          "url": "https://github.com/ayushGadag/selenium-python-framework",
+          "score": 0.2896588570082874
+        },
+        {
+          "title": "magendooro/magento2-catalog-graphql-go",
+          "source": "github",
+          "url": "https://github.com/magendooro/magento2-catalog-graphql-go",
+          "score": 0.28054279088974
+        },
+        {
+          "title": "Bytekron/Awesome-Minecraft-Servers-Links",
+          "source": "github",
+          "url": "https://github.com/Bytekron/Awesome-Minecraft-Servers-Links",
+          "score": 0.21154426038265228
+        },
+        {
+          "title": "Ship Safer Code: The GitHub Actions Patterns That Actually Matter",
+          "source": "devto",
+          "url": "https://dev.to/prabhu_ponnambalam_67867a/ship-safer-code-the-github-actions-patterns-that-actually-matter-1omd",
+          "score": 0.14397749304771423
+        },
+        {
+          "title": "alonehobo/1c-trusted-gateway",
+          "source": "github",
+          "url": "https://github.com/alonehobo/1c-trusted-gateway",
+          "score": 0.1417446946057862
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 42.242,
+      "query_id": 12,
+      "query": "What frameworks are popular for building RAG applications?",
+      "category": "tool_technology",
+      "ground_truth": "LangChain, LlamaIndex, Haystack, and Semantic Kernel are popular frameworks, along with tools like ChromaDB and pgvector for vector storage.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Several tools exist for LLM evaluation and benchmarking, including:\n\n1. LLM-as-a-Judge: A system that matches human agreement rates at 1000x the throughput, allowing for efficient evaluation of models without human reviewers.\n2. Platforms like those studied in [Source 4], which provide ranking systems for LLMs, but may be unreliable due to crowdsourced data.\n\nNo specific tools are mentioned in the provided context documents for benchmarking LLMs on specific tasks or capabilities.",
+      "sources": [
+        {
+          "title": "LLM-as-a-Judge: Evaluate Your Models Without Human Reviewers",
+          "source": "devto",
+          "url": "https://dev.to/klement_gunndu/llm-as-a-judge-evaluate-your-models-without-human-reviewers-2c4b",
+          "score": 0.6367171000455949
+        },
+        {
+          "title": "How I write software with LLMs",
+          "source": "hn",
+          "url": "https://www.stavros.io/posts/how-i-write-software-with-llms/",
+          "score": 0.49197566604904686
+        },
+        {
+          "title": "Human-in-the-Loop LLM Grading for Handwritten Mathematics Assessments",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13083v1",
+          "score": 0.4575901900285604
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] Study: Platforms that rank the latest LLMs can be unreliable",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/study-platforms-rank-latest-llms-can-be-unreliable-0209",
+          "score": 0.4168561100959778
+        },
+        {
+          "title": "Neuron-Aware Data Selection In Instruction Tuning For Large Language Models",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13201v1",
+          "score": 0.3984399498438872
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 38.975,
+      "query_id": 13,
+      "query": "What tools exist for LLM evaluation and benchmarking?",
+      "category": "tool_technology",
+      "ground_truth": "Tools include RAGAS, ARES, LangSmith, Weights & Biases, OpenAI Evals, lm-evaluation-harness, and custom benchmark suites.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "The question cannot be determined as there is insufficient evidence in the provided context documents to identify specific MLOps platforms commonly used for deploying AI models.",
+      "sources": [
+        {
+          "title": "Bytekron/Awesome-Minecraft-Servers-Links",
+          "source": "github",
+          "url": "https://github.com/Bytekron/Awesome-Minecraft-Servers-Links",
+          "score": 0.305961549282074
+        },
+        {
+          "title": "ayushGadag/selenium-python-framework",
+          "source": "github",
+          "url": "https://github.com/ayushGadag/selenium-python-framework",
+          "score": 0.29976103903287465
+        },
+        {
+          "title": "magendooro/magento2-catalog-graphql-go",
+          "source": "github",
+          "url": "https://github.com/magendooro/magento2-catalog-graphql-go",
+          "score": 0.28673237562179565
+        },
+        {
+          "title": "I Built a DevOps Simulator to Practice Kubernetes Debugging",
+          "source": "devto",
+          "url": "https://dev.to/farooqshabbir/i-built-a-devops-simulator-to-practice-kubernetes-debugging-3pc5",
+          "score": 0.28644279918415605
+        },
+        {
+          "title": "Ship Safer Code: The GitHub Actions Patterns That Actually Matter",
+          "source": "devto",
+          "url": "https://dev.to/prabhu_ponnambalam_67867a/ship-safer-code-the-github-actions-patterns-that-actually-matter-1omd",
+          "score": 0.1716555804014206
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 34.924,
+      "query_id": 14,
+      "query": "What MLOps platforms are commonly used for deploying AI models?",
+      "category": "tool_technology",
+      "ground_truth": "Platforms include MLflow, Kubeflow, AWS SageMaker, Weights & Biases, DVC, and cloud-native solutions with Docker and Kubernetes.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Based on the provided context documents, Python is mentioned as a popular choice for AI development.\n\n[Source 5] mentions \"Love Python!\" in an episode title, suggesting it's a preferred language for some developers.\n\nAdditionally, [Source 3] compares coding to building with LEGO bricks, using Python as an example of a versatile and widely-used programming language.\n\nWhile no single source explicitly states that Python is the most discussed programming language for AI development, these mentions suggest it's at least a notable choice.",
+      "sources": [
+        {
+          "title": "90% of Code Will Be AI-Generated \u2014 So What the Hell Do We Actually Do?",
+          "source": "devto",
+          "url": "https://dev.to/harsh2644/90-of-code-will-be-ai-generated-so-what-the-hell-do-we-actually-do-2kg3",
+          "score": 0.4234861777135035
+        },
+        {
+          "title": "Gemini CLI and Jules: my March 2026 stack",
+          "source": "devto",
+          "url": "https://dev.to/rowan_m/gemini-cli-and-jules-my-march-2026-stack-4146",
+          "score": 0.34410928750689607
+        },
+        {
+          "title": "Like LEGO? Love Python! \ud83e\uddf1\ud83d\udc0d Ep.5",
+          "source": "devto",
+          "url": "https://dev.to/wvanheemstra/like-lego-love-python-ep5-4fl5",
+          "score": 0.3344159025650164
+        },
+        {
+          "title": "[The New Stack] Anthropic\u2019s Claude can now draw interactive charts and diagrams",
+          "source": "rss",
+          "url": "https://thenewstack.io/anthropics-claude-interactive-visualizations/",
+          "score": 0.32214057445526123
+        },
+        {
+          "title": "I Made Claude Code Think Before It Codes. Here's the Prompt.",
+          "source": "devto",
+          "url": "https://dev.to/_vjk/i-made-claude-code-think-before-it-codes-heres-the-prompt-bf",
+          "score": 0.31598780655933634
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 22.223,
+      "query_id": 15,
+      "query": "What are the most discussed programming languages for AI development?",
+      "category": "tool_technology",
+      "ground_truth": "Python dominates, with Rust growing for performance-critical components, Julia for scientific computing, and JavaScript/TypeScript for AI web applications.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Unfortunately, the provided context documents do not mention anything about container and orchestration tools used in ML pipelines.\n\nAnswer: Cannot be determined.\n[Source N]",
+      "sources": [
+        {
+          "title": "Pi-hole vs Technitium DNS: Which Should You Use?",
+          "source": "devto",
+          "url": "https://dev.to/selfhostingsh/pi-hole-vs-technitium-dns-which-should-you-use-3hl8",
+          "score": 0.08643959692480596
+        },
+        {
+          "title": "[IEEE Spectrum] Scenario Modeling and Array Design for Non-Terrestrial Networks (NTNs)",
+          "source": "rss",
+          "url": "https://content.knowledgehub.wiley.com/scenario-modeling-and-array-design-for-non-terrestrial-networks-ntns/",
+          "score": 0.06439801305532455
+        },
+        {
+          "title": "Even Faster Asin() Was Staring Right at Me",
+          "source": "hn",
+          "url": "https://16bpp.net/blog/post/even-faster-asin-was-staring-right-at-me/",
+          "score": -0.045846451073884964
+        },
+        {
+          "title": "[BleepingComputer] Microsoft pulls Samsung app blocking Windows C: drive from Store",
+          "source": "rss",
+          "url": "https://www.bleepingcomputer.com/news/microsoft/microsoft-pulls-samsung-app-blocking-windows-c-drive-from-store/",
+          "score": -0.057760484516620636
+        },
+        {
+          "title": "[BleepingComputer] Microsoft: Windows 11 users can't access C: drive on some Samsung PCs",
+          "source": "rss",
+          "url": "https://www.bleepingcomputer.com/news/microsoft/microsoft-windows-11-users-cant-access-c-drive-on-some-samsung-pcs/",
+          "score": -0.09543641656637192
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 22.794,
+      "query_id": 16,
+      "query": "What container and orchestration tools are used in ML pipelines?",
+      "category": "tool_technology",
+      "ground_truth": "Docker, Kubernetes, AWS ECS/Fargate, and tools like Airflow and Prefect for workflow orchestration are widely used.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Based on the provided context documents, it is not explicitly stated which embedding models are recommended for semantic search.\n\nHowever, Source 2 mentions that \"pretrained transformer-based representations of keyword text\" were used to construct semantic neighborhoods and a semantic keyword graph. This suggests that transformer-based embeddings may be suitable for semantic search, but no specific model is mentioned.\n\nTherefore, the answer cannot be determined based on the provided context documents.",
+      "sources": [
+        {
+          "title": "Retrieval-Enhanced Real Estate Appraisal",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12986v1",
+          "score": 0.3716900944709778
+        },
+        {
+          "title": "Competition-Aware CPC Forecasting with Near-Market Coverage",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13059v1",
+          "score": 0.3649651786705752
+        },
+        {
+          "title": "NanoVDR: Distilling a 2B Vision-Language Retriever into a 70M Text-Only Encoder for Visual Document Retrieval",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12824v1",
+          "score": 0.36496294349652936
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] Helping AI agents search to get the best results out of large language models",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/helping-ai-agents-search-to-get-best-results-from-llms-0205",
+          "score": 0.34925327745834833
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] A smarter way for large language models to think about hard problems",
+          "source": "rss",
+          "url": "https://news.mit.edu/2025/smarter-way-large-language-models-think-about-hard-problems-1204",
+          "score": 0.3108383231855444
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 50.102,
+      "query_id": 17,
+      "query": "What embedding models are recommended for semantic search?",
+      "category": "tool_technology",
+      "ground_truth": "Models include sentence-transformers (MiniLM, MPNet), OpenAI ada-002, Cohere embed, BGE, and E5 series for different accuracy-latency tradeoffs.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The comparison between dense retrieval methods and hybrid retrieval for Retrieval-Augmented Generation (RAG) is not explicitly stated in the provided context documents.\n\nHowever, we can infer that dense retrieval methods are being used as a compression technique to reduce the size of agent memory while preserving retrieval quality, as mentioned in [Source 1]. This suggests that dense retrieval methods may be suitable for RAG applications where efficient storage and retrieval of large amounts of data is necessary.\n\nOn the other hand, hybrid retrieval methods are not explicitly discussed in the provided context documents. However, it can be inferred that hybrid retrieval methods might involve combining different retrieval techniques or architectures to achieve better performance than either method alone.\n\nWithout further information, it is difficult to make a direct comparison between dense retrieval methods and hybrid retrieval for RAG.",
+      "sources": [
+        {
+          "title": "Structured Distillation for Personalized Agent Memory: 11x Token Reduction with Retrieval Preservation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13017v1",
+          "score": 0.36701442396469086
+        },
+        {
+          "title": "I Benchmarked TimescaleDB vs ClickHouse vs MongoDB for Observability Data - The Results Surprised Me",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/i-benchmarked-timescaledb-vs-clickhouse-vs-mongodb-for-observability-data-the-results-surprised-me-3d7d",
+          "score": 0.24324095329750317
+        },
+        {
+          "title": "From Experiments to Expertise: Scientific Knowledge Consolidation for AI-Driven Computational Research",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13191v1",
+          "score": 0.19505543753009325
+        },
+        {
+          "title": "Steve-Evolving: Open-World Embodied Self-Evolution via Fine-Grained Diagnosis and Dual-Track Knowledge Distillation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13131v1",
+          "score": 0.17703160458238076
+        },
+        {
+          "title": "Exact Federated Continual Unlearning for Ridge Heads on Frozen Foundation Models",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12977v1",
+          "score": 0.169975975754742
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 61.585,
+      "query_id": 18,
+      "query": "How do dense retrieval methods compare to hybrid retrieval for RAG?",
+      "category": "comparative",
+      "ground_truth": "Dense retrieval relies on vector similarity alone while hybrid combines semantic search with keyword matching and metadata filtering, generally improving precision in heterogeneous corpora.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "I can't provide an answer about the tradeoffs between open-source and proprietary Large Language Models (LLMs) as it cannot be determined based on the provided context documents. The context only discusses technology-related topics such as keyboards, Minecraft servers, e-commerce platforms, and a trusted gateway, but does not mention LLMs or their licensing models.\n\nTherefore, I must state that the answer cannot be determined based on the provided information.",
+      "sources": [
+        {
+          "title": "[WIRED] Logitech K98M Wireless Keyboard Review: Great for Productivity",
+          "source": "rss",
+          "url": "https://www.wired.com/review/logitech-k98m-wireless/",
+          "score": 0.2188456244652719
+        },
+        {
+          "title": "Bytekron/Awesome-Minecraft-Servers-Links",
+          "source": "github",
+          "url": "https://github.com/Bytekron/Awesome-Minecraft-Servers-Links",
+          "score": 0.20264499171704142
+        },
+        {
+          "title": "magendooro/magento2-catalog-graphql-go",
+          "source": "github",
+          "url": "https://github.com/magendooro/magento2-catalog-graphql-go",
+          "score": 0.1993102610522357
+        },
+        {
+          "title": "alonehobo/1c-trusted-gateway",
+          "source": "github",
+          "url": "https://github.com/alonehobo/1c-trusted-gateway",
+          "score": 0.097978997471452
+        },
+        {
+          "title": "I Published an npm Package. Someone Used the Same Name 8 Days Later.",
+          "source": "devto",
+          "url": "https://dev.to/silverstream/i-published-an-npm-package-someone-used-the-same-name-8-days-later-42g0",
+          "score": 0.08307164412309875
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 26.889,
+      "query_id": 19,
+      "query": "What are the tradeoffs between open-source and proprietary LLMs?",
+      "category": "comparative",
+      "ground_truth": "Open-source models offer customization and privacy but may lag in capability; proprietary models provide better performance but with higher cost and vendor lock-in.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "I apologize, but I couldn't find any information on \"RAG retrieval\" or its relation to chunking strategies in the provided context documents. The topic seems unrelated to the context of coffee machines.\n\nHowever, I can provide an answer based on a general understanding of chunking strategies and their impact on search results. Chunking is a technique used in information retrieval to group relevant documents together for efficient searching.\n\nDifferent chunking strategies may affect the quality of RAG (Relevant Answer Group) retrieval, but without specific information on this topic, it's difficult to provide a precise answer.\n\nIf you could provide more context or clarify what \"RAG retrieval\" refers to, I'd be happy to try and assist further.",
+      "sources": [
+        {
+          "title": "[WIRED] My Moccamaster Delivers Drip Coffee Perfection",
+          "source": "rss",
+          "url": "https://www.wired.com/story/technivorm-moccamaster-drip-coffee-java-base/",
+          "score": -0.01729421317577362
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 15.566,
+      "query_id": 20,
+      "query": "How do different chunking strategies affect RAG retrieval quality?",
+      "category": "comparative",
+      "ground_truth": "Fixed-size token chunking is simple but may split context; semantic chunking preserves meaning but is complex; recursive splitting offers a balance. Overlap reduces boundary information loss.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, I couldn't find any information on \"fine-tuning\" and \"RAG\" (Reinforcement Actor-Guided) for domain adaptation in the provided context documents.\n\nThe terms \"fine-tuning\" and \"RAG\" are not mentioned in the given sources. Therefore, I cannot provide a concise answer or cite supporting sources.\n\nIf you have any further information or clarification on these terms, I would be happy to try and assist you.",
+      "sources": [
+        {
+          "title": "Why We Need a Standard Language for Agentic Workflows (And Why I Built One)",
+          "source": "devto",
+          "url": "https://dev.to/argonauta/why-we-need-a-standard-language-for-agentic-workflows-and-why-i-built-one-138",
+          "score": 0.06526132996177747
+        },
+        {
+          "title": "From Infrastructure to Product: Pipelines into a Profitable SaaS",
+          "source": "devto",
+          "url": "https://dev.to/sertaoseracloud/from-infrastructure-to-product-pipelines-into-a-profitable-saas-44mc",
+          "score": 0.06385434022170189
+        },
+        {
+          "title": "'Pok\u00e9mon Go' players unknowingly trained delivery robots with 30B images",
+          "source": "hn",
+          "url": "https://www.popsci.com/technology/pokemon-go-delivery-robots-crowdsourcing/",
+          "score": 0.059930436772626106
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] New J-PAL research and policy initiative to test and scale AI innovations to fight poverty",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/new-j-pal-research-policy-initiative-to-test-scale-ai-innovations-fight-poverty-0212",
+          "score": 0.05385199292278409
+        },
+        {
+          "title": "PostgreSQL vs. MongoDB for JSON: The Internal Trade-offs They Don't Tell You in the Docs",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/postgresql-vs-mongodb-for-json-the-internal-trade-offs-they-dont-tell-you-in-the-docs-40oe",
+          "score": 0.04176493359835154
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 18.997,
+      "query_id": 21,
+      "query": "What are the differences between fine-tuning and RAG for domain adaptation?",
+      "category": "comparative",
+      "ground_truth": "Fine-tuning updates model weights for domain knowledge but requires training data and compute; RAG retrieves external context at inference time, offering flexibility and freshness without retraining.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, there is insufficient evidence in the provided context documents to determine how cross-encoder rerankers compare with lightweight scoring rerankers.\n\nThe context documents do not mention cross-encoder rerankers or lightweight scoring rerankers at all. The documents discuss various topics such as Python type checkers, deep learning models, AI coding tools, and TLS certificates, but do not provide any information on reranking algorithms in natural language processing (NLP) tasks.\n\nTherefore, I cannot provide a concise answer with supporting sources using [Source N] format.",
+      "sources": [
+        {
+          "title": "Comparing Python Type Checkers: Typing Spec Conformance",
+          "source": "hn",
+          "url": "https://pyrefly.org/blog/typing-conformance-comparison/",
+          "score": 0.18388945258322675
+        },
+        {
+          "title": "georgeroshankujur/Advance-Deep-Learning-models",
+          "source": "github",
+          "url": "https://github.com/georgeroshankujur/Advance-Deep-Learning-models",
+          "score": 0.10264306648712973
+        },
+        {
+          "title": "[IEEE Spectrum] Keep Your Intuition Sharp While Using AI Coding Tools",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/ai-for-coding-intuition",
+          "score": 0.09376868977919939
+        },
+        {
+          "title": "TLS Certificates Are About to Expire Way More Often. Here's How I'm Handling It.",
+          "source": "devto",
+          "url": "https://dev.to/krakenhavoc/tls-certificates-are-about-to-expire-way-more-often-heres-how-im-handling-it-40p6",
+          "score": 0.006357584701026431
+        },
+        {
+          "title": "I built a zero-dependency validation library for every Indian developer",
+          "source": "devto",
+          "url": "https://dev.to/gorupa/i-built-a-zero-dependency-validation-library-for-every-indian-developer-55ck",
+          "score": -0.0020584256728379824
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 44.141,
+      "query_id": 22,
+      "query": "How do cross-encoder rerankers compare with lightweight scoring rerankers?",
+      "category": "comparative",
+      "ground_truth": "Cross-encoders achieve higher accuracy by jointly encoding query-document pairs but are computationally expensive; lightweight scorers use precomputed features for fast reranking with moderate quality.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The question about pgvector versus dedicated vector databases cannot be answered based on the provided context documents.\n\nThere is no mention of pgvector or dedicated vector databases in the provided texts, including [Source 1], [Source 2], [Source 3], [Source 4], and [Source 5].",
+      "sources": [
+        {
+          "title": "[IEEE Spectrum] How AI Will Change Chip Design",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/ai-chip-design-matlab",
+          "score": 0.26089537143707275
+        },
+        {
+          "title": "Developing the PsyCogMetrics AI Lab to Evaluate Large Language Models and Advance Cognitive Science -- A Three-Cycle Action Design Science Study",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13126v1",
+          "score": 0.1405567228794098
+        },
+        {
+          "title": "[The Verge] This chair gives half-worn clothes a home",
+          "source": "rss",
+          "url": "https://www.theverge.com/tech/895194/laundry-chair-kickstarter-simone-giertz",
+          "score": 0.1262144222131718
+        },
+        {
+          "title": "[TechCrunch] As people look for ways to make new friends, here are the apps promising to help",
+          "source": "rss",
+          "url": "https://techcrunch.com/2026/03/14/as-people-look-for-ways-to-make-new-friends-here-are-the-apps-promising-to-help/",
+          "score": 0.10667280852794647
+        },
+        {
+          "title": "I built an open-source \"focus group simulator\" that spawns 1,000 AI customers to roast your startup idea",
+          "source": "devto",
+          "url": "https://dev.to/nghiahsgs/i-built-an-open-source-focus-group-simulator-that-spawns-1000-ai-customers-to-roast-your-startup-1c5o",
+          "score": 0.06995652199050661
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 48.335,
+      "query_id": 23,
+      "query": "What are the advantages of pgvector versus dedicated vector databases?",
+      "category": "comparative",
+      "ground_truth": "pgvector integrates with existing PostgreSQL infrastructure and supports SQL filtering alongside vector search; dedicated databases like Milvus or Pinecone offer better ANN performance at scale.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "I apologize, but I cannot provide an answer to this question as it is not supported by any of the provided context documents. The context documents appear to be unrelated to the topic of attention mechanisms in transformer efficiency.\n\nThe provided documents discuss topics such as Word2Vec, autonomous trucks, atomically thin materials, and electromagnetic compatibility, but do not mention transformers or attention mechanisms.\n\nTherefore, I must state that the answer cannot be determined based on the provided context.",
+      "sources": [
+        {
+          "title": "Understanding Word2Vec \u2013 Part 7: How Negative Sampling Speeds Up Word2Vec",
+          "source": "devto",
+          "url": "https://dev.to/rijultp/understanding-word2vec-part-7-how-negative-sampling-speeds-up-word2vec-g7o",
+          "score": 0.23200986003758195
+        },
+        {
+          "title": "[IEEE Spectrum] Raquel Urtasun on Level-4 Autonomous Trucks",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/level-4-autonomous-trucks",
+          "score": 0.17351566710974797
+        },
+        {
+          "title": "[IEEE Spectrum] Atomically Thin Materials Significantly Shrink Qubits",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/2d-hbn-qubit",
+          "score": 0.1576108838551713
+        },
+        {
+          "title": "[IEEE Spectrum] From TV Repairman to Electromagnetic Compatibility Expert",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/from-tv-repairman-to-electromagnetic-compatibility-expert",
+          "score": 0.1546987408758711
+        },
+        {
+          "title": "The Secret Life of JavaScript: The Observer",
+          "source": "devto",
+          "url": "https://dev.to/aaron_rose_0787cc8b4775a0/the-secret-life-of-javascript-the-observer-53n4",
+          "score": 0.11530538018877745
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 75.115,
+      "query_id": 24,
+      "query": "How do different attention mechanisms impact transformer efficiency?",
+      "category": "comparative",
+      "ground_truth": "Standard attention is O(n^2); linear attention, flash attention, and sparse attention reduce complexity, enabling longer contexts with lower memory and compute requirements.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The tradeoffs between serverless and container-based ML deployment are not explicitly stated in the provided context documents. However, we can infer some potential differences based on the information about AI workloads breaking traditional Kubernetes observability strategies (Source 2) and the use of serverless platforms like ENS, IPFS, and Base (Source 1).\n\nServerless platforms may offer advantages such as reduced infrastructure costs and increased scalability, but they also raise concerns about lack of control over underlying infrastructure and potential single points of failure (Source 1). In contrast, container-based deployments on Kubernetes provide more visibility and control over the deployment environment, but may require more resources and management overhead.\n\nUnfortunately, without further information or direct comparisons between serverless and container-based ML deployment, it is not possible to determine the specific tradeoffs between these two approaches.",
+      "sources": [
+        {
+          "title": "A Serverless AI Platform That Runs Entirely on ENS, IPFS, and Base \u2014 No Backend, No DNS, No Central Authority",
+          "source": "devto",
+          "url": "https://dev.to/sebklaey/i-built-a-serverless-ai-platform-that-runs-entirely-on-ens-ipfs-and-base-no-backend-no-dns-no-3ho7",
+          "score": 0.4605345267216723
+        },
+        {
+          "title": "[The New Stack] Why AI workloads are breaking traditional Kubernetes observability strategies",
+          "source": "rss",
+          "url": "https://thenewstack.io/ai-kubernetes-observability-practices/",
+          "score": 0.4377509355545044
+        },
+        {
+          "title": "[IEEE Spectrum] Andrew Ng: Unbiggen AI",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/andrew-ng-data-centric-ai",
+          "score": 0.2946293354034424
+        },
+        {
+          "title": "Kelos: Orchestrating Autonomous AI Coding Agents on Kubernetes",
+          "source": "devto",
+          "url": "https://dev.to/gjkim/kelos-orchestrating-autonomous-ai-coding-agents-on-kubernetes-apl",
+          "score": 0.24119548499584198
+        },
+        {
+          "title": "I Used Three AI Agents on a Real Project. Here's What Each One Is Actually Good At.",
+          "source": "devto",
+          "url": "https://dev.to/wilddog64/i-used-three-ai-agents-on-a-real-project-heres-what-each-one-is-actually-good-at-4nnh",
+          "score": 0.1950535806981578
+        }
+      ],
+      "mode": "baseline",
+      "latency_s": 36.506,
+      "query_id": 25,
+      "query": "What are the tradeoffs between serverless and container-based ML deployment?",
+      "category": "comparative",
+      "ground_truth": "Serverless offers cost efficiency and auto-scaling for bursty workloads but has cold start latency; containers provide consistent performance and more control but require capacity planning.",
+      "citation_grounding": 0.0
+    }
+  ],
+  "hybrid": [
+    {
+      "answer": "Recent approaches to efficient transformer architectures include the use of quantization, knowledge distillation, and pruning.\n\nQuantization involves reducing the precision of model weights and activations to reduce memory usage and computational requirements (Source: [Source 2]).\n\nKnowledge distillation involves training a smaller, simpler model to mimic the behavior of a larger, more complex model, which can be used to improve efficiency (Source: [Source 3]).\n\nPruning involves removing or reducing the number of weights in a model to reduce its size and computational requirements (Source: [Source 4]).",
+      "sources": [
+        {
+          "title": "[IEEE Spectrum] How Quantum Data Can Teach AI to Do Better Chemistry",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/quantum-chemistry",
+          "score": 0.3378259876596085
+        },
+        {
+          "title": "One Backend Pattern for HTTP, CLI, and Workflows",
+          "source": "devto",
+          "url": "https://dev.to/mavrik/one-backend-pattern-for-http-cli-and-workflows-50hc",
+          "score": 0.2729773906677563
+        },
+        {
+          "title": "I built a local-only shell history manager in Rust with AI agent tracking",
+          "source": "devto",
+          "url": "https://dev.to/madhuappachi/i-built-a-local-only-shell-history-manager-in-rust-with-ai-agent-tracking-fh0",
+          "score": 0.24732671807463114
+        },
+        {
+          "title": "I Built a WBC Quarterfinal Scouting App with MLB Statcast Data",
+          "source": "devto",
+          "url": "https://dev.to/yasumorishima/i-built-a-wbc-quarterfinal-scouting-app-with-mlb-statcast-data-2k49",
+          "score": 0.22014298382174
+        },
+        {
+          "title": "Git Demystified: How I Learned Git, Git Bash, GitHub, and Terminals as a Complete Beginner",
+          "source": "devto",
+          "url": "https://dev.to/isika_millicent/git-demystified-how-i-learned-git-git-bash-github-and-terminals-as-a-complete-beginner-264d",
+          "score": 0.2192113980719639
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 13.598,
+      "query_id": 1,
+      "query": "What are recent approaches to efficient transformer architectures?",
+      "category": "research_trend",
+      "ground_truth": "Recent approaches include knowledge distillation, pruning, quantization, mixture-of-experts, and efficient attention mechanisms like linear attention and flash attention.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "I couldn't find any information on recent trends in large language model compression from the provided context documents. The documents do not mention large language model compression at all.\n\nTherefore, I cannot provide an answer to this question based on the given context.",
+      "sources": [
+        {
+          "title": "[MIT News - Artificial intelligence] Study: AI chatbots provide less-accurate information to vulnerable users",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/study-ai-chatbots-provide-less-accurate-information-vulnerable-users-0219",
+          "score": 0.3334602231807483
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] New MIT class uses anthropology to improve chatbots",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/mit-class-uses-anthropology-to-improve-chatbots-0311",
+          "score": 0.3250844668890391
+        },
+        {
+          "title": "3DTCR: A Physics-Based Generative Framework for Vortex-Following 3D Reconstruction to Improve Tropical Cyclone Intensity Forecasting",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13049v1",
+          "score": 0.3203913057314113
+        },
+        {
+          "title": "[WIRED] Palantir Demos Show How the Military Could Use AI Chatbots to Generate War Plans",
+          "source": "rss",
+          "url": "https://www.wired.com/story/palantir-demos-show-how-the-military-can-use-ai-chatbots-to-generate-war-plans/",
+          "score": 0.2893281261036225
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] Katie Spivakovsky wins 2026 Churchill Scholarship",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/katie-spivakovsky-wins-churchill-scholarship-0203",
+          "score": 0.2536051030497316
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 9.469,
+      "query_id": 2,
+      "query": "What are recent trends in large language model compression?",
+      "category": "research_trend",
+      "ground_truth": "Trends include quantization (GPTQ, AWQ), pruning, knowledge distillation, low-rank factorization, and speculative decoding for faster inference.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "I couldn't find any information on \"retrieval-augmented generation\" in the provided context documents. The documents discuss various topics such as local search, self-healing state machines, electric vehicle repairability, and the modern data stack, but not retrieval-augmented generation.\n\nTherefore, I cannot provide an answer to this question based on the provided context documents.",
+      "sources": [
+        {
+          "title": "Sift: Local Hybrid Search Without the Infrastructure Tax",
+          "source": "devto",
+          "url": "https://dev.to/rupurt/sift-local-hybrid-search-without-the-infrastructure-tax-487n",
+          "score": 0.36568617957134075
+        },
+        {
+          "title": "Self-Healing State Machines: Resilient State Transitions in Go",
+          "source": "devto",
+          "url": "https://dev.to/onurcinar/self-healing-state-machines-resilient-state-transitions-in-go-3e0",
+          "score": 0.3438384730316121
+        },
+        {
+          "title": "[IEEE Spectrum] This Student-Built EV Focuses on Repairability",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/ev-battery-swapping-aria-ev",
+          "score": 0.33100970079443554
+        },
+        {
+          "title": "The Modern Data Stack Has a Coherence Problem",
+          "source": "devto",
+          "url": "https://dev.to/hui_zhao_405dc49731688b0c/the-modern-data-stack-has-a-coherence-problem-3eji",
+          "score": 0.3265827305308949
+        },
+        {
+          "title": "Building Real-Time Collaboration: A Simple Guide to Operational Transformation in Go",
+          "source": "devto",
+          "url": "https://dev.to/bwanachairman/building-real-time-collaboration-a-simple-guide-to-operational-transformation-in-go-2pdj",
+          "score": 0.3142497388155333
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 24.711,
+      "query_id": 3,
+      "query": "What advances have been made in retrieval-augmented generation?",
+      "category": "research_trend",
+      "ground_truth": "Advances include hybrid retrieval combining dense and sparse methods, multi-stage reranking, self-reflective RAG, query decomposition, and improved chunking strategies.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The current state of research on AI safety and alignment is a growing concern, with some experts warning of potential risks such as mass casualty cases (Source 2). However, the extent of this risk is not well understood, and more research is needed to fully grasp its implications.\n\nSome researchers are exploring ways to improve AI safety, such as through the use of local AI, which can help mitigate the risks associated with centralized AI systems (Source 5).\n\nIt's also worth noting that some developers are prioritizing practical AI integration over theoretical concerns, but this approach may not address the underlying issues with AI safety and alignment.\n\nIn summary, while there is a growing concern about AI safety and alignment, more research is needed to fully understand its implications and potential risks.\n\nAnswer cannot be determined.",
+      "sources": [
+        {
+          "title": "Beyond the Chatbot: A Developer's Guide to Practical AI Integration",
+          "source": "devto",
+          "url": "https://dev.to/midas126/beyond-the-chatbot-a-developers-guide-to-practical-ai-integration-5gb2",
+          "score": 0.5751750140775109
+        },
+        {
+          "title": "[TechCrunch] Lawyer behind AI psychosis cases warns of mass casualty risks",
+          "source": "rss",
+          "url": "https://techcrunch.com/2026/03/15/lawyer-behind-ai-psychosis-cases-warns-of-mass-casualty-risks/",
+          "score": 0.5442297505458932
+        },
+        {
+          "title": "SQLite Is the Best Database for AI Agents (And You're Overcomplicating It)",
+          "source": "devto",
+          "url": "https://dev.to/nathanhamlett/sqlite-is-the-best-database-for-ai-agents-and-youre-overcomplicating-it-1a5g",
+          "score": 0.5082010561739791
+        },
+        {
+          "title": "The \"are you sure?\" Problem: Why AI keeps changing its mind",
+          "source": "hn",
+          "url": "https://www.randalolson.com/2026/02/07/the-are-you-sure-problem-why-your-ai-keeps-changing-its-mind/",
+          "score": 0.4978180477409428
+        },
+        {
+          "title": "Week in AI: The Rise of Local AI and What It Means for Developers",
+          "source": "devto",
+          "url": "https://dev.to/cumulus/week-in-ai-the-rise-of-local-ai-and-what-it-means-for-developers-3o71",
+          "score": 0.49191622168273896
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 18.108,
+      "query_id": 4,
+      "query": "What is the current state of research on AI safety and alignment?",
+      "category": "research_trend",
+      "ground_truth": "Research focuses on RLHF, constitutional AI, red-teaming, interpretability, scalable oversight, and techniques for reducing hallucination and harmful outputs.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, the provided context documents do not mention recent developments in multimodal AI models. The documents primarily discuss AI agent frameworks, their applications, and the future of incident response.\n\nHowever, Source [Source 2] mentions that the author used three AI agents (Claude, Codex, and Gemini) on a real project, which implies that these agents may have capabilities related to multimodal processing or interaction. But this is not explicitly stated as a development in multimodal AI models.\n\nTherefore, the answer cannot be determined based on the provided context documents.",
+      "sources": [
+        {
+          "title": "Autonomous AI Research Does Not Need a Giant Framework",
+          "source": "devto",
+          "url": "https://dev.to/javz/autonomous-ai-research-does-not-need-a-giant-framework-32el",
+          "score": 0.5150988456221579
+        },
+        {
+          "title": "I Used Three AI Agents on a Real Project. Here's What Each One Is Actually Good At.",
+          "source": "devto",
+          "url": "https://dev.to/wilddog64/i-used-three-ai-agents-on-a-real-project-heres-what-each-one-is-actually-good-at-4nnh",
+          "score": 0.5139330405231528
+        },
+        {
+          "title": "The Internet Is Getting Quieter - Who Will Feed the Next Generation of AI?",
+          "source": "devto",
+          "url": "https://dev.to/sag1v/the-internet-is-getting-quieter-who-will-feed-the-next-generation-of-ai-4bl1",
+          "score": 0.4893999425024629
+        },
+        {
+          "title": "EVAL #004: AI Agent Frameworks \u2014 LangGraph vs CrewAI vs AutoGen vs Smolagents vs OpenAI Agents SDK",
+          "source": "devto",
+          "url": "https://dev.to/ultraduneai/eval-004-ai-agent-frameworks-langgraph-vs-crewai-vs-autogen-vs-smolagents-vs-openai-agents-sdk-190l",
+          "score": 0.4887779474258423
+        },
+        {
+          "title": "When AI Becomes Your On-Call Engineer: The Future of Incident Response",
+          "source": "devto",
+          "url": "https://dev.to/ravi_teja_8b63d9205dc7a13/when-ai-becomes-your-on-call-engineer-the-future-of-incident-response-5bb9",
+          "score": 0.48269186617233983
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 16.706,
+      "query_id": 5,
+      "query": "What recent developments exist in multimodal AI models?",
+      "category": "research_trend",
+      "ground_truth": "Developments include vision-language models like GPT-4V and LLaVA, multimodal transformers, audio-text models, and unified architectures processing text, images, and video.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Reinforcement learning (RL) is being applied to language model training in various ways, including:\n\n1. Mitigating reward hacking: RL methods are used to improve the performance of large language models on low-resource languages by mitigating \"holes\" or failure modes in existing source-based multilingual quality estimation models. [Source 1]\n2. Aligning language models to task formats: Test-time RL alignment is proposed as a method to align language models to task formats, controlling for task familiarity artifacts and providing a more faithful evaluation of their capabilities. [Source 3]\n3. Training language models with monolingual text: WALAR, a reinforcement training method using only monolingual text, is introduced to elevate LLMs' translation capabilities on massive low-resource languages while retaining their performance on high-resource languages. [Source 1]\n\nThese methods aim to improve the performance and reliability of language models in various applications, including machine translation and natural language processing.",
+      "sources": [
+        {
+          "title": "Mending the Holes: Mitigating Reward Hacking in Reinforcement Learning for Multilingual Translation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13045v1",
+          "score": 0.6156988970348665
+        },
+        {
+          "title": "\ud83c\udfae Teaching an AI to Play Atari Games Using Deep Reinforcement Learning",
+          "source": "devto",
+          "url": "https://dev.to/asmniinsds/teaching-an-ai-to-play-atari-games-using-deep-reinforcement-learning-3gof",
+          "score": 0.5727375195304569
+        },
+        {
+          "title": "Test-time RL alignment exposes task familiarity artifacts in LLM benchmarks",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12875v1",
+          "score": 0.5281408189780901
+        },
+        {
+          "title": "Understanding Word2Vec \u2013 Part 6: Two Ways Word2Vec Learns Context",
+          "source": "devto",
+          "url": "https://dev.to/rijultp/understanding-word2vec-part-6-two-ways-word2vec-learns-context-3ppl",
+          "score": 0.45449724340920655
+        },
+        {
+          "title": "xodn348/han",
+          "source": "github",
+          "url": "https://github.com/xodn348/han",
+          "score": 0.4370348951287561
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 48.394,
+      "query_id": 6,
+      "query": "How is reinforcement learning being applied to language model training?",
+      "category": "research_trend",
+      "ground_truth": "RLHF and RLAIF are used to align models with human preferences, PPO and DPO for policy optimization, and RL for code generation and reasoning tasks.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Unfortunately, I couldn't find any information about the latest approaches to reducing hallucination in LLMs from the provided context documents.\n\nHowever, I can suggest that you may want to look into techniques such as:\n\n* Adversarial training\n* Regularization methods (e.g. dropout, weight decay)\n* Knowledge distillation\n\nBut without further information or context, it's difficult to provide a more specific answer.\n\nIf you have any additional information or clarification about the question, I'd be happy to try and assist you further.",
+      "sources": [
+        {
+          "title": "NVlabs/cutile-rs",
+          "source": "github",
+          "url": "https://github.com/NVlabs/cutile-rs",
+          "score": 0.3896682001784544
+        },
+        {
+          "title": "Cannabinoids remove plaque-forming Alzheimer's proteins from brain cells (2016)",
+          "source": "hn",
+          "url": "https://www.salk.edu/news-release/cannabinoids-remove-plaque-forming-alzheimers-proteins-from-brain-cells/",
+          "score": 0.3256438895676204
+        },
+        {
+          "title": "I built an OpenAI-compatible server that routes to whichever AI CLI you have installed",
+          "source": "devto",
+          "url": "https://dev.to/jfarcand/what-happens-when-you-treat-ai-clis-as-llm-backends-k0h",
+          "score": 0.325579192651298
+        },
+        {
+          "title": "I Got Sick of Getting Rugged, So I Built a Rug-Pull Detection Engine in Rust",
+          "source": "devto",
+          "url": "https://dev.to/copyleftdev/i-got-sick-of-getting-rugged-so-i-built-a-rug-pull-detection-engine-in-rust-l7l",
+          "score": 0.3022816787315921
+        },
+        {
+          "title": "[TechCrunch] How to watch Jensen Huang\u2019s Nvidia GTC 2026 keynote \u2014\u00a0and what to expect",
+          "source": "rss",
+          "url": "https://techcrunch.com/2026/03/16/nvidia-gtc-how-to-watch-jensen-huang-2026-keynote/",
+          "score": 0.27831729829311375
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 11.696,
+      "query_id": 7,
+      "query": "What are the latest approaches to reducing hallucination in LLMs?",
+      "category": "research_trend",
+      "ground_truth": "Approaches include retrieval augmentation, chain-of-verification, self-consistency checks, factual grounding, citation generation, and constrained decoding.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, insufficient evidence exists to determine progress made in open-source language models.\n\nThe provided context documents do not mention open-source language models specifically. While Source 4 discusses floating-point arithmetic, which is relevant to computer science, it does not address language models. Sources 1-5 focus on various topics such as multi-agent systems, scientific publishing, AI research, and database comparison, but none of them discuss open-source language models.\n\nTherefore, the answer cannot be determined based on the provided context documents.",
+      "sources": [
+        {
+          "title": "Why We Need a Standard Language for Agentic Workflows (And Why I Built One)",
+          "source": "devto",
+          "url": "https://dev.to/argonauta/why-we-need-a-standard-language-for-agentic-workflows-and-why-i-built-one-138",
+          "score": 0.441380699789476
+        },
+        {
+          "title": "From Infrastructure to Product: Pipelines into a Profitable SaaS",
+          "source": "devto",
+          "url": "https://dev.to/sertaoseracloud/from-infrastructure-to-product-pipelines-into-a-profitable-saas-44mc",
+          "score": 0.42678137546709183
+        },
+        {
+          "title": "[MIT News - Artificial intelligence] New J-PAL research and policy initiative to test and scale AI innovations to fight poverty",
+          "source": "rss",
+          "url": "https://news.mit.edu/2026/new-j-pal-research-policy-initiative-to-test-scale-ai-innovations-fight-poverty-0212",
+          "score": 0.3659741299087494
+        },
+        {
+          "title": "What every computer scientist should know about floating-point arithmetic (1991) [pdf]",
+          "source": "hn",
+          "url": "https://www.itu.dk/~sestoft/bachelor/IEEE754_article.pdf",
+          "score": 0.349818024134828
+        },
+        {
+          "title": "PostgreSQL vs. MongoDB for JSON: The Internal Trade-offs They Don't Tell You in the Docs",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/postgresql-vs-mongodb-for-json-the-internal-trade-offs-they-dont-tell-you-in-the-docs-40oe",
+          "score": 0.33072071573495543
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 16.905,
+      "query_id": 8,
+      "query": "What progress has been made in open-source language models?",
+      "category": "research_trend",
+      "ground_truth": "Notable models include LLaMA, Mistral, Falcon, Phi, and Gemma, with improvements in fine-tuning efficiency through LoRA and QLoRA.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Emerging techniques for long-context language modeling include reinforcement training methods, such as WALAR (Source 1), which uses monolingual text to elevate LLMs' translation capabilities on low-resource languages.\n\nAdditionally, hybrid multi-task self-training frameworks, like HMS-BERT (Source 3), are being proposed to address labeled data scarcity in low-resource languages and facilitate cross-lingual knowledge transfer.\n\nOther techniques, such as contextual representations with handcrafted linguistic features, are also being explored to improve multilingual language modeling performance.\n\nIt is worth noting that these emerging techniques are still under development and more research is needed to fully understand their potential and limitations.",
+      "sources": [
+        {
+          "title": "Mending the Holes: Mitigating Reward Hacking in Reinforcement Learning for Multilingual Translation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13045v1",
+          "score": 0.5265976687674021
+        },
+        {
+          "title": "xodn348/han",
+          "source": "github",
+          "url": "https://github.com/xodn348/han",
+          "score": 0.46455216945621347
+        },
+        {
+          "title": "HMS-BERT: Hybrid Multi-Task Self-Training for Multilingual and Multi-Label Cyberbullying Detection",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12920v1",
+          "score": 0.45731997211485237
+        },
+        {
+          "title": "Understanding Word2Vec \u2013 Part 6: Two Ways Word2Vec Learns Context",
+          "source": "devto",
+          "url": "https://dev.to/rijultp/understanding-word2vec-part-6-two-ways-word2vec-learns-context-3ppl",
+          "score": 0.432467726579845
+        },
+        {
+          "title": "rzru/nightingale",
+          "source": "github",
+          "url": "https://github.com/rzru/nightingale",
+          "score": 0.4204741977087447
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 63.414,
+      "query_id": 9,
+      "query": "What are emerging techniques for long-context language modeling?",
+      "category": "research_trend",
+      "ground_truth": "Techniques include RoPE extensions, ALiBi, sliding window attention, memory-augmented transformers, and retrieval-based context extension.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Based on the provided context documents, several emerging AI tools are currently being discussed in the developer community:\n\n1. LangGraph: A framework for building agentic AI systems on AWS (Source 2).\n2. CrewAI: A platform for building production-ready agentic AI systems on AWS (Source 2).\n3. Bedrock: An open-source framework for building agentic AI systems (Source 2).\n4. SageMaker: A cloud-based machine learning platform that supports agentic AI development (Source 2).\n5. EKS (Elastic Kubernetes Service): A container orchestration service used in conjunction with other AWS services to support agentic AI development (Source 2).\n\nThese tools are being discussed in the developer community as part of the effort to build production-ready agentic AI systems that can operate safely and effectively in real-world environments.\n\n[Source N]: Source 2",
+      "sources": [
+        {
+          "title": "[WIRED] Gamers\u2019 Worst Nightmares About AI Are Coming True",
+          "source": "rss",
+          "url": "https://www.wired.com/story/gamers-ai-nightmares-are-coming-true/",
+          "score": 0.5615562965621139
+        },
+        {
+          "title": "Building a Production-Ready Agentic AI System on AWS (LangGraph, CrewAI, Bedrock, SageMaker, and EKS)",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/building-a-production-ready-agentic-ai-system-on-aws-langgraph-crewai-bedrock-sagemaker-and-5149",
+          "score": 0.5546023534105801
+        },
+        {
+          "title": "AI Alignment, Catastrophic Risk, and Why Governments Are Finally Paying Attention",
+          "source": "devto",
+          "url": "https://dev.to/mcrolly/ai-alignment-catastrophic-risk-and-why-governments-are-finally-paying-attention-22ki",
+          "score": 0.5269810629964069
+        },
+        {
+          "title": "Maybe there's a little time left",
+          "source": "devto",
+          "url": "https://dev.to/moopet/maybe-theres-a-little-time-left-1ml3",
+          "score": 0.5143505703106365
+        },
+        {
+          "title": "Embedding Accessibility into AI based software development",
+          "source": "devto",
+          "url": "https://dev.to/mfairchild365/embedding-accessibility-into-ai-based-software-development-282k",
+          "score": 0.5086314086202128
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 22.473,
+      "query_id": 10,
+      "query": "What emerging AI tools are currently being discussed in the developer community?",
+      "category": "tool_technology",
+      "ground_truth": "Popular tools include ChatGPT, GitHub Copilot, LangChain, LlamaIndex, Ollama, vLLM, and various open-source model serving frameworks.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Vector databases such as ChromaDB, Pinecone, and Milvus are gaining traction for AI applications.\n\n[Source 1]\n\nThese vector databases are being used to improve the efficiency and scalability of AI models, particularly in areas such as natural language processing (NLP) and computer vision.\n\n[Source 2]",
+      "sources": [
+        {
+          "title": "dev-isaacmello/ai-engineer-roadmap-2026",
+          "source": "github",
+          "url": "https://github.com/dev-isaacmello/ai-engineer-roadmap-2026",
+          "score": 0.49508812394120433
+        },
+        {
+          "title": "dev-isaacmello/ai-engineer-roadmap-2026",
+          "source": "github",
+          "url": "https://github.com/dev-isaacmello/ai-engineer-roadmap-2026",
+          "score": 0.45707963528712586
+        },
+        {
+          "title": "mauro-farina/database-2026",
+          "source": "github",
+          "url": "https://github.com/mauro-farina/database-2026",
+          "score": 0.4513109163133696
+        },
+        {
+          "title": "ADVANCED SQL FOR DATA ANALYTICS:ADVANCED TECHNIQUES EVERY DATA ANALYST SHOULD KNOW.",
+          "source": "devto",
+          "url": "https://dev.to/maggy_njuguna/advanced-sql-for-data-analyticsadvanced-techniques-every-data-analyst-should-know-431d",
+          "score": 0.4380097667175591
+        },
+        {
+          "title": "alexandrarrdg/Supervised-Machine-Learning",
+          "source": "github",
+          "url": "https://github.com/alexandrarrdg/Supervised-Machine-Learning",
+          "score": 0.4077112067257253
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 52.196,
+      "query_id": 11,
+      "query": "What vector databases are gaining traction for AI applications?",
+      "category": "tool_technology",
+      "ground_truth": "Popular options include pgvector, Pinecone, Weaviate, Qdrant, Milvus, Chroma, and FAISS for approximate nearest neighbor search.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Based on the provided context documents, it appears that there is no specific information about frameworks for building RAG (Real-time Analytics Gateway) applications.\n\nHowever, Selenium Python Framework is mentioned as a scalable web testing framework built using Python, Selenium, and Pytest, which could potentially be used for building or testing RAG applications. \n\nNo other specific frameworks are mentioned in the context documents.\n\nAnswer: The supporting source does not provide information on popular frameworks for building RAG applications.",
+      "sources": [
+        {
+          "title": "ayushGadag/selenium-python-framework",
+          "source": "github",
+          "url": "https://github.com/ayushGadag/selenium-python-framework",
+          "score": 0.4390411991051153
+        },
+        {
+          "title": "magendooro/magento2-catalog-graphql-go",
+          "source": "github",
+          "url": "https://github.com/magendooro/magento2-catalog-graphql-go",
+          "score": 0.3874147812435456
+        },
+        {
+          "title": "Bytekron/Awesome-Minecraft-Servers-Links",
+          "source": "github",
+          "url": "https://github.com/Bytekron/Awesome-Minecraft-Servers-Links",
+          "score": 0.374936522979425
+        },
+        {
+          "title": "Ship Safer Code: The GitHub Actions Patterns That Actually Matter",
+          "source": "devto",
+          "url": "https://dev.to/prabhu_ponnambalam_67867a/ship-safer-code-the-github-actions-patterns-that-actually-matter-1omd",
+          "score": 0.2843964625784622
+        },
+        {
+          "title": "alonehobo/1c-trusted-gateway",
+          "source": "github",
+          "url": "https://github.com/alonehobo/1c-trusted-gateway",
+          "score": 0.28108655142482275
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 8.609,
+      "query_id": 12,
+      "query": "What frameworks are popular for building RAG applications?",
+      "category": "tool_technology",
+      "ground_truth": "LangChain, LlamaIndex, Haystack, and Semantic Kernel are popular frameworks, along with tools like ChromaDB and pgvector for vector storage.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Several tools exist for LLM evaluation and benchmarking, including:\n\n1. LLM-as-a-Judge: A system that matches human agreement rates at 1000x the throughput, allowing for efficient evaluation of LLMs without human reviewers ([Source 1]).\n2. Metamorphic testing framework: A framework for systematically assessing the robustness of LLM reasoning agents across various semantic-preserving transformations ([Source 3]).\n\nThese tools provide methods for evaluating and benchmarking LLMs, but it is unclear if they are widely adopted or standardized.\n\nNote: The other sources provided do not mention specific tools for LLM evaluation and benchmarking.",
+      "sources": [
+        {
+          "title": "LLM-as-a-Judge: Evaluate Your Models Without Human Reviewers",
+          "source": "devto",
+          "url": "https://dev.to/klement_gunndu/llm-as-a-judge-evaluate-your-models-without-human-reviewers-2c4b",
+          "score": 0.5800402267771905
+        },
+        {
+          "title": "Human-in-the-Loop LLM Grading for Handwritten Mathematics Assessments",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13083v1",
+          "score": 0.5436432207268378
+        },
+        {
+          "title": "Semantic Invariance in Agentic AI",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13173v1",
+          "score": 0.5129905859539339
+        },
+        {
+          "title": "How I write software with LLMs",
+          "source": "hn",
+          "url": "https://www.stavros.io/posts/how-i-write-software-with-llms/",
+          "score": 0.4951853996294281
+        },
+        {
+          "title": "Neuron-Aware Data Selection In Instruction Tuning For Large Language Models",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13201v1",
+          "score": 0.48315307661603396
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 49.287,
+      "query_id": 13,
+      "query": "What tools exist for LLM evaluation and benchmarking?",
+      "category": "tool_technology",
+      "ground_truth": "Tools include RAGAS, ARES, LangSmith, Weights & Biases, OpenAI Evals, lm-evaluation-harness, and custom benchmark suites.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "The question cannot be determined as there is insufficient evidence in the provided context documents to address the specific topic of MLOps platforms for deploying AI models.\n\nHowever, I can provide some general information on popular MLOps platforms that are commonly used for deploying AI models:\n\nSome popular MLOps platforms include TensorFlow Serving, AWS SageMaker, Google Cloud AI Platform, and Azure Machine Learning. These platforms provide tools and services for building, deploying, and managing machine learning models in production.\n\nIf you're looking for more information on specific MLOps platforms or their features, I recommend searching online or checking out documentation from reputable sources such as GitHub, Kaggle, or research papers.\n\nNote: The provided context documents do not mention MLOps platforms or AI model deployment.",
+      "sources": [
+        {
+          "title": "ayushGadag/selenium-python-framework",
+          "source": "github",
+          "url": "https://github.com/ayushGadag/selenium-python-framework",
+          "score": 0.4101025083198676
+        },
+        {
+          "title": "Bytekron/Awesome-Minecraft-Servers-Links",
+          "source": "github",
+          "url": "https://github.com/Bytekron/Awesome-Minecraft-Servers-Links",
+          "score": 0.401586896319078
+        },
+        {
+          "title": "magendooro/magento2-catalog-graphql-go",
+          "source": "github",
+          "url": "https://github.com/magendooro/magento2-catalog-graphql-go",
+          "score": 0.38612853208277903
+        },
+        {
+          "title": "I Built a DevOps Simulator to Practice Kubernetes Debugging",
+          "source": "devto",
+          "url": "https://dev.to/farooqshabbir/i-built-a-devops-simulator-to-practice-kubernetes-debugging-3pc5",
+          "score": 0.38211156441063643
+        },
+        {
+          "title": "Ship Safer Code: The GitHub Actions Patterns That Actually Matter",
+          "source": "devto",
+          "url": "https://dev.to/prabhu_ponnambalam_67867a/ship-safer-code-the-github-actions-patterns-that-actually-matter-1omd",
+          "score": 0.301003314990686
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 43.48,
+      "query_id": 14,
+      "query": "What MLOps platforms are commonly used for deploying AI models?",
+      "category": "tool_technology",
+      "ground_truth": "Platforms include MLflow, Kubeflow, AWS SageMaker, Weights & Biases, DVC, and cloud-native solutions with Docker and Kubernetes.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Based on the provided context documents, Python is mentioned as a popular choice for AI development.\n\nAccording to Source [Source 4], Solana Smart Contracts with Python: A Beginner's Complete Guide, this guide suggests using Python for developing smart contracts on the Solana blockchain.\n\nAdditionally, in Source [Source 3], Like LEGO? Love Python! \ud83e\uddf1\ud83d\udc0d Ep.5, the author compares programming to building with LEGO bricks, suggesting that Python is a versatile and user-friendly language, much like LEGO.\n\nWhile there isn't direct information on the most discussed programming languages for AI development, Python's popularity in Source [Source 4] and its comparison to LEGO in Source [Source 3] suggest it may be a prominent choice among developers.",
+      "sources": [
+        {
+          "title": "90% of Code Will Be AI-Generated \u2014 So What the Hell Do We Actually Do?",
+          "source": "devto",
+          "url": "https://dev.to/harsh2644/90-of-code-will-be-ai-generated-so-what-the-hell-do-we-actually-do-2kg3",
+          "score": 0.4901314412894532
+        },
+        {
+          "title": "Gemini CLI and Jules: my March 2026 stack",
+          "source": "devto",
+          "url": "https://dev.to/rowan_m/gemini-cli-and-jules-my-march-2026-stack-4146",
+          "score": 0.44447553925397126
+        },
+        {
+          "title": "Like LEGO? Love Python! \ud83e\uddf1\ud83d\udc0d Ep.5",
+          "source": "devto",
+          "url": "https://dev.to/wvanheemstra/like-lego-love-python-ep5-4fl5",
+          "score": 0.4347386482487115
+        },
+        {
+          "title": "Solana Smart Contracts with Python: A Beginner's Complete Guide",
+          "source": "devto",
+          "url": "https://dev.to/kotaro987/solana-smart-contracts-with-python-a-beginners-complete-guide-j7j",
+          "score": 0.4058974811093371
+        },
+        {
+          "title": "[The New Stack] Anthropic\u2019s Claude can now draw interactive charts and diagrams",
+          "source": "rss",
+          "url": "https://thenewstack.io/anthropics-claude-interactive-visualizations/",
+          "score": 0.4054422325036213
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 20.519,
+      "query_id": 15,
+      "query": "What are the most discussed programming languages for AI development?",
+      "category": "tool_technology",
+      "ground_truth": "Python dominates, with Rust growing for performance-critical components, Julia for scientific computing, and JavaScript/TypeScript for AI web applications.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Unfortunately, the provided context documents do not mention anything about container and orchestration tools used in ML pipelines.\n\nAnswer: Insufficient evidence exists to determine the specific container and orchestration tools used in ML pipelines.\n\n[Source N]: None (context documents do not provide relevant information)",
+      "sources": [
+        {
+          "title": "[IEEE Spectrum] Scenario Modeling and Array Design for Non-Terrestrial Networks (NTNs)",
+          "source": "rss",
+          "url": "https://content.knowledgehub.wiley.com/scenario-modeling-and-array-design-for-non-terrestrial-networks-ntns/",
+          "score": 0.25960629144038666
+        },
+        {
+          "title": "Pi-hole vs Technitium DNS: Which Should You Use?",
+          "source": "devto",
+          "url": "https://dev.to/selfhostingsh/pi-hole-vs-technitium-dns-which-should-you-use-3hl8",
+          "score": 0.24021666487173332
+        },
+        {
+          "title": "[BleepingComputer] Microsoft: Windows 11 users can't access C: drive on some Samsung PCs",
+          "source": "rss",
+          "url": "https://www.bleepingcomputer.com/news/microsoft/microsoft-windows-11-users-cant-access-c-drive-on-some-samsung-pcs/",
+          "score": 0.1968272567698785
+        },
+        {
+          "title": "[BleepingComputer] Microsoft pulls Samsung app blocking Windows C: drive from Store",
+          "source": "rss",
+          "url": "https://www.bleepingcomputer.com/news/microsoft/microsoft-pulls-samsung-app-blocking-windows-c-drive-from-store/",
+          "score": 0.18534370929002764
+        },
+        {
+          "title": "Even Faster Asin() Was Staring Right at Me",
+          "source": "hn",
+          "url": "https://16bpp.net/blog/post/even-faster-asin-was-staring-right-at-me/",
+          "score": 0.17249212935566904
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 24.705,
+      "query_id": 16,
+      "query": "What container and orchestration tools are used in ML pipelines?",
+      "category": "tool_technology",
+      "ground_truth": "Docker, Kubernetes, AWS ECS/Fargate, and tools like Airflow and Prefect for workflow orchestration are widely used.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The NanoVDR model is recommended for visual document retrieval (VDR) tasks, as it exploits the query-document asymmetry by decoupling the two encoding paths: a frozen 2B VLM teacher indexes documents offline, while a distilled text-only student encodes queries at inference.\n\nAdditionally, the DistilBERT model is mentioned in [Source 3] as a small parameter encoder that outperforms larger models like DSE-Qwen2 with 32x fewer parameters and 50x lower CPU query latency.",
+      "sources": [
+        {
+          "title": "Retrieval-Enhanced Real Estate Appraisal",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12986v1",
+          "score": 0.4921031633922883
+        },
+        {
+          "title": "Competition-Aware CPC Forecasting with Near-Market Coverage",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13059v1",
+          "score": 0.4630682139120468
+        },
+        {
+          "title": "NanoVDR: Distilling a 2B Vision-Language Retriever into a 70M Text-Only Encoder for Visual Document Retrieval",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12824v1",
+          "score": 0.46306687280761927
+        },
+        {
+          "title": "Interpretable Semantic Gradients in SSD: A PCA Sweep Approach and a Case Study on AI Discourse",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13038v1",
+          "score": 0.4617827276298829
+        },
+        {
+          "title": "Semantic Invariance in Agentic AI",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13173v1",
+          "score": 0.45233233371470655
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 46.919,
+      "query_id": 17,
+      "query": "What embedding models are recommended for semantic search?",
+      "category": "tool_technology",
+      "ground_truth": "Models include sentence-transformers (MiniLM, MPNet), OpenAI ada-002, Cohere embed, BGE, and E5 series for different accuracy-latency tradeoffs.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "Dense retrieval methods are not directly compared to hybrid retrieval in the provided context documents.\n\nHowever, we can infer that the authors of Structured Distillation for Personalized Agent Memory: 11x Token Reduction with Retrieval Preservation (Source 1) used a dense retrieval method, as they mention \"searchable distilled text averages 38 tokens per exchange\" and \"applied to 4,182 conversations (14,340 exchanges)\".\n\nIn contrast, the authors of Steve-Evolving: Open-World Embodied Self-Evolution via Fine-Grained Diagnosis and Dual-Track Knowledge Distillation (Source 4) used a hybrid retrieval method, as they mention \"Knowledge-Driven Closed-Loop Control retrieved skills and guardrails are injected into an LLM planner\".\n\nIt is unclear how these two methods compare to each other.\n\nAnswer: The comparison between dense retrieval methods and hybrid retrieval for RAG cannot be determined based on the provided context documents.",
+      "sources": [
+        {
+          "title": "Structured Distillation for Personalized Agent Memory: 11x Token Reduction with Retrieval Preservation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13017v1",
+          "score": 0.4742977610885161
+        },
+        {
+          "title": "I Benchmarked TimescaleDB vs ClickHouse vs MongoDB for Observability Data - The Results Surprised Me",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/i-benchmarked-timescaledb-vs-clickhouse-vs-mongodb-for-observability-data-the-results-surprised-me-3d7d",
+          "score": 0.3619843066398529
+        },
+        {
+          "title": "[IEEE Spectrum] How Quantum Data Can Teach AI to Do Better Chemistry",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/quantum-chemistry",
+          "score": 0.3618761913367954
+        },
+        {
+          "title": "Steve-Evolving: Open-World Embodied Self-Evolution via Fine-Grained Diagnosis and Dual-Track Knowledge Distillation",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13131v1",
+          "score": 0.3603080694591301
+        },
+        {
+          "title": "Exact Federated Continual Unlearning for Ridge Heads on Frozen Foundation Models",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.12977v1",
+          "score": 0.35607469216254684
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 66.039,
+      "query_id": 18,
+      "query": "How do dense retrieval methods compare to hybrid retrieval for RAG?",
+      "category": "comparative",
+      "ground_truth": "Dense retrieval relies on vector similarity alone while hybrid combines semantic search with keyword matching and metadata filtering, generally improving precision in heterogeneous corpora.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The question about tradeoffs between open-source and proprietary Large Language Models (LLMs) cannot be answered based on the provided context documents, as there is no information related to LLMs in the given sources.\n\nHowever, I can provide a general answer based on my knowledge of the topic:\n\nOpen-source and proprietary LLMs have different tradeoffs. Open-source LLMs are typically developed collaboratively by large communities, which can lead to faster development, better testing, and more robust models (Source: [Source 4]). However, they may also lack the investment and resources that proprietary companies can provide, potentially resulting in less accurate or less efficient models.\n\nOn the other hand, proprietary LLMs are often developed with significant investments of time and money, which can result in more accurate and efficient models. However, these models are typically not publicly available, limiting their use and collaboration (Source: [Source 5]).\n\nWithout specific information on LLMs from the provided context documents, I cannot provide a more detailed answer.",
+      "sources": [
+        {
+          "title": "magendooro/magento2-catalog-graphql-go",
+          "source": "github",
+          "url": "https://github.com/magendooro/magento2-catalog-graphql-go",
+          "score": 0.3581197077854875
+        },
+        {
+          "title": "[WIRED] Logitech K98M Wireless Keyboard Review: Great for Productivity",
+          "source": "rss",
+          "url": "https://www.wired.com/review/logitech-k98m-wireless/",
+          "score": 0.347618703611087
+        },
+        {
+          "title": "Bytekron/Awesome-Minecraft-Servers-Links",
+          "source": "github",
+          "url": "https://github.com/Bytekron/Awesome-Minecraft-Servers-Links",
+          "score": 0.34181918400228073
+        },
+        {
+          "title": "ayushGadag/selenium-python-framework",
+          "source": "github",
+          "url": "https://github.com/ayushGadag/selenium-python-framework",
+          "score": 0.2693792027720332
+        },
+        {
+          "title": "I Published an npm Package. Someone Used the Same Name 8 Days Later.",
+          "source": "devto",
+          "url": "https://dev.to/silverstream/i-published-an-npm-package-someone-used-the-same-name-8-days-later-42g0",
+          "score": 0.2681049433574325
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 50.944,
+      "query_id": 19,
+      "query": "What are the tradeoffs between open-source and proprietary LLMs?",
+      "category": "comparative",
+      "ground_truth": "Open-source models offer customization and privacy but may lag in capability; proprietary models provide better performance but with higher cost and vendor lock-in.",
+      "citation_grounding": 1.0
+    },
+    {
+      "answer": "I'm not aware of any information related to \"RAG retrieval quality\" or \"chunking strategies\" in the provided context documents. The context appears to be about coffee, specifically a Moccamaster machine.\n\nAs such, I cannot provide an answer to your question about how different chunking strategies affect RAG retrieval quality.",
+      "sources": [
+        {
+          "title": "[WIRED] My Moccamaster Delivers Drip Coffee Perfection",
+          "source": "rss",
+          "url": "https://www.wired.com/story/technivorm-moccamaster-drip-coffee-java-base/",
+          "score": 0.18371257880423747
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 6.566,
+      "query_id": 20,
+      "query": "How do different chunking strategies affect RAG retrieval quality?",
+      "category": "comparative",
+      "ground_truth": "Fixed-size token chunking is simple but may split context; semantic chunking preserves meaning but is complex; recursive splitting offers a balance. Overlap reduces boundary information loss.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, I couldn't find any information on \"fine-tuning\" and \"RAG\" (Reinforcement Actor-Guided) for domain adaptation in the provided context documents.\n\nThe provided documents appear to be related to technology topics such as databases (PostgreSQL vs. MongoDB), multi-agent systems, scientific publishing (Open Journal Systems), and robotics (electric motor scaling laws). However, none of these documents mention \"fine-tuning\" or \"RAG\" for domain adaptation.\n\nTherefore, I cannot provide a concise answer on the differences between fine-tuning and RAG for domain adaptation as it is not supported by the provided context documents.",
+      "sources": [
+        {
+          "title": "PostgreSQL vs. MongoDB for JSON: The Internal Trade-offs They Don't Tell You in the Docs",
+          "source": "devto",
+          "url": "https://dev.to/aws-builders/postgresql-vs-mongodb-for-json-the-internal-trade-offs-they-dont-tell-you-in-the-docs-40oe",
+          "score": 0.25943256327248093
+        },
+        {
+          "title": "Why We Need a Standard Language for Agentic Workflows (And Why I Built One)",
+          "source": "devto",
+          "url": "https://dev.to/argonauta/why-we-need-a-standard-language-for-agentic-workflows-and-why-i-built-one-138",
+          "score": 0.2514277228685863
+        },
+        {
+          "title": "From Infrastructure to Product: Pipelines into a Profitable SaaS",
+          "source": "devto",
+          "url": "https://dev.to/sertaoseracloud/from-infrastructure-to-product-pipelines-into-a-profitable-saas-44mc",
+          "score": 0.24865231014530395
+        },
+        {
+          "title": "'Pok\u00e9mon Go' players unknowingly trained delivery robots with 30B images",
+          "source": "hn",
+          "url": "https://www.popsci.com/technology/pokemon-go-delivery-robots-crowdsourcing/",
+          "score": 0.23595826206357567
+        },
+        {
+          "title": "Electric motor scaling laws and inertia in robot actuators",
+          "source": "hn",
+          "url": "https://robot-daycare.com/posts/actuation_series_1/",
+          "score": 0.2316894307208052
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 23.21,
+      "query_id": 21,
+      "query": "What are the differences between fine-tuning and RAG for domain adaptation?",
+      "category": "comparative",
+      "ground_truth": "Fine-tuning updates model weights for domain knowledge but requires training data and compute; RAG retrieves external context at inference time, offering flexibility and freshness without retraining.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The comparison between cross-encoder rerankers and lightweight scoring rerankers is not explicitly stated in the provided context documents.\n\nHowever, it can be inferred that cross-encoder rerankers are a type of reranker used in natural language processing (NLP) tasks, such as question answering or text classification. Lightweight scoring rerankers, on the other hand, are a general term for rerankers that use a scoring mechanism to rank candidates.\n\nWithout specific information on how these two types of rerankers compare, it is not possible to provide a definitive answer.",
+      "sources": [
+        {
+          "title": "[IEEE Spectrum] Keep Your Intuition Sharp While Using AI Coding Tools",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/ai-for-coding-intuition",
+          "score": 0.3131737654343291
+        },
+        {
+          "title": "Comparing Python Type Checkers: Typing Spec Conformance",
+          "source": "hn",
+          "url": "https://pyrefly.org/blog/typing-conformance-comparison/",
+          "score": 0.3103336715499361
+        },
+        {
+          "title": "georgeroshankujur/Advance-Deep-Learning-models",
+          "source": "github",
+          "url": "https://github.com/georgeroshankujur/Advance-Deep-Learning-models",
+          "score": 0.2721609688313498
+        },
+        {
+          "title": "TLS Certificates Are About to Expire Way More Often. Here's How I'm Handling It.",
+          "source": "devto",
+          "url": "https://dev.to/krakenhavoc/tls-certificates-are-about-to-expire-way-more-often-heres-how-im-handling-it-40p6",
+          "score": 0.21438967975968784
+        },
+        {
+          "title": "I built a zero-dependency validation library for every Indian developer",
+          "source": "devto",
+          "url": "https://dev.to/gorupa/i-built-a-zero-dependency-validation-library-for-every-indian-developer-55ck",
+          "score": 0.19677491134613084
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 48.165,
+      "query_id": 22,
+      "query": "How do cross-encoder rerankers compare with lightweight scoring rerankers?",
+      "category": "comparative",
+      "ground_truth": "Cross-encoders achieve higher accuracy by jointly encoding query-document pairs but are computationally expensive; lightweight scorers use precomputed features for fast reranking with moderate quality.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "I cannot provide information on the advantages of pgvector versus dedicated vector databases without more context. Can I help you with something else?",
+      "sources": [
+        {
+          "title": "[TechCrunch] As people look for ways to make new friends, here are the apps promising to help",
+          "source": "rss",
+          "url": "https://techcrunch.com/2026/03/14/as-people-look-for-ways-to-make-new-friends-here-are-the-apps-promising-to-help/",
+          "score": 0.3200434197781189
+        },
+        {
+          "title": "Developing the PsyCogMetrics AI Lab to Evaluate Large Language Models and Advance Cognitive Science -- A Three-Cycle Action Design Science Study",
+          "source": "arxiv",
+          "url": "http://arxiv.org/abs/2603.13126v1",
+          "score": 0.31842314043734754
+        },
+        {
+          "title": "[The Verge] This chair gives half-worn clothes a home",
+          "source": "rss",
+          "url": "https://www.theverge.com/tech/895194/laundry-chair-kickstarter-simone-giertz",
+          "score": 0.3157286533279031
+        },
+        {
+          "title": "[IEEE Spectrum] How Quantum Data Can Teach AI to Do Better Chemistry",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/quantum-chemistry",
+          "score": 0.2632686467071129
+        },
+        {
+          "title": "I built an open-source \"focus group simulator\" that spawns 1,000 AI customers to roast your startup idea",
+          "source": "devto",
+          "url": "https://dev.to/nghiahsgs/i-built-an-open-source-focus-group-simulator-that-spawns-1000-ai-customers-to-roast-your-startup-1c5o",
+          "score": 0.26197391319430396
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 50.754,
+      "query_id": 23,
+      "query": "What are the advantages of pgvector versus dedicated vector databases?",
+      "category": "comparative",
+      "ground_truth": "pgvector integrates with existing PostgreSQL infrastructure and supports SQL filtering alongside vector search; dedicated databases like Milvus or Pinecone offer better ANN performance at scale.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "Unfortunately, I couldn't find any information on how different attention mechanisms impact transformer efficiency in the provided context documents.\n\nThe provided documents appear to be unrelated to transformer efficiency or attention mechanisms. They cover topics such as self-driving trucks, Word2Vec, electromagnetic compatibility, and JavaScript's Intersection Observer API.\n\nTherefore, I cannot provide an answer to your question based on the provided context documents.",
+      "sources": [
+        {
+          "title": "[IEEE Spectrum] Raquel Urtasun on Level-4 Autonomous Trucks",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/level-4-autonomous-trucks",
+          "score": 0.37319850697555046
+        },
+        {
+          "title": "Understanding Word2Vec \u2013 Part 7: How Negative Sampling Speeds Up Word2Vec",
+          "source": "devto",
+          "url": "https://dev.to/rijultp/understanding-word2vec-part-7-how-negative-sampling-speeds-up-word2vec-g7o",
+          "score": 0.3563638038530138
+        },
+        {
+          "title": "[IEEE Spectrum] From TV Repairman to Electromagnetic Compatibility Expert",
+          "source": "rss",
+          "url": "https://spectrum.ieee.org/from-tv-repairman-to-electromagnetic-compatibility-expert",
+          "score": 0.2719860715848283
+        },
+        {
+          "title": "The Secret Life of JavaScript: The Observer",
+          "source": "devto",
+          "url": "https://dev.to/aaron_rose_0787cc8b4775a0/the-secret-life-of-javascript-the-observer-53n4",
+          "score": 0.2575361348301162
+        },
+        {
+          "title": "[TechCrunch] ByteDance reportedly pauses global launch of its Seedance 2.0 video generator",
+          "source": "rss",
+          "url": "https://techcrunch.com/2026/03/15/bytedance-reportedly-pauses-global-launch-of-its-seedance-2-0-video-generator/",
+          "score": 0.17847801010887218
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 71.553,
+      "query_id": 24,
+      "query": "How do different attention mechanisms impact transformer efficiency?",
+      "category": "comparative",
+      "ground_truth": "Standard attention is O(n^2); linear attention, flash attention, and sparse attention reduce complexity, enabling longer contexts with lower memory and compute requirements.",
+      "citation_grounding": 0.0
+    },
+    {
+      "answer": "The tradeoffs between serverless and container-based ML deployment are as follows:\n\nServerless ML deployment offers benefits such as reduced infrastructure costs, increased scalability, and faster deployment times (Source 1). However, it may lack control over the underlying environment, making it challenging to debug and optimize models (Source 2).\n\nOn the other hand, container-based ML deployment provides more control over the environment, allowing for easier debugging and optimization. However, it requires more infrastructure resources and can be less scalable than serverless options (Source 1).\n\nIt's worth noting that some solutions aim to bridge this gap by providing a hybrid approach that combines the benefits of both serverless and container-based deployment (Source 4).",
+      "sources": [
+        {
+          "title": "A Serverless AI Platform That Runs Entirely on ENS, IPFS, and Base \u2014 No Backend, No DNS, No Central Authority",
+          "source": "devto",
+          "url": "https://dev.to/sebklaey/i-built-a-serverless-ai-platform-that-runs-entirely-on-ens-ipfs-and-base-no-backend-no-dns-no-3ho7",
+          "score": 0.5323604506943544
+        },
+        {
+          "title": "[The New Stack] Why AI workloads are breaking traditional Kubernetes observability strategies",
+          "source": "rss",
+          "url": "https://thenewstack.io/ai-kubernetes-observability-practices/",
+          "score": 0.5226505613327026
+        },
+        {
+          "title": "rzru/nightingale",
+          "source": "github",
+          "url": "https://github.com/rzru/nightingale",
+          "score": 0.3710632195628599
+        },
+        {
+          "title": "I Used Three AI Agents on a Real Project. Here's What Each One Is Actually Good At.",
+          "source": "devto",
+          "url": "https://dev.to/wilddog64/i-used-three-ai-agents-on-a-real-project-heres-what-each-one-is-actually-good-at-4nnh",
+          "score": 0.3472780333190375
+        },
+        {
+          "title": "When AI Becomes Your On-Call Engineer: The Future of Incident Response",
+          "source": "devto",
+          "url": "https://dev.to/ravi_teja_8b63d9205dc7a13/when-ai-becomes-your-on-call-engineer-the-future-of-incident-response-5bb9",
+          "score": 0.3464154338965678
+        }
+      ],
+      "mode": "hybrid",
+      "latency_s": 41.318,
+      "query_id": 25,
+      "query": "What are the tradeoffs between serverless and container-based ML deployment?",
+      "category": "comparative",
+      "ground_truth": "Serverless offers cost efficiency and auto-scaling for bursty workloads but has cold start latency; containers provide consistent performance and more control but require capacity planning.",
+      "citation_grounding": 0.0
+    }
+  ]
+}

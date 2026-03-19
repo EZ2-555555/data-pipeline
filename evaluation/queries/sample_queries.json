@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "category": "research_trend",
+    "query": "What are recent approaches to efficient transformer architectures?"
+  },
+  {
+    "id": 2,
+    "category": "tool_technology",
+    "query": "What emerging AI tools are currently being discussed in the developer community?"
+  },
+  {
+    "id": 3,
+    "category": "comparative",
+    "query": "What are recent trends in large language model compression?"
+  }
+]

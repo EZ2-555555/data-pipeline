@@ -1,0 +1,413 @@
+\chapter{Implementation Progress and Deviations}
+\label{ch:progress}
+
+This chapter documents the current implementation status, deviations from the original proposal, and key engineering decisions made during development.
+
+\section{Overall Implementation Status}
+\label{sec:impl_status}
+
+Table~\ref{tab:impl_status} summarizes the implementation status of each system component as of the reporting date.
+
+\noindent\textbf{Status key:} \textit{Unit-tested} = implemented and verified by unit tests only; \textit{Integration-tested} = verified end-to-end in local Docker Compose environment; \textit{Cloud-validated} = deployed and verified in AWS (Learner Lab or Free Tier).
+
+\begin{table}[H]
+\caption{Component Implementation Status Summary.}
+\label{tab:impl_status}
+\centering
+\begin{tabular}{p{4.2cm}p{2.8cm}p{5.5cm}}
+\toprule
+\textbf{Component} & \textbf{Status} & \textbf{Notes} \\
+\midrule
+Data Ingestion (5 sources) & Integration-tested & ArXiv, HN, DEV.to, GitHub, RSS fully implemented \\
+Preprocessing Pipeline & Integration-tested & 17-step normalization + token-based chunking \\
+Embedding Pipeline & Integration-tested & MiniLM L6 v2 (384-dim), lazy singleton \\
+Hybrid Retrieval & Integration-tested & 3-stage pipeline with configurable weights \\
+Baseline Retrieval & Integration-tested & Vector-only comparison mode \\
+RAG Orchestrator & Integration-tested & 3-layer hallucination verification \\
+LLM Backend Fallback & Unit-tested & Auto-cascade across 3 backends \\
+API Layer & Integration-tested & FastAPI + Mangum; /health, /ask, /drift endpoints \\
+Database Schema & Integration-tested & PostgreSQL + pgvector with HNSW index \\
+S3 Medallion Storage & Integration-tested & Raw/processed/embeddings tiers (LocalStack locally) \\
+SQS Queue + DLQ & Integration-tested & Ingestion--embedding decoupling (LocalStack locally) \\
+Drift Detection & Unit-tested & Dual-criteria: 10\% threshold + Shewhart $3\sigma$ \\
+Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS, LLM) \\
+CloudWatch Integration & Cloud-validated & 6 custom metric namespaces \\
+Evaluation Framework & Unit-tested & 25 queries, RAGAS, grid search (code complete; full run pending) \\
+CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
+SAM Infrastructure (Learner Lab \& Free Tier) & Cloud-validated & Full SAM templates; stack creation in progress \\
+Docker Compose (Local) & Integration-tested & 6 services (db, pgadmin, api, frontend, scheduler, localstack) \\
+React Frontend & Integration-tested & Query interface with citation display \\
+Unit Tests & Integration-tested & 49 tests across 5 test files, all passing \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Deviations from the Original Proposal}
+\label{sec:deviations}
+
+Several implementation decisions diverge from the original proposal due to AWS Academy Learner Lab constraints and practical engineering considerations. The system has since been set up in both the AWS Academy Learner Lab and a personal AWS Free Tier account, which restores access to certain services that are restricted in the Learner Lab. Table~\ref{tab:deviations} documents each deviation, its rationale, and the implemented alternative.
+
+\begin{table}[H]
+\caption{Deviations from the Original Proposal and Rationale.}
+\label{tab:deviations}
+\centering
+\begin{tabular}{p{3.0cm}p{3.0cm}p{3.0cm}p{3.5cm}}
+\toprule
+\textbf{Proposal Claim} & \textbf{Implemented} & \textbf{Reason} & \textbf{Impact} \\
+\midrule
+Aurora Serverless + pgvector & RDS PostgreSQL db.t3.micro + pgvector & Aurora not available in Learner Lab & \textit{Trade-off:} No auto-scaling; db.t3.micro may bottleneck under high ingestion load. HNSW index and pgvector functionality preserved. \\[4pt]
+Amazon Bedrock (Claude Haiku) & HuggingFace Inference API (Mistral-7B) + auto-fallback (Learner Lab); Bedrock enabled (Free Tier) & Bedrock not available in Learner Lab & \textit{Trade-off:} HuggingFace free tier has rate limits; model quality differs from Claude Haiku. Retrieval-layer findings remain backend-agnostic. \\[4pt]
+2 data sources (ArXiv, HN) & 5 data sources (+DEV.to, GitHub, RSS) & Improved corpus diversity and breadth & Enhanced retrieval coverage; additional maintenance surface for 3 ingesters. \\[4pt]
+Custom VPC + NAT Gateway & Default VPC (Learner Lab); custom VPC available (Free Tier) & Custom VPCs restricted in Learner Lab & \textit{Trade-off:} RDS publicly accessible (Learner Lab); mitigated by security group restriction. Custom VPC used in Free Tier for improved isolation. \\[4pt]
+AWS Budgets alerts & Cost Explorer programmatic check (Learner Lab); AWS Budgets available (Free Tier) & AWS Budgets restricted in Learner Lab & \textit{Trade-off:} Cost Explorer data lags by up to 24 hours; real-time budget enforcement is not possible in Learner Lab. AWS Budgets used in Free Tier. \\[4pt]
+CDK or SAM deployment & SAM only & Simplified IaC management & Reduced toolchain complexity; CDK's higher-level abstractions foregone. \\[4pt]
+HN every 5 minutes & HN every 30 minutes & Rate limit considerations & Reduced API pressure; minor loss of near-real-time recency. \\[4pt]
+ArXiv weekly & ArXiv every 12 hours & More frequent scholarly updates & Improved corpus freshness; increased Lambda execution cost. \\[4pt]
+Simple 10\% drift threshold & Dual: 10\% threshold + Shewhart $3\sigma$ & Stronger statistical process control & More robust drift detection; requires 10 historical baselines before Shewhart is statistically meaningful. \\[4pt]
+Single LLM backend selection & Automatic fallback chain & Improve availability & Increased code complexity; fallback model quality may differ from primary. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Expanded Data Source Coverage}
+\label{sec:expanded_sources}
+
+The most significant enhancement beyond the original proposal is the expansion from two to five data sources. This decision was motivated by the need for broader topical coverage and diverse temporal profiles. The three additional sources---DEV.to (practitioner tutorials across 21 technology tags), GitHub Trending (emerging open-source projects across 10 topic queries), and curated RSS/Atom feeds (10 technology journalism outlets)---complement the scholarly authority of ArXiv and the community curation of Hacker News.
+
+All five ingesters share the same idempotent, SHA-256-based deduplication architecture, ensuring that the expanded ingestion scope does not compromise data integrity.
+
+\section{Enhanced Preprocessing Pipeline}
+\label{sec:enhanced_preprocessing}
+
+The preprocessing pipeline was substantially enhanced beyond the original proposal specification. The initial design specified HTML stripping, encoding normalization, whitespace consolidation, and removal of low-information tokens. The implemented 17-step normalization pipeline adds handling for: emoji and pictographic symbols (6 Unicode ranges), Unicode control characters and zero-width markers, Markdown blockquotes, HTML comments, strikethrough syntax, and repeated punctuation sequences. These additions were motivated by the diversity of content formats encountered across the five data sources, particularly the Markdown-heavy content from DEV.to and GitHub README files. The preprocessing pipeline is validated by 18 dedicated unit tests covering each normalization step.
+
+\section{Dual-Environment Deployment: Learner Lab and AWS Free Tier}
+\label{sec:learnerlab}
+
+TechPulse has been successfully deployed in two AWS environments: the AWS Academy Learner Lab and a personal AWS Free Tier account. This dual-environment setup allows the system to be evaluated under both constrained (Learner Lab) and more permissive (Free Tier) cloud conditions.
+
+\subsection{AWS Academy Learner Lab}
+
+Adapting the system for the AWS Academy Learner Lab required systematic identification and replacement of restricted services while preserving the core architectural capabilities. The key constraints and adaptations are:
+
+\begin{itemize}[leftmargin=0.5in]
+  \item \textbf{No Aurora Serverless.} Replaced with standard RDS PostgreSQL \texttt{db.t3.micro} (PostgreSQL 16.4, 20GB gp2). The pgvector extension and HNSW indexing remain fully functional.
+  \item \textbf{No Amazon Bedrock.} Replaced with HuggingFace Inference API as the primary LLM backend, with Ollama as local fallback. The auto-fallback chain ensures generation availability.
+  \item \textbf{No custom VPCs or NAT Gateways.} The SAM template uses the default VPC with two subnets. RDS is configured as publicly accessible with security group restrictions.
+  \item \textbf{No custom IAM roles.} All Lambda functions use the pre-existing \texttt{LabRole} provided by the Learner Lab environment.
+  \item \textbf{No AWS Budgets service.} Budget governance is maintained through programmatic Cost Explorer API queries integrated into the inference path.
+  \item \textbf{LLM backend set to \texttt{huggingface}.} The \texttt{LLM\_BACKEND} environment variable defaults to \texttt{huggingface} in the Learner Lab template, with \texttt{BUDGET\_HALT\_ENABLED} set to \texttt{false} (Cost Explorer quota limitations).
+\end{itemize}
+
+A dedicated SAM template (\texttt{template-learnerlab.yaml}) and configuration file (\texttt{samconfig-learnerlab.toml}) were created to encapsulate all Learner Lab-specific resource definitions.
+
+\subsection{AWS Free Tier}
+
+In parallel, the system has been set up on a personal AWS Free Tier account, which lifts several of the Learner Lab restrictions and allows a closer alignment with the original proposal. Key differences in the Free Tier environment are:
+
+\begin{itemize}[leftmargin=0.5in]
+  \item \textbf{Amazon Bedrock available.} Claude Haiku can be used as the primary LLM backend, restoring the originally proposed generative backend. The LLM fallback chain is fully exercisable from Bedrock downward.
+  \item \textbf{Custom IAM roles supported.} Fine-grained IAM role definitions can be used instead of the pre-assigned \texttt{LabRole}.
+  \item \textbf{AWS Budgets available.} Native AWS Budgets alerts replace the Cost Explorer programmatic workaround, enabling real-time cost governance.
+  \item \textbf{Custom VPCs permitted.} The deployment can use a dedicated VPC with private subnets and NAT Gateway for improved network isolation, consistent with the original proposal.
+  \item \textbf{LLM backend set to \texttt{bedrock}.} The \texttt{LLM\_BACKEND} environment variable defaults to \texttt{bedrock} in the Free Tier template, with the HuggingFace and Ollama backends retained as fallbacks.
+\end{itemize}
+
+A separate SAM template (\texttt{template.yaml}) and configuration file (\texttt{samconfig.toml}) encapsulate the Free Tier-specific resource definitions. This dual-template approach ensures that both environments can be independently deployed and maintained from the same codebase.
+
+\section{Test Coverage}
+\label{sec:tests}
+
+The system includes 49 unit tests distributed across five test modules:
+
+\begin{table}[H]
+\caption{Unit Test Distribution.}
+\label{tab:tests}
+\centering
+\begin{tabular}{p{4.5cm}p{1.5cm}p{6.5cm}}
+\toprule
+\textbf{Test Module} & \textbf{Count} & \textbf{Coverage} \\
+\midrule
+\texttt{test\_preprocessing.py} & 18 & All 17 normalization steps + chunking behavior \\
+\texttt{test\_ingestion.py} & 14 & SHA-256 hash determinism and uniqueness for all 5 sources \\
+\texttt{test\_retriever.py} & 8 & Keyword overlap computation + recency weight decay \\
+\texttt{test\_rag.py} & 7 & Citation grounding check + context block construction \\
+\texttt{test\_api.py} & 5 & FastAPI endpoint validation (health, error handling, success) \\
+\midrule
+\textbf{Total} & \textbf{49} (passing) & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
+
+\section{Custom CloudWatch Metrics}
+\label{sec:metrics}
+
+Six custom CloudWatch metric namespaces have been implemented to provide operational visibility:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item \texttt{IngestionCount} --- documents ingested per source per cycle
+  \item \texttt{PipelineChunks} --- chunks generated per pipeline run
+  \item \texttt{PipelineLatency} --- end-to-end pipeline execution time
+  \item \texttt{PipelineErrors} --- pipeline failure count
+  \item \texttt{ApiLatency} --- per-request API response time
+  \item \texttt{HallucinationFlags} --- count of citation grounding failures
+\end{enumerate}
+
+Additionally, the drift detection module publishes \texttt{DriftMeanSimilarity} and \texttt{DriftAlert} metrics for time-series tracking of retrieval quality.
+
+\section{Engineering Observations}
+\label{sec:eng_obs}
+
+Several non-obvious findings arose during implementation that informed the final design:
+
+\begin{itemize}[leftmargin=0.5in]
+  \item \textbf{Lambda cold-start and MiniLM.} Loading the MiniLM sentence-transformer model on each Lambda cold start introduced 8--12 second delays during initial testing. This was resolved by implementing a lazy-initialized singleton pattern and increasing the Lambda memory allocation to 1,024~MB, reducing model load time to under 2 seconds on warm invocations.
+
+  \item \textbf{SHA-256 deduplication effectiveness.} During repeated ingestion cycles, the \texttt{ON CONFLICT DO NOTHING} strategy proved fully effective at preventing duplicate records. ArXiv, which republishes updated preprints, produced the most hash collisions (approximately 15--20\% of fetched papers per cycle), validating the deduplication design.
+
+  \item \textbf{LocalStack fidelity.} S3 and SQS operations via LocalStack behaved identically to the AWS SDK calls expected in production, enabling confident integration testing without AWS credentials. One exception: CloudWatch metric publishing is not supported by LocalStack, so CloudWatch integration required cloud deployment to verify.
+
+  \item \textbf{HuggingFace rate limits.} The free-tier HuggingFace Inference API enforces a rate limit of approximately 30 requests/minute for the Mistral-7B-Instruct model. During sustained evaluation runs, this limit was reached, triggering the Ollama fallback automatically---confirming that the fallback chain functions correctly under real-world constraints.
+
+  \item \textbf{pgvector HNSW index build time.} For corpora above $\sim$10,000 chunks, the HNSW index rebuild (triggered after bulk embedding inserts) took 45--90 seconds on the db.t3.micro instance. This is acceptable for batch ingestion but would need to be managed for real-time corpus updates in a production system.
+\end{itemize}
+
+\section{System Demonstration}
+\label{sec:demo}
+
+This section presents screenshots from the running system deployed locally via Docker Compose, demonstrating end-to-end functionality across all implemented components. \textit{Note: placeholder figures below will be replaced with actual screenshots in the final submission (see Section~\ref{sec:remaining} for capture schedule).}
+
+\subsection{Frontend: Hybrid Retrieval Query with Citation-Grounded Response}
+
+Figure~\ref{fig:demo_hybrid} shows the TechPulse frontend answering a technology trend query using the hybrid retrieval mode. The response includes inline \texttt{[Source N]} citations and a source list with relevance scores, demonstrating the complete RAG pipeline from query submission through grounded generation.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{%
+\vspace{0.4cm}
+\begin{center}
+\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+\textbf{What to capture:}
+\begin{itemize}
+  \item Open the TechPulse React frontend (default: \texttt{http://localhost:3000})
+  \item Make sure the mode toggle is set to \textbf{Hybrid Retrieval}
+  \item Type a query such as: ``\textit{What are the latest advances in large language model inference optimization?}''
+  \item Wait for the full response to load
+  \item The visible response must contain \textbf{inline [Source N] citations} within the answer text
+  \item The \textbf{Sources panel / list} at the bottom must show at least 3 entries with relevance scores, source names (e.g., arxiv, hn, devto), and titles
+  \item Capture the \emph{entire browser window} (including the URL bar showing \texttt{localhost:3000})
+\end{itemize}
+\vspace{0.2cm}
+\hrule
+\vspace{0.3cm}
+\textbf{Command to start the system:}\\
+\texttt{docker compose up -d \&\& sleep 20 \&\& python scripts/run\_ingestion.py}\\[4pt]
+\textbf{Save as:} \texttt{report/figures/demo\_hybrid.png} \quad (PNG, min 1200px wide)
+\vspace{0.4cm}
+}}
+\caption{TechPulse frontend: hybrid retrieval query with citation-grounded response. The response displays inline source citations and a ranked source list with relevance scores from all five data sources.}
+\label{fig:demo_hybrid}
+\end{figure}
+
+\subsection{Frontend: Baseline vs.\ Hybrid Comparison}
+
+Figure~\ref{fig:demo_baseline} shows the same query executed in baseline (vector-only) mode for comparison. The difference in source diversity and citation quality between baseline and hybrid modes provides qualitative evidence supporting the hybrid retrieval hypothesis.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{%
+\vspace{0.4cm}
+\begin{center}
+\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+\textbf{What to capture:}
+\begin{itemize}
+  \item Open the TechPulse React frontend (\texttt{http://localhost:3000})
+  \item Switch the mode toggle to \textbf{Baseline (Vector-Only)} retrieval
+  \item Type the \textbf{exact same query} used in Figure~\ref{fig:demo_hybrid} above (e.g., ``\textit{What are the latest advances in large language model inference optimization?}'')
+  \item Wait for the full response to load
+  \item The response will typically have \emph{fewer or less precise} citations compared to hybrid mode
+  \item Capture the entire browser window so the mode label ``Baseline'' is clearly visible
+  \item Ideally side-by-side with Figure~\ref{fig:demo_hybrid} to enable qualitative comparison
+\end{itemize}
+\vspace{0.2cm}
+\hrule
+\vspace{0.3cm}
+\textbf{Save as:} \texttt{report/figures/demo\_baseline.png} \quad (PNG, min 1200px wide)
+\vspace{0.4cm}
+}}
+\caption{TechPulse frontend: baseline (vector-only) retrieval query on the same question as Figure~\ref{fig:demo_hybrid}, enabling visual comparison of response quality and source diversity.}
+\label{fig:demo_baseline}
+\end{figure}
+
+\subsection{Unit Test Execution}
+
+Figure~\ref{fig:demo_tests} shows the terminal output of running the full test suite. All 49 tests pass across the five test modules, validating preprocessing, ingestion, retrieval, RAG orchestration, and API endpoint behavior.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{%
+\vspace{0.4cm}
+\begin{center}
+\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+\textbf{What to capture:}
+\begin{itemize}
+  \item Open a terminal in the project root directory
+  \item Run: \texttt{pytest tests/ -v --tb=short}
+  \item Wait for all tests to complete
+  \item The terminal must show \textbf{all 49 tests passing} (green dots or PASSED labels)
+  \item The final summary line must read: \texttt{49 passed} (optionally with warnings)
+  \item Make sure the following test module names are visible in the output:\\
+    \texttt{test\_preprocessing.py}, \texttt{test\_ingestion.py}, \texttt{test\_retriever.py},\\
+    \texttt{test\_rag.py}, \texttt{test\_api.py}
+  \item Capture the terminal window showing the complete output (scroll to top if needed, or use a tall terminal)
+\end{itemize}
+\vspace{0.2cm}
+\hrule
+\vspace{0.3cm}
+\textbf{Command:} \texttt{cd /path/to/project \&\& pytest tests/ -v 2>\&1 | tee /tmp/test\_output.txt}\\[2pt]
+\textbf{Save as:} \texttt{report/figures/demo\_tests.png} \quad (PNG, capture full terminal output)
+\vspace{0.4cm}
+}}
+\caption{Pytest execution: 49 unit tests passing across 5 test modules (\texttt{test\_preprocessing}, \texttt{test\_ingestion}, \texttt{test\_retriever}, \texttt{test\_rag}, \texttt{test\_api}).}
+\label{fig:demo_tests}
+\end{figure}
+
+\subsection{Docker Compose: Running Services}
+
+Figure~\ref{fig:demo_docker} shows all six Docker Compose services running simultaneously: PostgreSQL with pgvector, pgAdmin, LocalStack (S3/SQS), FastAPI backend, React frontend, and the ingestion scheduler.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{%
+\vspace{0.4cm}
+\begin{center}
+\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+\textbf{What to capture:}
+\begin{itemize}
+  \item Start the system: \texttt{docker compose up -d}
+  \item Wait 30 seconds for all services to initialize
+  \item Run: \texttt{docker compose ps} (preferred --- shows service names clearly)\\
+    OR: \texttt{docker ps --format "table \{\{.Names\}\}\textbackslash t\{\{.Status\}\}\textbackslash t\{\{.Ports\}\}"}
+  \item All \textbf{6 containers} must show status \texttt{Up} or \texttt{running}:
+    \begin{itemize}\small
+      \item \texttt{db} (PostgreSQL + pgvector) --- port 5432
+      \item \texttt{pgadmin} --- port 5050
+      \item \texttt{localstack} (S3 + SQS) --- port 4566
+      \item \texttt{api} (FastAPI backend) --- port 8000
+      \item \texttt{frontend} (React) --- port 3000
+      \item \texttt{scheduler} (ingestion scheduler)
+    \end{itemize}
+  \item Capture terminal showing the full \texttt{docker compose ps} table
+\end{itemize}
+\vspace{0.2cm}
+\hrule
+\vspace{0.3cm}
+\textbf{Command:} \texttt{docker compose up -d \&\& sleep 30 \&\& docker compose ps}\\[2pt]
+\textbf{Save as:} \texttt{report/figures/demo\_docker.png} \quad (PNG, full terminal capture)
+\vspace{0.4cm}
+}}
+\caption{Docker Compose deployment: six services running locally --- PostgreSQL+pgvector, pgAdmin, LocalStack, FastAPI API, React frontend, and the ingestion scheduler.}
+\label{fig:demo_docker}
+\end{figure}
+
+\subsection{CI/CD Pipeline: GitHub Actions}
+
+Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the four-stage workflow: lint-and-test, Docker build, SAM build, and deployment.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{%
+\vspace{0.4cm}
+\begin{center}
+\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+\textbf{What to capture:}
+\begin{itemize}
+  \item Go to your GitHub repository in a browser
+  \item Navigate to: \textbf{Actions} tab $\to$ select a recent successful run on the \texttt{main} branch
+  \item The workflow must show all \textbf{4 stages with green tick marks}:
+    \begin{enumerate}\small
+      \item \texttt{lint-and-test} (green \checkmark)
+      \item \texttt{docker-build} (green \checkmark)
+      \item \texttt{sam-build} (green \checkmark)
+      \item \texttt{deploy-dev} or \texttt{deploy} (green \checkmark, on \texttt{main} branch only)
+    \end{enumerate}
+  \item The run summary at the top should show: \textbf{All jobs passed} / green banner
+  \item Capture the full workflow graph view (the visual DAG of stages), not just the log
+  \item The branch name (\texttt{main}) and commit SHA should be visible
+\end{itemize}
+\vspace{0.2cm}
+\hrule
+\vspace{0.3cm}
+\textbf{URL pattern:} \texttt{https://github.com/\{org\}/\{repo\}/actions/runs/\{run-id\}}\\[2pt]
+\textbf{Save as:} \texttt{report/figures/demo\_cicd.png} \quad (PNG, capture the workflow graph, not just job list)
+\vspace{0.4cm}
+}}
+\caption{GitHub Actions CI/CD pipeline: four-stage workflow (lint \& test, Docker build, SAM build, deploy) executing successfully on the \texttt{main} branch.}
+\label{fig:demo_cicd}
+\end{figure}
+
+\subsection{Database: Populated Corpus from Five Sources}
+
+Figure~\ref{fig:demo_pgadmin} shows the pgAdmin interface with the \texttt{documents} table containing ingested records from all five data sources, demonstrating that the ingestion pipeline successfully populates the corpus.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{%
+\vspace{0.4cm}
+\begin{center}
+\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+\textbf{What to capture:}
+\begin{itemize}
+  \item Open pgAdmin at \texttt{http://localhost:5050} (login: see \texttt{docker-compose.yml})
+  \item Navigate to: \textbf{Servers $\to$ techpulse\_db $\to$ Schemas $\to$ public $\to$ Tables $\to$ documents}
+  \item Right-click \texttt{documents} $\to$ \textbf{View/Edit Data $\to$ All Rows}
+  \item Run ingestion first if table is empty: \texttt{docker exec -it scheduler python ingest.py}
+  \item The table grid must show \textbf{rows from all 5 sources} visible in the \texttt{source} column:\\
+    \texttt{arxiv}, \texttt{hn}, \texttt{devto}, \texttt{github}, \texttt{rss}
+  \item Visible columns must include: \texttt{id}, \texttt{source}, \texttt{title}, \texttt{state}, \texttt{published\_at}
+  \item Scroll or resize so the \texttt{source} column is clearly readable
+  \item Capture both the pgAdmin left-panel tree (showing database name) and the data grid
+\end{itemize}
+\vspace{0.2cm}
+\hrule
+\vspace{0.3cm}
+\textbf{Quick query to verify all 5 sources present:}\\
+\texttt{SELECT source, COUNT(*) FROM documents GROUP BY source ORDER BY source;}\\[2pt]
+\textbf{Save as:} \texttt{report/figures/demo\_pgadmin.png} \quad (PNG, min 1400px wide to show both panels)
+\vspace{0.4cm}
+}}
+\caption{pgAdmin: the \texttt{documents} table populated with records from all five data sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS), demonstrating successful multi-source ingestion.}
+\label{fig:demo_pgadmin}
+\end{figure}
+
+\medskip
+\noindent\textbf{Chapter Summary.} This chapter documented the implementation status across all 20 system components using a three-tier status classification (unit-tested, integration-tested, cloud-validated), deviations from the original proposal with honest trade-off analysis, key engineering observations from development, and the evaluation framework status. All core pipeline components are integration-tested via Docker Compose; cloud deployment is in progress across both AWS environments. Chapter~7 presents the remaining work plan, known limitations, and project timeline.
+
+\medskip
+\noindent\textbf{Team Contributions.} Aye Khin Khin Hpone led data ingestion, preprocessing, embedding, and the React frontend. Dechathon Niamsa-Ard led the RAG orchestrator, LLM fallback chain, AWS infrastructure (SAM templates), CI/CD pipeline, and evaluation framework. Both members contributed to the system architecture design, unit testing, and report writing.

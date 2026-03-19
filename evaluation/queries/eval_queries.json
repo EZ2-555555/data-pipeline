@@ -1,0 +1,152 @@
+[
+  {
+    "id": 1,
+    "category": "research_trend",
+    "query": "What are recent approaches to efficient transformer architectures?",
+    "ground_truth": "Recent approaches include knowledge distillation, pruning, quantization, mixture-of-experts, and efficient attention mechanisms like linear attention and flash attention."
+  },
+  {
+    "id": 2,
+    "category": "research_trend",
+    "query": "What are recent trends in large language model compression?",
+    "ground_truth": "Trends include quantization (GPTQ, AWQ), pruning, knowledge distillation, low-rank factorization, and speculative decoding for faster inference."
+  },
+  {
+    "id": 3,
+    "category": "research_trend",
+    "query": "What advances have been made in retrieval-augmented generation?",
+    "ground_truth": "Advances include hybrid retrieval combining dense and sparse methods, multi-stage reranking, self-reflective RAG, query decomposition, and improved chunking strategies."
+  },
+  {
+    "id": 4,
+    "category": "research_trend",
+    "query": "What is the current state of research on AI safety and alignment?",
+    "ground_truth": "Research focuses on RLHF, constitutional AI, red-teaming, interpretability, scalable oversight, and techniques for reducing hallucination and harmful outputs."
+  },
+  {
+    "id": 5,
+    "category": "research_trend",
+    "query": "What recent developments exist in multimodal AI models?",
+    "ground_truth": "Developments include vision-language models like GPT-4V and LLaVA, multimodal transformers, audio-text models, and unified architectures processing text, images, and video."
+  },
+  {
+    "id": 6,
+    "category": "research_trend",
+    "query": "How is reinforcement learning being applied to language model training?",
+    "ground_truth": "RLHF and RLAIF are used to align models with human preferences, PPO and DPO for policy optimization, and RL for code generation and reasoning tasks."
+  },
+  {
+    "id": 7,
+    "category": "research_trend",
+    "query": "What are the latest approaches to reducing hallucination in LLMs?",
+    "ground_truth": "Approaches include retrieval augmentation, chain-of-verification, self-consistency checks, factual grounding, citation generation, and constrained decoding."
+  },
+  {
+    "id": 8,
+    "category": "research_trend",
+    "query": "What progress has been made in open-source language models?",
+    "ground_truth": "Notable models include LLaMA, Mistral, Falcon, Phi, and Gemma, with improvements in fine-tuning efficiency through LoRA and QLoRA."
+  },
+  {
+    "id": 9,
+    "category": "research_trend",
+    "query": "What are emerging techniques for long-context language modeling?",
+    "ground_truth": "Techniques include RoPE extensions, ALiBi, sliding window attention, memory-augmented transformers, and retrieval-based context extension."
+  },
+  {
+    "id": 10,
+    "category": "tool_technology",
+    "query": "What emerging AI tools are currently being discussed in the developer community?",
+    "ground_truth": "Popular tools include ChatGPT, GitHub Copilot, LangChain, LlamaIndex, Ollama, vLLM, and various open-source model serving frameworks."
+  },
+  {
+    "id": 11,
+    "category": "tool_technology",
+    "query": "What vector databases are gaining traction for AI applications?",
+    "ground_truth": "Popular options include pgvector, Pinecone, Weaviate, Qdrant, Milvus, Chroma, and FAISS for approximate nearest neighbor search."
+  },
+  {
+    "id": 12,
+    "category": "tool_technology",
+    "query": "What frameworks are popular for building RAG applications?",
+    "ground_truth": "LangChain, LlamaIndex, Haystack, and Semantic Kernel are popular frameworks, along with tools like ChromaDB and pgvector for vector storage."
+  },
+  {
+    "id": 13,
+    "category": "tool_technology",
+    "query": "What tools exist for LLM evaluation and benchmarking?",
+    "ground_truth": "Tools include RAGAS, ARES, LangSmith, Weights & Biases, OpenAI Evals, lm-evaluation-harness, and custom benchmark suites."
+  },
+  {
+    "id": 14,
+    "category": "tool_technology",
+    "query": "What MLOps platforms are commonly used for deploying AI models?",
+    "ground_truth": "Platforms include MLflow, Kubeflow, AWS SageMaker, Weights & Biases, DVC, and cloud-native solutions with Docker and Kubernetes."
+  },
+  {
+    "id": 15,
+    "category": "tool_technology",
+    "query": "What are the most discussed programming languages for AI development?",
+    "ground_truth": "Python dominates, with Rust growing for performance-critical components, Julia for scientific computing, and JavaScript/TypeScript for AI web applications."
+  },
+  {
+    "id": 16,
+    "category": "tool_technology",
+    "query": "What container and orchestration tools are used in ML pipelines?",
+    "ground_truth": "Docker, Kubernetes, AWS ECS/Fargate, and tools like Airflow and Prefect for workflow orchestration are widely used."
+  },
+  {
+    "id": 17,
+    "category": "tool_technology",
+    "query": "What embedding models are recommended for semantic search?",
+    "ground_truth": "Models include sentence-transformers (MiniLM, MPNet), OpenAI ada-002, Cohere embed, BGE, and E5 series for different accuracy-latency tradeoffs."
+  },
+  {
+    "id": 18,
+    "category": "comparative",
+    "query": "How do dense retrieval methods compare to hybrid retrieval for RAG?",
+    "ground_truth": "Dense retrieval relies on vector similarity alone while hybrid combines semantic search with keyword matching and metadata filtering, generally improving precision in heterogeneous corpora."
+  },
+  {
+    "id": 19,
+    "category": "comparative",
+    "query": "What are the tradeoffs between open-source and proprietary LLMs?",
+    "ground_truth": "Open-source models offer customization and privacy but may lag in capability; proprietary models provide better performance but with higher cost and vendor lock-in."
+  },
+  {
+    "id": 20,
+    "category": "comparative",
+    "query": "How do different chunking strategies affect RAG retrieval quality?",
+    "ground_truth": "Fixed-size token chunking is simple but may split context; semantic chunking preserves meaning but is complex; recursive splitting offers a balance. Overlap reduces boundary information loss."
+  },
+  {
+    "id": 21,
+    "category": "comparative",
+    "query": "What are the differences between fine-tuning and RAG for domain adaptation?",
+    "ground_truth": "Fine-tuning updates model weights for domain knowledge but requires training data and compute; RAG retrieves external context at inference time, offering flexibility and freshness without retraining."
+  },
+  {
+    "id": 22,
+    "category": "comparative",
+    "query": "How do cross-encoder rerankers compare with lightweight scoring rerankers?",
+    "ground_truth": "Cross-encoders achieve higher accuracy by jointly encoding query-document pairs but are computationally expensive; lightweight scorers use precomputed features for fast reranking with moderate quality."
+  },
+  {
+    "id": 23,
+    "category": "comparative",
+    "query": "What are the advantages of pgvector versus dedicated vector databases?",
+    "ground_truth": "pgvector integrates with existing PostgreSQL infrastructure and supports SQL filtering alongside vector search; dedicated databases like Milvus or Pinecone offer better ANN performance at scale."
+  },
+  {
+    "id": 24,
+    "category": "comparative",
+    "query": "How do different attention mechanisms impact transformer efficiency?",
+    "ground_truth": "Standard attention is O(n^2); linear attention, flash attention, and sparse attention reduce complexity, enabling longer contexts with lower memory and compute requirements."
+  },
+  {
+    "id": 25,
+    "category": "comparative",
+    "query": "What are the tradeoffs between serverless and container-based ML deployment?",
+    "ground_truth": "Serverless offers cost efficiency and auto-scaling for bursty workloads but has cold start latency; containers provide consistent performance and more control but require capacity planning."
+  }
+]

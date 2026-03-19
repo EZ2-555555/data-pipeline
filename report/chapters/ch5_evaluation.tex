@@ -1,0 +1,383 @@
+\chapter{Experimental Plan and Evaluation Metrics}
+
+\section{Evaluation Objective}
+\label{sec:eval_objective}
+
+The evaluation operationalises the constrained optimisation objective stated in Equation~\ref{eq:opt} (Chapter~3) and the formal hypotheses H\textsubscript{0}/H\textsubscript{1} (Section~\ref{sec:method_overview}). It aims to answer three questions, each corresponding to a subset of the research questions mapped in Table~\ref{tab:rq_map}: (1) Does hybrid retrieval achieve statistically higher contextual precision and grounding faithfulness than vector-only retrieval (RQ2)? (2) What latency and cost overhead does hybrid retrieval introduce, and does the optimal weight configuration sit within the latency constraint (RQ3)? (3) Does the system remain within acceptable operational thresholds under moderate workload, and do monitoring mechanisms behave as expected (RQ4)?
+
+Statistical significance of the mean precision difference between baseline and hybrid configurations will be assessed using a one-sided Wilcoxon signed-rank test ($\alpha = 0.05$) over the 25 paired query observations, following prior RAG comparative evaluation practice (Es et al., 2023).
+
+\section{Experimental Configurations}
+\label{sec:eval_configs}
+
+Two configurations are compared under identical corpus, embedding model, and chunking parameters:
+
+\begin{table}[H]
+\caption{Experimental Configuration Comparison.}
+\label{tab:exp_configs}
+\centering
+\begin{tabular}{p{3.5cm}cc}
+\toprule
+\textbf{Component} & \textbf{Baseline (Vector-Only)} & \textbf{Hybrid (Implemented)} \\
+\midrule
+Metadata Filtering & $\times$ & \checkmark \\
+Vector Similarity & \checkmark & \checkmark \\
+Reranking-Lite & $\times$ & \checkmark \\
+Recency Weighting & $\times$ & \checkmark \\
+Top-$k$ returned & 8 & 8$^{\dagger}$ \\
+Embedding Model & MiniLM (384-dim) & MiniLM (384-dim) \\
+Cost Governance & None & Budget guard \\
+\bottomrule
+\end{tabular}
+\medskip
+\noindent\small{$^{\dagger}$Hybrid retrieval over-retrieves $4 \times k = 32$ candidates at the vector search stage before reranking and final selection of top-8 (see Section~\ref{sec:hybrid_retrieval}).}
+\end{table}
+
+\section{Evaluation Dataset}
+\label{sec:eval_dataset}
+
+The evaluation framework uses 25 manually curated trend-oriented queries spanning recent research developments, emerging tools, and comparative technology discussions in artificial intelligence and related domains. Queries are categorized into two types---\textit{research\_trend} and \textit{tool\_technology}---and include ground-truth reference answers for automated scoring.
+
+Example queries include: ``What are recent approaches to efficient transformer architectures?''; ``What emerging AI tools are currently being discussed by developers?''; and ``What are recent trends in large language model compression?''
+
+\textbf{Justification for evaluation set size.} The evaluation objective is a controlled comparison between two retrieval configurations under identical corpus and embedding conditions. A paired comparison across 25 carefully constructed queries with ground-truth annotations is sufficient to detect meaningful precision differences, consistent with the evaluation scale adopted in prior RAG evaluation work (Es et al., 2023; Saad-Falcon et al., 2023). Queries are stratified across query categories to ensure results are not driven by a single query type.
+
+\section{Evaluation Metrics}
+\label{sec:eval_metrics}
+
+Figure~\ref{fig:eval_framework} summarizes the implemented evaluation framework.
+
+% ---- TikZ: Evaluation framework diagram ----
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}
+
+% Metric boxes (top row)
+\node[evalbox=awsblue] (prec) at (-6.0,0)
+  {\textbf{Context Precision}\\[2pt]\scriptsize Target: $> 0.75$\\RQ2};
+
+\node[evalbox=awsgreen] (faith) at (-2.0,0)
+  {\textbf{Faithfulness}\\[2pt]\scriptsize Target: $\geq 0.80$\\RQ2};
+
+\node[evalbox=awsorange] (lat) at (2.0,0)
+  {\textbf{p95 Latency}\\[2pt]\scriptsize Target: $< 2.0$s (retrieval)\\RQ3};
+
+\node[evalbox=awspurple] (cost) at (6.0,0)
+  {\textbf{Cost / Month}\\[2pt]\scriptsize Target: $<$ USD~15\\at 1,500 queries/mo\\RQ3};
+
+% Measurement method boxes (bottom row — sources of the metric)
+\node[rectangle, draw=awsgray!40, fill=sectionbg, rounded corners=3pt,
+      font=\scriptsize, minimum height=0.65cm, text width=3.2cm, text centered]
+  (m1) at (-6.0,-1.9) {Measurement:\\RAGAS ContextPrecision\\(Ollama judge)};
+
+\node[rectangle, draw=awsgray!40, fill=sectionbg, rounded corners=3pt,
+      font=\scriptsize, minimum height=0.65cm, text width=3.2cm, text centered]
+  (m2) at (-2.0,-1.9) {Measurement:\\RAGAS Faithfulness\\+ citation ratio};
+
+\node[rectangle, draw=awsgray!40, fill=sectionbg, rounded corners=3pt,
+      font=\scriptsize, minimum height=0.65cm, text width=3.2cm, text centered]
+  (m3) at (2.0,-1.9) {Measurement:\\Per-query timing\\+ CloudWatch Logs};
+
+\node[rectangle, draw=awsgray!40, fill=sectionbg, rounded corners=3pt,
+      font=\scriptsize, minimum height=0.65cm, text width=3.2cm, text centered]
+  (m4) at (6.0,-1.9) {Measurement:\\Token count\\$\times$ per-token pricing};
+
+% Arrows point UP: measurement method produces the metric
+\draw[parrow] (m1) -- (prec);
+\draw[parrow] (m2) -- (faith);
+\draw[parrow] (m3) -- (lat);
+\draw[parrow] (m4) -- (cost);
+
+% Statistical test annotation
+\node[rectangle, draw=propblue!60, fill=propblue!10, rounded corners=3pt,
+      font=\scriptsize, text width=5.5cm, text centered, inner sep=4pt]
+  (stat) at (-4.0, -3.3) {Statistical test: Wilcoxon signed-rank (one-sided, $\alpha=0.05$)\\applied to Context Precision paired differences (N=25)};
+\draw[-{Stealth}, dashed, color=propblue!60] (stat.north) -- (-6.0, -1.9);
+
+\end{tikzpicture}%
+}
+\caption{Evaluation framework: four measurement dimensions, each with a target threshold and the research question it addresses. Arrows point from measurement method to the metric it produces. A Wilcoxon signed-rank test will assess the statistical significance of the precision difference between baseline and hybrid configurations.}
+\label{fig:eval_framework}
+\end{figure}
+
+\subsection{Context Precision}
+
+Retrieval precision is measured using RAGAS \texttt{ContextPrecisionWithoutReference}, which evaluates whether retrieved documents are relevant to the query using automated LLM-based scoring (with Ollama as the evaluation judge).
+
+\subsection{Faithfulness and Hallucination Verification}
+
+Faithfulness is assessed through two complementary mechanisms: (1) RAGAS faithfulness scoring, which decomposes responses into atomic claims and verifies each against retrieved context (target: $\geq 0.80$); and (2) runtime citation grounding ratio, measuring the fraction of response sentences containing valid \texttt{[Source N]} citations (target: $> 0.80$). Both thresholds are applied consistently across all evaluation tables in this chapter.
+
+\subsection{Latency}
+
+End-to-end latency is measured per query, with aggregate statistics computed: mean, median, p95, maximum, and minimum. Latency is decomposed by retrieval mode and query category. The target threshold is p95 $< 2$ seconds for the retrieval component (excluding LLM generation time, which varies by backend).
+
+\subsection{Cost Per Query}
+
+Cost per query is estimated based on prompt and completion token counts. The prompt includes the system instruction ($\sim$80 tokens), the context block (up to $8 \times 500 = 4{,}000$ tokens, variable by chunk fill rate), and the user query ($\sim$20 tokens), giving an approximate prompt budget of 4,100 tokens per request. The completion target is capped at 300 tokens. Per-token pricing is applied for the active LLM backend (Mistral-7B on HuggingFace free tier in Learner Lab; Claude Haiku on Bedrock in Free Tier). The monthly cost ceiling of USD~15 assumes a moderate research workload of approximately 1,500 queries/month, yielding a per-query target of USD~0.01.
+
+\subsection{Reranking Weight Optimization}
+
+Grid search is performed over the reranking weight space to identify the optimal configuration:
+
+\begin{itemize}[leftmargin=0.5in]
+  \item $\alpha \in \{0.4, 0.5, 0.6, 0.7\}$ (semantic similarity weight)
+  \item $\beta = \gamma = (1 - \alpha) / 2$ (equal keyword overlap and recency weights)
+  \item Constraint: p95 latency $\leq 2.0$ seconds
+  \item Objective: maximize mean context precision
+\end{itemize}
+
+The configuration yielding the highest mean precision without violating the latency threshold is selected as the production weight configuration.
+
+\begin{table}[H]
+\caption{Summary of Evaluation Metrics and Targets.}
+\label{tab:eval_targets}
+\centering
+\begin{tabular}{p{3.0cm}p{3.0cm}p{3.2cm}p{3.0cm}}
+\toprule
+\textbf{Metric} & \textbf{Dimension} & \textbf{Method} & \textbf{Target} \\
+\midrule
+Context Precision & Retrieval quality & RAGAS ContextPrecision (Ollama judge) & $> 0.75$ \\
+Faithfulness & Grounding quality & RAGAS Faithfulness score & $\geq 0.80$ \\
+Citation Grounding Ratio & Hallucination proxy & Sentence-level citation analysis & $> 0.80$ \\
+p95 Latency & System performance & Per-query timing (retrieval stage) & $< 2.0$ seconds \\
+Cost per Month & Operational cost & Token usage $\times$ per-token pricing & $<$~USD 15 at 1,500 q/mo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Planned Analysis and Discussion Framework}
+\label{sec:discussion}
+
+Upon completion of the full evaluation run, the following analyses will be conducted:
+
+\textbf{Precision vs.\ computational overhead.} Context precision scores will be compared between baseline and hybrid configurations using paired differences across the 25 evaluation queries. The mean precision improvement will be reported alongside the additional per-query latency introduced by the metadata filtering and reranking stages.
+
+\textbf{Retrieval strictness vs.\ recall.} The 180-day metadata filter and minimum similarity threshold (0.15) reduce retrieval noise but may exclude relevant older documents. The analysis will examine whether filtered-out documents would have contributed positively to generation quality by inspecting borderline cases.
+
+\textbf{Cost--performance balance across LLM backends.} Token usage and estimated cost per query will be reported across backends: HuggingFace and Ollama (Learner Lab), and Amazon Bedrock (Free Tier). Since the prompt template is identical across backends, any faithfulness differences can be attributed to model capability rather than retrieval quality.
+
+\textbf{Reranking weight sensitivity.} Grid search results across $\alpha \in \{0.4, 0.5, 0.6, 0.7\}$ will be presented as a precision--latency Pareto frontier to identify the optimal weight configuration.
+
+\textbf{Production suitability.} The analysis will assess whether all four evaluation targets (context precision $> 0.75$, high faithfulness, p95 latency $< 2$s, cost $<$ USD~15/month) are simultaneously achievable under both Learner Lab and Free Tier constraints.
+
+\section{Planned Result Visualizations}
+\label{sec:visualizations}
+
+This section presents the planned visualization formats for presenting evaluation results. Placeholder charts illustrate the structure; actual data will be populated upon completion of the full evaluation run (Phase~B).
+
+\subsection{Baseline vs.\ Hybrid Retrieval Comparison}
+
+Figure~\ref{fig:viz_comparison} will present a grouped bar chart comparing baseline and hybrid retrieval across four core evaluation metrics: context precision, faithfulness, citation grounding ratio, and normalized latency. This visualization provides the primary evidence for answering Research Question~2 (Section~\ref{sec:rq}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=0.92\textwidth,
+    height=6.5cm,
+    bar width=14pt,
+    ylabel={Score},
+    ylabel style={font=\small},
+    xlabel style={font=\small},
+    symbolic x coords={Context Precision, Faithfulness, Citation Grounding, Norm.\ Latency},
+    xtick=data,
+    xticklabel style={font=\scriptsize, rotate=15, anchor=east},
+    yticklabel style={font=\scriptsize},
+    ymin=0, ymax=1.05,
+    legend style={at={(0.5,1.05)}, anchor=south, legend columns=2, font=\small},
+    nodes near coords,
+    nodes near coords style={font=\tiny, color=black},
+    every node near coord/.append style={yshift=2pt},
+    grid=major,
+    grid style={gray!20},
+    area legend,
+]
+\addplot[fill=awsblue!60, draw=awsblue] coordinates {
+    (Context Precision, 0.00)
+    (Faithfulness, 0.00)
+    (Citation Grounding, 0.00)
+    (Norm.\ Latency, 0.00)
+};
+\addplot[fill=awsorange!60, draw=awsorange] coordinates {
+    (Context Precision, 0.00)
+    (Faithfulness, 0.00)
+    (Citation Grounding, 0.00)
+    (Norm.\ Latency, 0.00)
+};
+\legend{Baseline (Vector-Only), Hybrid (Implemented)}
+\end{axis}
+
+\node[font=\small\itshape, color=propgray, anchor=center] at (6.2, 2.5)
+  {Data pending --- Phase B evaluation};
+\end{tikzpicture}
+\caption{Planned comparison of baseline vs.\ hybrid retrieval across four evaluation dimensions. Bars represent mean scores across 25 evaluation queries. Latency is normalized to the 2-second target (value of 1.0 = target met). Actual values will be populated after evaluation execution.}
+\label{fig:viz_comparison}
+\end{figure}
+
+\subsection{Grid Search: Precision--Latency Pareto Frontier}
+
+Figure~\ref{fig:viz_pareto} will present the grid search results as a scatter plot with the reranking similarity weight ($\alpha$) on the x-axis, context precision on the left y-axis, and p95 latency on the right y-axis. The latency constraint ($\leq 2.0$s) is shown as a horizontal threshold line, enabling identification of the optimal weight configuration that maximizes precision without violating the latency bound.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=0.88\textwidth,
+    height=6.5cm,
+    xlabel={Similarity Weight ($\alpha$)},
+    ylabel={Mean Context Precision},
+    xlabel style={font=\small},
+    ylabel style={font=\small, color=awsblue},
+    xmin=0.35, xmax=0.75,
+    ymin=0.0, ymax=1.0,
+    xtick={0.4, 0.5, 0.6, 0.7},
+    xticklabel style={font=\scriptsize},
+    yticklabel style={font=\scriptsize, color=awsblue},
+    axis y line*=left,
+    grid=major,
+    grid style={gray!20},
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\small},
+]
+\addplot[color=awsblue, mark=square*, mark size=3pt, line width=1.2pt]
+    coordinates {(0.4, 0.0) (0.5, 0.0) (0.6, 0.0) (0.7, 0.0)};
+\addlegendentry{Context Precision}
+\end{axis}
+
+\begin{axis}[
+    width=0.88\textwidth,
+    height=6.5cm,
+    ylabel={p95 Latency (seconds)},
+    ylabel style={font=\small, color=awsorange},
+    xmin=0.35, xmax=0.75,
+    ymin=0.0, ymax=3.0,
+    xtick=\empty,
+    yticklabel style={font=\scriptsize, color=awsorange},
+    axis y line*=right,
+    axis x line=none,
+    legend style={at={(0.98,0.98)}, anchor=north east, font=\small},
+]
+\addplot[color=awsorange, mark=triangle*, mark size=3pt, line width=1.2pt, dashed]
+    coordinates {(0.4, 0.0) (0.5, 0.0) (0.6, 0.0) (0.7, 0.0)};
+\addlegendentry{p95 Latency}
+\draw[propred, thick, dashed] (axis cs:0.35, 2.0) -- (axis cs:0.75, 2.0)
+    node[pos=0.85, above, font=\scriptsize, color=propred] {Latency Target ($\leq 2.0$s)};
+\end{axis}
+
+\node[font=\small\itshape, color=propgray, anchor=center] at (6.0, 2.8)
+  {Data pending --- Phase B grid search};
+\end{tikzpicture}
+\caption{Planned grid search results: reranking similarity weight ($\alpha$) vs.\ mean context precision (left axis, solid) and p95 latency (right axis, dashed). The horizontal dashed line marks the 2-second latency constraint. The optimal $\alpha$ maximizes precision without exceeding the latency threshold. Constraint: $\beta = \gamma = (1-\alpha)/2$.}
+\label{fig:viz_pareto}
+\end{figure}
+
+\subsection{Per-Source Retrieval Distribution}
+
+Figure~\ref{fig:viz_sources} will present a stacked bar chart showing the distribution of retrieved documents by source across baseline and hybrid retrieval modes. This visualization reveals whether hybrid retrieval promotes greater source diversity---a key expected benefit of metadata-aware retrieval.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar stacked,
+    width=0.7\textwidth,
+    height=6.5cm,
+    bar width=30pt,
+    ylabel={Proportion of Retrieved Documents},
+    ylabel style={font=\small},
+    symbolic x coords={Baseline, Hybrid},
+    xtick=data,
+    xticklabel style={font=\small},
+    yticklabel style={font=\scriptsize},
+    ymin=0, ymax=1.05,
+    legend style={at={(1.02,0.5)}, anchor=west, font=\scriptsize, legend columns=1},
+    grid=major,
+    grid style={gray!20},
+    area legend,
+]
+\addplot[fill=awsblue!70, draw=awsblue] coordinates {(Baseline, 0.20) (Hybrid, 0.20)};
+\addplot[fill=awsgreen!60, draw=awsgreen] coordinates {(Baseline, 0.20) (Hybrid, 0.20)};
+\addplot[fill=awsorange!60, draw=awsorange] coordinates {(Baseline, 0.20) (Hybrid, 0.20)};
+\addplot[fill=awspurple!60, draw=awspurple] coordinates {(Baseline, 0.20) (Hybrid, 0.20)};
+\addplot[fill=propgray!50, draw=propgray] coordinates {(Baseline, 0.20) (Hybrid, 0.20)};
+\legend{ArXiv, Hacker News, DEV.to, GitHub, RSS}
+\end{axis}
+
+\node[font=\small\itshape, color=propgray, anchor=center] at (4.0, 2.8)
+  {Uniform placeholder --- actual distribution pending};
+\end{tikzpicture}
+\caption{Planned per-source retrieval distribution for baseline vs.\ hybrid modes. Stacked bars show the proportion of top-$k$ retrieved documents originating from each of the five data sources, averaged across 25 evaluation queries. Greater diversity in the hybrid configuration would support the retrieval hypothesis.}
+\label{fig:viz_sources}
+\end{figure}
+
+\subsection{Latency Breakdown by Pipeline Stage}
+
+Figure~\ref{fig:viz_latency} will present a horizontal stacked bar chart decomposing end-to-end latency into four pipeline stages: metadata filtering, vector search, reranking, and LLM generation. This enables identification of the primary latency bottleneck and validates the ``lightweight'' characterization of the reranking stage.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    xbar stacked,
+    width=0.85\textwidth,
+    height=5.0cm,
+    bar width=22pt,
+    xlabel={Mean Latency (seconds)},
+    xlabel style={font=\small},
+    ytick={0,1},
+    yticklabels={Baseline,Hybrid},
+    yticklabel style={font=\small},
+    xticklabel style={font=\scriptsize},
+    xmin=0, xmax=3.0,
+    ymin=-0.6, ymax=1.6,
+    legend style={at={(0.5,-0.3)}, anchor=north, legend columns=4, font=\scriptsize},
+    grid=major,
+    grid style={gray!20},
+    area legend,
+]
+\addplot[fill=propblue!50, draw=propblue] coordinates {(0.0,0) (0.0,1)};
+\addplot[fill=awsblue!50, draw=awsblue] coordinates {(0.0,0) (0.0,1)};
+\addplot[fill=awspurple!50, draw=awspurple] coordinates {(0.0,0) (0.0,1)};
+\addplot[fill=awsorange!50, draw=awsorange] coordinates {(0.0,0) (0.0,1)};
+\legend{Metadata Filter, Vector Search, Reranking, LLM Generation}
+
+\draw[propred, thick, dashed] (axis cs:2.0,-0.6) -- (axis cs:2.0,1.6)
+    node[pos=0.85, right, font=\scriptsize, color=propred, xshift=2pt] {p95 Target};
+\end{axis}
+
+\node[font=\small\itshape, color=propgray, anchor=center] at (5.5, 2.0)
+  {Data pending --- Phase B profiling};
+\end{tikzpicture}
+\caption{Planned latency decomposition by pipeline stage for baseline and hybrid retrieval. The baseline omits metadata filtering and reranking stages. The vertical dashed line marks the 2-second p95 latency target. Actual values will be populated from per-query timing measurements.}
+\label{fig:viz_latency}
+\end{figure}
+
+\subsection{Evaluation Summary Dashboard}
+
+Table~\ref{tab:viz_dashboard} will serve as the primary summary dashboard, consolidating all evaluation metrics into a single comparison table with target thresholds and pass/fail status indicators.
+
+\begin{table}[H]
+\caption{Planned Evaluation Summary Dashboard: Baseline vs.\ Hybrid with Target Thresholds.}
+\label{tab:viz_dashboard}
+\centering
+\begin{tabular}{p{3.5cm}p{2.0cm}p{2.0cm}p{2.0cm}p{2.5cm}}
+\toprule
+\textbf{Metric} & \textbf{Target} & \textbf{Baseline} & \textbf{Hybrid} & \textbf{Status} \\
+\midrule
+Context Precision & $> 0.75$ & --- & --- & \textit{pending (Phase B)} \\
+Faithfulness (RAGAS) & $\geq 0.80$ & --- & --- & \textit{pending (Phase B)} \\
+Citation Grounding Ratio & $> 0.80$ & --- & --- & \textit{pending (Phase B)} \\
+p95 Latency (retrieval) & $< 2.0$s & --- & --- & \textit{pending (Phase B)} \\
+Mean Latency (retrieval) & --- & --- & --- & \textit{pending (Phase B)} \\
+Cost / Month & $<$ USD 15 & --- & --- & \textit{pending (Phase B)} \\
+Optimal $\alpha$ & --- & N/A & --- & \textit{pending (Phase B)} \\
+Source Diversity (entropy) & --- & --- & --- & \textit{pending (Phase B)} \\
+Wilcoxon $p$-value & $< 0.05$ & N/A & --- & \textit{pending (Phase B)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\medskip
+\noindent\textbf{Chapter Summary.} This chapter defined the evaluation framework used to test the formal hypotheses from Chapter~3. Four dimensions (context precision, faithfulness, latency, cost) are measured using a paired 25-query experimental design, with statistical significance assessed via the Wilcoxon signed-rank test. All quantitative targets are now explicitly defined: context precision~$>$~0.75, faithfulness and citation grounding~$\geq$~0.80, retrieval-stage p95 latency~$<$~2.0~s, and monthly cost~$<$~USD~15 at 1,500 queries/month. The evaluation framework is fully implemented; results will be populated during Phase~B. Chapter~6 documents the current implementation status and engineering decisions made during development.

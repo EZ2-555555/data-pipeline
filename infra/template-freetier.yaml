@@ -1,0 +1,531 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  TechPulse — SAM template for AWS Free Tier (personal account).
+  Adapted from Learner Lab template: creates its own IAM roles,
+  uses db.t3.micro (Free Tier eligible), default VPC,
+  no Bedrock/Budgets/NAT/VPC-endpoints.
+
+# ---------------------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------------------
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+  DBMasterUsername:
+    Type: String
+    Default: postgres
+    NoEcho: true
+
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+
+  OllamaModel:
+    Type: String
+    Default: llama3.2:3b
+
+  OllamaBaseUrl:
+    Type: String
+    Default: ""
+    Description: >
+      Base URL of your Ollama server, e.g. http://1.2.3.4:11434
+      Required when LLMBackend=ollama. Leave empty for huggingface backend.
+
+  LLMBackend:
+    Type: String
+    Default: huggingface
+    AllowedValues: [ollama, huggingface]
+    Description: >
+      Bedrock is NOT available on the Free Tier without explicit enablement.
+      Use 'huggingface' (HF Inference API) or 'ollama' (self-hosted).
+
+  HFApiToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      HuggingFace Inference API token (starts with hf_...).
+      Get it from https://huggingface.co/settings/tokens
+      Required when LLMBackend=huggingface.
+
+  HFModelId:
+    Type: String
+    Default: mistralai/Mistral-7B-Instruct-v0.2
+    Description: >
+      HuggingFace model ID to use for generation.
+      Default is Mistral-7B-Instruct which works on the free HF Inference API tier.
+
+  AlertEmail:
+    Type: String
+    Default: ""
+
+  DBAllowedCidrIp:
+    Type: String
+    Default: "0.0.0.0/0"
+    AllowedPattern: "^(\\d{1,3}\\.){3}\\d{1,3}/\\d{1,2}$"
+    ConstraintDescription: Must be a valid CIDR, e.g. 203.150.1.2/32
+    Description: >
+      CIDR allowed to connect to RDS on port 5432.
+      Set to your IP/32 (e.g. 203.150.1.2/32) to restrict access.
+      Find your IP at https://checkip.amazonaws.com
+
+  # Default VPC subnets — Free Tier accounts come with a default VPC
+  DefaultSubnetA:
+    Type: AWS::EC2::Subnet::Id
+    Description: First default VPC subnet (pick any public subnet)
+
+  DefaultSubnetB:
+    Type: AWS::EC2::Subnet::Id
+    Description: Second default VPC subnet (different AZ from DefaultSubnetA)
+
+  DefaultVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Default VPC ID from your AWS account
+
+# ---------------------------------------------------------------------------
+# Globals
+# ---------------------------------------------------------------------------
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 120
+    MemorySize: 512
+    Architectures: [x86_64]
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        DB_HOST: !GetAtt PostgresDB.Endpoint.Address
+        DB_PORT: !GetAtt PostgresDB.Endpoint.Port
+        DB_NAME: techpulse
+        DB_USER: !Ref DBMasterUsername
+        DB_PASSWORD: !Ref DBMasterPassword
+        S3_BUCKET_NAME: !Ref DataBucket
+        LLM_BACKEND: !Ref LLMBackend
+        OLLAMA_BASE_URL: !Ref OllamaBaseUrl
+        OLLAMA_MODEL: !Ref OllamaModel
+        HF_API_TOKEN: !Ref HFApiToken
+        HF_MODEL_ID: !Ref HFModelId
+        TOP_K: "5"
+        RERANK_ALPHA: "0.6"
+        RERANK_BETA: "0.2"
+        RERANK_GAMMA: "0.2"
+        RECENCY_LAMBDA: "0.01"
+        S3_ENABLED: "true"
+        SQS_ENABLED: "true"
+        SQS_QUEUE_URL: !Ref IngestionQueue
+        CLOUDWATCH_ENABLED: "true"
+        CITATION_GROUNDING_THRESHOLD: "0.5"
+        BUDGET_HALT_ENABLED: "false"
+        ALLOWED_ORIGINS: "*"
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # ============================
+  # IAM Role for Lambda functions
+  # (Free Tier accounts can create IAM roles — unlike Learner Lab)
+  # ============================
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub techpulse-${Stage}-lambda-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: TechPulseLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # S3 — data bucket read/write
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub "${DataBucket.Arn}/*"
+              # SQS — ingestion queue + DLQ
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
+                Resource:
+                  - !GetAtt IngestionQueue.Arn
+                  - !GetAtt IngestionDLQ.Arn
+              # CloudWatch — custom metrics
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              # CloudWatch Logs — Lambda logging
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+
+  # ============================
+  # Security Group for RDS
+  # ============================
+  DBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL access from Lambda and local dev
+      VpcId: !Ref DefaultVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref DBAllowedCidrIp
+          Description: PostgreSQL access — set DBAllowedCidrIp to your IP/32
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-db-sg
+
+  # ============================
+  # RDS PostgreSQL — db.t3.micro (AWS Free Tier: 750 hrs/month for 12 months)
+  # ============================
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Default VPC subnets for RDS
+      SubnetIds:
+        - !Ref DefaultSubnetA
+        - !Ref DefaultSubnetB
+
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub techpulse-${Stage}-db
+      Engine: postgres
+      EngineVersion: "16.6"
+      DBInstanceClass: db.t3.micro   # Free Tier eligible (750 hrs/month for 12 months)
+      AllocatedStorage: 20           # Free Tier: up to 20 GB gp2 storage
+      StorageType: gp2
+      DBName: techpulse
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt DBSG.GroupId
+      PubliclyAccessible: true
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-postgres
+
+  # ============================
+  # S3 — Medallion layout
+  # ============================
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub techpulse-${Stage}-data-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Purpose
+          Value: "Medallion data lake (raw/<source>/, processed/, embeddings/)"
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub techpulse-${Stage}-frontend-${AWS::AccountId}
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+
+  # ============================
+  # SQS — Ingestion queue + DLQ
+  # ============================
+  IngestionDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub techpulse-${Stage}-ingestion-dlq
+      MessageRetentionPeriod: 1209600
+
+  IngestionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub techpulse-${Stage}-ingestion
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IngestionDLQ.Arn
+        maxReceiveCount: 3
+
+  # ============================
+  # Lambda — Ingestion
+  # ============================
+  IngestionFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-ingestion
+      Handler: src.pipeline.run_pipeline.lambda_handler
+      CodeUri: ../
+      Description: Fetches data from ArXiv, HN, DEV.to, GitHub, RSS
+      MemorySize: 512
+      Timeout: 300
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ScheduledIngestion:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(6 hours)
+            Description: Trigger ingestion pipeline every 6 hours
+
+  # ============================
+  # Lambda — Preprocessor + Embedder (SQS-triggered)
+  # ============================
+  PreprocessFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-preprocess
+      Handler: src.pipeline.run_pipeline.preprocess_handler
+      CodeUri: ../
+      Description: Chunks, embeds, and indexes documents from SQS
+      MemorySize: 1024
+      Timeout: 300
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt IngestionQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  # ============================
+  # Lambda — RAG API
+  # ============================
+  RagApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-rag-api
+      Handler: src.api.main.handler
+      CodeUri: ../
+      Description: FastAPI RAG endpoint served via Mangum
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: ANY
+
+  # ============================
+  # Lambda — Health Check
+  # ============================
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-healthcheck
+      Handler: src.api.main.health_handler
+      CodeUri: ../
+      Description: Periodic health check
+      MemorySize: 256
+      Timeout: 30
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        HealthSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            Description: Periodic health check
+
+  # ============================
+  # API Gateway (HTTP API)
+  # ============================
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+      Description: TechPulse HTTP API
+
+  # ============================
+  # SNS — Alert topic
+  # ============================
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub techpulse-${Stage}-alerts
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # ============================
+  # CloudWatch — Alarms
+  # ============================
+  RagApiErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub techpulse-${Stage}-rag-api-errors
+      AlarmDescription: Fires when RAG API Lambda error rate exceeds threshold
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref RagApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  IngestionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub techpulse-${Stage}-ingestion-errors
+      AlarmDescription: Fires when ingestion Lambda errors exceed threshold
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref IngestionFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  DLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub techpulse-${Stage}-dlq-depth
+      AlarmDescription: Fires when DLQ has unprocessed messages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt IngestionDLQ.QueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+# ---------------------------------------------------------------------------
+# Conditions
+# ---------------------------------------------------------------------------
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  ApiUrl:
+    Description: HTTP API endpoint URL
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  PostgresEndpoint:
+    Description: RDS PostgreSQL endpoint
+    Value: !GetAtt PostgresDB.Endpoint.Address
+
+  DataBucketName:
+    Description: S3 data bucket (medallion layout)
+    Value: !Ref DataBucket
+
+  FrontendBucketName:
+    Description: S3 frontend hosting bucket
+    Value: !Ref FrontendBucket
+
+  FrontendUrl:
+    Description: S3 static website URL for the frontend
+    Value: !GetAtt FrontendBucket.WebsiteURL
+
+  IngestionQueueUrl:
+    Description: SQS ingestion queue URL
+    Value: !Ref IngestionQueue
+
+  DLQUrl:
+    Description: Dead letter queue URL
+    Value: !Ref IngestionDLQ
+
+  AlertTopicArn:
+    Description: SNS alert topic ARN
+    Value: !Ref AlertTopic
+
+  LambdaRoleArn:
+    Description: IAM role used by all Lambda functions
+    Value: !GetAtt LambdaExecutionRole.Arn

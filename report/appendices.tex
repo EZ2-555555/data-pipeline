@@ -1,0 +1,136 @@
+\appendix
+
+\chapter{Source Code Availability}
+
+The implementation of \textit{TechPulse: Hybrid Retrieval-Augmented Generation System for Emerging Technology Intelligence} has been developed using Python 3.11 and modern cloud-native technologies.
+
+To support reproducibility, transparency, and collaborative development, the project source code is maintained in a GitHub organization repository:
+
+\begin{center}
+\url{https://github.com/orgs/EZ2-555555/repositories}
+\end{center}
+
+The repository includes the following implemented components:
+
+\begin{itemize}
+
+\item Five data ingestion modules for collecting data from ArXiv API, Hacker News API, DEV.to API, GitHub Trending API, and curated RSS/Atom feeds
+
+\item A 17-step preprocessing pipeline for comprehensive text normalization and token-based chunking using tiktoken (\texttt{cl100k\_base})
+
+\item Semantic embedding pipeline using the \texttt{all-MiniLM-L6-v2} sentence-transformer model (384-dimensional embeddings)
+
+\item Hybrid retrieval implementation including metadata filtering, cosine similarity search via pgvector, and reranking-lite scoring with configurable weights
+
+\item RAG orchestration with three-layer hallucination verification (prompt grounding, RAGAS faithfulness, citation traceability)
+
+\item Automatic LLM backend fallback chain supporting Bedrock, Ollama, and HuggingFace Inference API
+
+\item Dual-criteria drift detection combining Shewhart $3\sigma$ control charts with relative-drop thresholds
+
+\item Infrastructure-as-Code definitions using AWS SAM for both Learner Lab and Free Tier deployment (15+ AWS resources per environment)
+
+\item React-based frontend interface for query submission and citation-grounded response display
+
+\item Evaluation framework with 25 curated queries, RAGAS metrics, and grid search optimization
+
+\item Four-stage CI/CD pipeline using GitHub Actions (lint, test, build, deploy)
+
+\item 49 unit tests across 5 test modules with full pass status
+
+\item Docker Compose configuration for local development with 6 services
+
+\end{itemize}
+
+\chapter{Repository Structure}
+
+The project repository is organized as follows:
+
+\begin{lstlisting}
+data-pipeline/
+  src/
+    config.py              # Centralized configuration (30+ settings)
+    scheduler.py           # EventBridge schedule definitions
+    api/main.py            # FastAPI + Mangum (/health, /ask, /drift)
+    db/
+      connection.py        # PostgreSQL connection pool
+      init_schema.py       # Schema + pgvector + HNSW index
+    embedding/embedder.py  # MiniLM singleton embedder
+    ingestion/
+      arxiv_ingester.py    # ArXiv API (cs.AI, cs.LG, cs.CL, cs.IR, cs.SE)
+      hn_ingester.py       # Hacker News Firebase API
+      devto_ingester.py    # DEV.to REST API (21 tags)
+      github_ingester.py   # GitHub Search API (10 topics)
+      rss_ingester.py      # 10 curated RSS/Atom feeds
+    observability/
+      __init__.py          # Deep health check (4 probes)
+      drift.py             # Dual-criteria drift detection
+    orchestrator/
+      llm_backends.py      # 3-backend auto-fallback chain
+      rag.py               # RAG pipeline + hallucination verification
+    pipeline/run_pipeline.py  # End-to-end pipeline orchestrator
+    preprocessing/chunker.py  # 17-step normalize + token chunking
+    retrieval/retriever.py    # Baseline + hybrid 3-stage retrieval
+    queue/                    # SQS producer/consumer
+    storage/                  # S3 medallion operations
+  tests/                # 49 unit tests (5 modules)
+  evaluation/           # RAGAS evaluation + grid search
+  infra/
+    template-learnerlab.yaml  # SAM template (Learner Lab)
+    samconfig-learnerlab.toml # SAM deployment config (Learner Lab)
+    template.yaml             # SAM template (Free Tier)
+    samconfig.toml            # SAM deployment config (Free Tier)
+  frontend/             # React SPA
+  docker-compose.yml    # 6 local services
+  .github/workflows/ci.yml   # 4-stage CI/CD
+\end{lstlisting}
+
+\chapter{System Demonstration Screenshots}
+\label{app:screenshots}
+
+This appendix provides supplementary screenshots demonstrating additional system functionality.
+
+\section*{Health Check Endpoint}
+
+Figure~\ref{fig:demo_health} shows the \texttt{/health} API endpoint response, confirming connectivity to all four service dependencies (PostgreSQL, S3, SQS, and LLM backend).
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{2.5cm}
+\textit{Screenshot: Browser or curl output of \texttt{GET /health} showing DB, S3, SQS, and LLM status.}
+\\[4pt]
+\textbf{File to place:} \texttt{figures/demo\_health.png}
+\vspace{2.5cm}}}
+\caption{Health check endpoint (\texttt{/health}): JSON response confirming database connectivity, document/chunk counts, S3 reachability, SQS reachability, and LLM backend status.}
+\label{fig:demo_health}
+\end{figure}
+
+\section*{Drift Detection Endpoint}
+
+Figure~\ref{fig:demo_drift} shows the \texttt{/drift} API endpoint returning a drift detection report, demonstrating the dual-criteria Shewhart $3\sigma$ monitoring mechanism.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{2.5cm}
+\textit{Screenshot: Browser or curl output of \texttt{GET /drift} showing mean similarity, alert status, and probe results.}
+\\[4pt]
+\textbf{File to place:} \texttt{figures/demo\_drift.png}
+\vspace{2.5cm}}}
+\caption{Drift detection endpoint (\texttt{/drift}): JSON response showing probe query mean similarity, standard deviation, alert status, and Shewhart $3\sigma$ control analysis.}
+\label{fig:demo_drift}
+\end{figure}
+
+\section*{API: RAG Query Response}
+
+Figure~\ref{fig:demo_api} shows the raw JSON response from the \texttt{/ask} endpoint, displaying the structured output including the generated answer, source metadata, similarity scores, and retrieval mode.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{2.5cm}
+\textit{Screenshot: Browser or curl output of \texttt{POST /ask} showing full JSON response with answer, sources, and scores.}
+\\[4pt]
+\textbf{File to place:} \texttt{figures/demo\_api.png}
+\vspace{2.5cm}}}
+\caption{RAG query endpoint (\texttt{POST /ask}): full JSON response showing the generated answer, retrieved source documents with titles, URLs, similarity scores, and retrieval mode metadata.}
+\label{fig:demo_api}
+\end{figure}

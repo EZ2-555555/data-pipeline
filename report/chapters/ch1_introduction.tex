@@ -1,0 +1,80 @@
+\chapter{Introduction}
+
+\section{Problem Description and Motivation}
+\label{sec:problem}
+
+\textbf{Motivating scenario.} A machine learning engineer at a technology company needs to stay current with advances in transformer efficiency. She must manually monitor ArXiv preprints, scan Hacker News threads, and cross-reference multiple sources---a process that is time-consuming, fragmented, and prone to missing recent developments. An intelligent assistant capable of synthesizing both scholarly and community-sourced knowledge into a single, citation-grounded response would significantly accelerate her workflow. TechPulse is designed precisely for this use case.
+
+The exponential growth of emerging technologies---including artificial intelligence, machine learning, distributed systems, and advanced computing---has produced an unprecedented volume of technical knowledge distributed across heterogeneous platforms. Scholarly repositories such as ArXiv provide structured, peer-reviewed or preprint research outputs contributing to theoretical and methodological advancement. Community-driven platforms and industry discussion forums such as Hacker News reflect near-real-time practitioner experiences and emerging tool ecosystems. However, the fragmentation of these knowledge regimes creates an information landscape that is increasingly difficult for technology professionals to synthesize effectively and in a timely manner.
+
+Purely generative large language model (LLM) assistants are insufficient for emerging technology intelligence tasks due to their static knowledge cutoff, susceptibility to hallucinated responses, lack of verifiable evidence grounding, and inability to integrate with continuously updating data streams (Ji et al., 2023). Although Retrieval-Augmented Generation (RAG) architectures partially address these limitations by incorporating external context, baseline vector-only retrieval approaches may still retrieve semantically adjacent but contextually irrelevant documents. Such systems often fail to incorporate temporal relevance signals, structured metadata constraints, or recency-aware ranking mechanisms, which are essential for accurately capturing rapidly evolving technology trends.
+
+Moreover, many existing RAG research prototypes focus primarily on retrieval accuracy without addressing production-readiness: deterministic pipeline design, idempotent ingestion, monitoring and observability, deployment automation, and cloud cost governance are frequently neglected. This limits their applicability in real-world operational environments.
+
+The central engineering and research challenge addressed in this project is therefore:
+
+\begin{quote}
+\textbf{\textit{How can a scalable, continuously updating hybrid retrieval system be designed and deployed to synthesize emerging technology trends from heterogeneous scholarly and industry sources while satisfying latency and cost constraints?}}
+\end{quote}
+
+This project is motivated by three converging factors. First, technology professionals increasingly require timely and citation-grounded intelligence that synthesizes insights from both scholarly research and rapidly evolving industry discussions. Second, mature serverless cloud infrastructures now enable cost-effective deployment of production-grade data and machine learning pipelines. Third, a gap remains in the Retrieval-Augmented Generation (RAG) literature between retrieval-focused research prototypes and operationally robust systems capable of continuous ingestion, evaluation, and deployment in real-world environments.
+
+\section{Research Questions}
+\label{sec:rq}
+
+To address the central problem, this study investigates the following research questions:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item \textbf{Data Engineering.} How can a cloud-native pipeline be designed to reliably ingest and preprocess heterogeneous scholarly and near-real-time industry data in a deterministic and idempotent manner?
+
+  \item \textbf{Retrieval Optimization.} Does hybrid retrieval---combining metadata filtering, vector similarity search, and lightweight reranking---improve retrieval precision and grounding faithfulness compared with baseline vector-only retrieval?
+
+  \item \textbf{Operational Trade-offs.} What trade-offs arise between retrieval precision, p95 latency, and cost per query under realistic workload conditions?
+
+  \item \textbf{MLOps Integration.} How can deployment, monitoring, version control, and cost governance be integrated to ensure the reliability and maintainability of a production-grade RAG system?
+\end{enumerate}
+
+\section{Objectives of the Study}
+\label{sec:objectives}
+
+The primary objective is to design, implement, and evaluate a hybrid Retrieval-Augmented Generation system capable of synthesizing real-time emerging technology intelligence within a scalable, cost-aware cloud-native architecture. The specific objectives are:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item To construct a cloud-native data engineering pipeline for batch and near-real-time ingestion from five heterogeneous data sources.
+  \item To implement and compare baseline vector-only retrieval against hybrid retrieval with metadata filtering and reranking-lite optimization.
+  \item To evaluate system performance across context precision, faithfulness, p95 latency, and cost per query.
+  \item To deploy and monitor the system using serverless AWS infrastructure consistent with MLOps best practices (Sculley et al., 2015; Breck et al., 2017).
+\end{enumerate}
+
+\section{Significance of the Study}
+\label{sec:significance}
+
+This project contributes at the intersection of data engineering, natural language processing, and MLOps. From a technical perspective, it demonstrates how retrieval optimization can be integrated within a production-grade cloud architecture without relying on computationally expensive cross-encoder rerankers or specialized vector database infrastructure. The system provides a practical framework for grounded intelligence synthesis across academic and industry domains while maintaining architectural simplicity suitable for scalable deployment. From a practical perspective, the resulting system offers a blueprint for citation-supported technology intelligence synthesis that is operationally maintainable, cost-governed, and deployable within resource-constrained environments such as the AWS Academy Learner Lab and the AWS Free Tier.
+
+\section{Alignment Between Research Questions and Evaluation}
+\label{sec:rq_eval_map}
+
+Table~\ref{tab:rq_map} provides an explicit mapping from each research question to the corresponding evaluation metric and experimental configuration used to answer it.
+
+\begin{table}[H]
+\caption{Mapping of Research Questions to Evaluation Metrics and Methodology.}
+\label{tab:rq_map}
+\centering
+\begin{tabular}{p{0.5cm}p{4.0cm}p{3.5cm}p{4.0cm}}
+\toprule
+\textbf{RQ} & \textbf{Question (abbreviated)} & \textbf{Primary Metric} & \textbf{Evaluation Approach} \\
+\midrule
+1 & Cloud-native deterministic ingestion & Pipeline idempotency; SHA-256 deduplication pass rate & Unit tests (18 ingestion tests); repeated pipeline runs \\[4pt]
+2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness $\geq 0.80$; citation grounding $> 0.80$ & Paired comparison over 25 queries; Wilcoxon signed-rank test \\[4pt]
+3 & Latency and cost trade-offs & p95 latency $< 2$s; cost $<$ USD~15/month & Per-query timing; token usage profiling; grid search Pareto frontier \\[4pt]
+4 & MLOps integration & Drift detection coverage; CI/CD pass rate; health-check uptime & Drift simulation runs; CloudWatch alarm verification \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Report Structure}
+
+Chapter~1 introduces the problem, research questions, objectives, and their mapping to evaluation metrics. Chapter~2 reviews relevant literature on Retrieval-Augmented Generation, hybrid retrieval, vector databases, and MLOps. Chapter~3 presents the methodology, hypotheses, and technical approach. Chapter~4 describes the implemented system architecture. Chapter~5 presents the evaluation framework and planned analyses. Chapter~6 documents implementation status, deviations, and engineering observations. Chapter~7 summarizes remaining work, known limitations, and the completion timeline.
+
+\medskip
+\noindent\textbf{Chapter Summary.} This chapter established the problem context, four research questions, and the core motivation for a hybrid RAG system targeting real-time technology intelligence synthesis. The following chapter reviews the technical and scientific foundations underpinning the design decisions made in this project.

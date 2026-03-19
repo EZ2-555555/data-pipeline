@@ -1,0 +1,106 @@
+services:
+  # PostgreSQL + pgvector (the database)
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: techpulse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: techpulse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # pgAdmin (database GUI)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: techpulse-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@techpulse.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  # LocalStack (local S3 + SQS for development)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: techpulse-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: s3,sqs
+      DEFAULT_REGION: ap-southeast-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+
+  # FastAPI backend
+  api:
+    build: .
+    container_name: techpulse-api
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: techpulse
+      DB_USER: postgres
+      DB_PASSWORD: dev
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2:3b
+      ALLOWED_ORIGINS: "http://localhost:3000"
+      TOP_K: "5"
+      S3_ENABLED: "false"
+      SQS_ENABLED: "false"
+      CLOUDWATCH_ENABLED: "false"
+      BUDGET_HALT_ENABLED: "false"
+      S3_ENDPOINT_URL: http://localstack:4566
+      SQS_ENDPOINT_URL: http://localstack:4566
+      AWS_REGION: ap-southeast-1
+      S3_BUCKET_NAME: techpulse-data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  # React frontend (nginx)
+  frontend:
+    build: ./frontend
+    container_name: techpulse-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+  # Scheduler: auto-fetches HN (30min) + ArXiv (12h) + chunks/embeds
+  scheduler:
+    build: .
+    container_name: techpulse-scheduler
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: techpulse
+      DB_USER: postgres
+      DB_PASSWORD: dev
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2:3b
+      S3_ENABLED: "false"
+      SQS_ENABLED: "false"
+      CLOUDWATCH_ENABLED: "false"
+      S3_ENDPOINT_URL: http://localstack:4566
+      SQS_ENDPOINT_URL: http://localstack:4566
+      AWS_REGION: ap-southeast-1
+      S3_BUCKET_NAME: techpulse-data
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
+  localstack_data:

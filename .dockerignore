@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+.git
+.github
+.env
+*.egg-info
+evaluation
+tests
+frontend
+infra
+*.tex
+*.md

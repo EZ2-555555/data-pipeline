@@ -1,0 +1,150 @@
+% ============================================================
+% PACKAGES
+% ============================================================
+\usepackage[a4paper, top=1in, bottom=1in, left=1.5in, right=1in]{geometry}
+\usepackage{setspace}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage[hidelinks,hypertexnames=false]{hyperref}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{ragged2e}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit,
+                backgrounds, calc, decorations.pathreplacing, shadows,
+                shapes.multipart, matrix}
+
+% ============================================================
+% COLOUR PALETTE (AWS-inspired for architecture diagrams)
+% ============================================================
+\definecolor{awsorange}{RGB}{255,153,0}
+\definecolor{awsblue}{RGB}{35,103,178}
+\definecolor{awsgreen}{RGB}{59,153,75}
+\definecolor{awspurple}{RGB}{142,68,173}
+\definecolor{awsgray}{RGB}{100,100,100}
+\definecolor{awslightblue}{RGB}{213,232,255}
+\definecolor{awslightgreen}{RGB}{213,245,218}
+\definecolor{awslightorange}{RGB}{255,235,200}
+\definecolor{awslightpurple}{RGB}{235,218,245}
+\definecolor{sectionbg}{RGB}{245,245,245}
+\definecolor{propblue}{RGB}{41,128,185}
+\definecolor{propgreen}{RGB}{39,174,96}
+\definecolor{propred}{RGB}{192,57,43}
+\definecolor{propgray}{RGB}{149,165,166}
+
+% ============================================================
+% AIT FORMATTING
+% ============================================================
+\onehalfspacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+
+% ---- Page headers via fancyhdr ----
+\setlength{\headheight}{14.5pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\thepage}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[C]{\small\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+\titleformat{\chapter}[display]
+  {\normalfont\fontsize{14}{16}\bfseries\centering}
+  {\MakeUppercase{\chaptertitlename}\ \thechapter}{0pt}{\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+
+\titleformat{name=\chapter,numberless}[block]
+  {\normalfont\fontsize{14}{16}\bfseries\centering}
+  {}{0pt}{\MakeUppercase}
+\titlespacing*{name=\chapter,numberless}{0pt}{0pt}{20pt}
+
+\titleformat{\section}
+  {\normalfont\fontsize{12}{14}\bfseries}{\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+
+\titleformat{\subsection}
+  {\normalfont\fontsize{12}{14}\bfseries}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{4pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\fontsize{12}{14}\bfseries}{\thesubsubsection}{1em}{}
+\titlespacing*{\subsubsection}{0pt}{10pt}{4pt}
+
+\renewcommand{\cfttoctitlefont}{\normalfont\fontsize{14}{16}\bfseries}
+\renewcommand{\contentsname}{CONTENTS}
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+\renewcommand{\listtablename}{LIST OF TABLES}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{14pt}
+\renewcommand{\cftchapfont}{\bfseries}
+\renewcommand{\cftchappagefont}{\bfseries}
+\setlength{\cftbeforechapskip}{4pt}
+
+\captionsetup[table]{position=above, labelsep=period,
+  justification=raggedright, singlelinecheck=false, font=normalsize}
+\captionsetup[figure]{position=below, labelsep=period,
+  justification=justified, font=normalsize, singlelinecheck=false}
+
+% Prevent overfull hbox in general text
+\sloppy
+
+\lstset{
+  basicstyle=\ttfamily\small, breaklines=true, frame=single,
+  backgroundcolor=\color{gray!8},
+  xleftmargin=10pt, xrightmargin=10pt, aboveskip=8pt, belowskip=8pt
+}
+
+\graphicspath{{figures/}}
+
+% ============================================================
+% TIKZ STYLES
+% ============================================================
+\tikzset{
+  % Pipeline boxes
+  pbox/.style={rectangle, rounded corners=4pt, draw=#1!70, fill=#1!12,
+               text centered, font=\small\bfseries, minimum height=0.65cm,
+               minimum width=2.4cm, text width=2.2cm, drop shadow},
+  % Arrow
+  parrow/.style={-{Stealth[length=6pt]}, thick, color=awsgray},
+  % Layer label
+  layerlabel/.style={font=\footnotesize\bfseries, color=#1},
+  % Component node
+  compnode/.style={rectangle, rounded corners=3pt, draw=#1, fill=white,
+                   font=\scriptsize, minimum height=0.55cm,
+                   minimum width=1.8cm, text width=1.7cm, align=center},
+  % Dashed bounding box
+  boundbox/.style={rectangle, rounded corners=6pt, draw=#1!60, fill=#1!5,
+                   dashed, thick},
+  % Decision diamond
+  decision/.style={diamond, draw=awsblue!70, fill=awslightblue,
+                   font=\scriptsize, aspect=2.2, text centered,
+                   minimum height=0.7cm, minimum width=2.0cm},
+  % Evaluation row
+  evalbox/.style={rectangle, rounded corners=3pt, draw=#1!70, fill=#1!10,
+                  font=\small, minimum height=0.6cm, text width=3.5cm,
+                  align=center},
+}

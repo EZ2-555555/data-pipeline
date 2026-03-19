@@ -1,0 +1,72 @@
+\chapter{Background and Related Work}
+
+\section{Retrieval-Augmented Generation}
+\label{sec:lit_rag}
+
+Retrieval-Augmented Generation (RAG) was introduced by Lewis et al. (2020) as a framework for augmenting sequence-to-sequence generation with a dense retrieval component, enabling the model to access external documents at inference time. This approach significantly improves performance on knowledge-intensive tasks by conditioning generation on retrieved evidence rather than relying solely on parametric memory. Despite their scale, LLMs remain prone to hallucination when responding to domain-specific or time-sensitive queries (Ji et al., 2023), making retrieval-based augmentation a practically important technique.
+
+Recent surveys (Gao et al., 2023; Zhang et al., 2024) categorize RAG systems into four architectural types: (1) single-stage dense retrieval; (2) hybrid lexical--semantic retrieval; (3) multi-stage retrieval with reranking; and (4) iterative or self-reflective retrieval. While baseline dense retrieval improves factual grounding, empirical benchmarks such as BEIR (Thakur et al., 2021) demonstrate that semantic similarity alone is insufficient for high-precision retrieval in dynamic or heterogeneous corpora. Foundational retrieval-augmented systems such as Atlas (Izacard et al., 2022) and RETRO (Borgeaud et al., 2022) demonstrate retrieval augmentation at scale but require computationally intensive pretraining pipelines unsuited to cost-constrained production environments.
+
+\section{Embedding Models and Vector Search}
+\label{sec:lit_embed}
+
+Dense retrieval relies on embedding models that transform text into high-dimensional vector representations. Sentence-transformer architectures such as MiniLM (Wang et al., 2020) provide computationally efficient embeddings with favorable trade-offs between semantic expressiveness and inference latency. PostgreSQL with the pgvector extension enables cosine similarity search alongside SQL-based metadata filtering within a single relational storage layer, reducing architectural complexity compared to dedicated vector databases such as FAISS or Milvus. This integrated approach is increasingly favored for production RAG deployments (Gao et al., 2023).
+
+\section{Hybrid Retrieval and Reranking}
+\label{sec:lit_hybrid}
+
+Hybrid retrieval combines lexical matching (e.g., BM25 or keyword filtering) with semantic similarity search to improve retrieval precision. Thakur et al. (2021) demonstrate that hybrid approaches consistently outperform purely dense retrieval across heterogeneous benchmarks. Reranking further refines candidate relevance using additional contextual signals. Cross-encoder rerankers achieve high accuracy but incur substantial computational overhead (Nogueira \& Cho, 2019); lightweight multi-factor reranking---combining similarity score, recency weighting, and keyword overlap---offers comparable grounding improvements at lower latency (Gao et al., 2023). In dynamic knowledge domains, recency-aware retrieval is particularly important to avoid outdated context injection.
+
+\section{RAG Evaluation Methodologies}
+\label{sec:lit_eval}
+
+Evaluating RAG systems requires assessing both retrieval quality and generation faithfulness simultaneously. Es et al. (2023) introduced RAGAS, a reference-free evaluation framework that measures faithfulness, answer relevance, context precision, and context recall using automated LLM-based scoring, enabling scalable evaluation without large human annotation pools. Complementary work by Saad-Falcon et al. (2023) proposed ARES, which uses a small set of human-annotated examples to train lightweight judges capable of scoring RAG systems across multiple quality dimensions. These frameworks demonstrate that even compact evaluation sets---in the range of 20 to 50 annotated examples---can yield statistically meaningful comparisons between retrieval configurations when evaluation dimensions are clearly scoped and metrics are carefully defined (Es et al., 2023). This finding provides empirical support for the evaluation scale adopted in TechPulse.
+
+\section{Data and Concept Drift in Retrieval Systems}
+\label{sec:lit_drift}
+
+In dynamic knowledge domains, retrieval system performance can degrade over time due to data drift---a shift in the statistical properties of incoming documents relative to the indexed corpus---or concept drift, where the semantic meaning of user queries evolves independently of corpus updates (Gama et al., 2014). Lu et al. (2018) provide a comprehensive taxonomy of drift detection methods, categorizing approaches into statistical process control, windowed distribution comparison, and ensemble-based disagreement detection. In retrieval-augmented systems specifically, drift can manifest as declining context precision when newly ingested documents diverge from the embedding space learned during the original indexing phase. Addressing drift requires both monitoring mechanisms that can detect distributional shifts in retrieval scores over time, and remediation actions such as corpus re-indexing, embedding model refresh, or query routing adjustments (Bayram et al., 2022). TechPulse incorporates a dual-criteria embedding distribution monitoring strategy informed by these findings.
+
+\section{Hallucination Detection and Faithfulness Verification}
+\label{sec:lit_hallucination}
+
+Despite retrieval augmentation, generative models can still produce hallucinated content by inferring beyond the supplied context, over-generalizing retrieved passages, or introducing spurious cross-document associations (Ji et al., 2023). Manakul et al. (2023) proposed SelfCheckGPT, a consistency-based approach that detects hallucinations by sampling multiple outputs and measuring inter-sample consistency---a technique applicable without access to ground-truth references. Min et al. (2023) proposed FActScoring, which decomposes generated responses into atomic claims and individually verifies each claim against a reference corpus, offering fine-grained faithfulness assessment. At a system design level, Shi et al. (2023) demonstrate that irrelevant context injected alongside relevant passages can distract generative models and induce hallucinated responses even when correct information is present---motivating strict top-$k$ selection and high-precision retrieval as the primary anti-hallucination mechanism in TechPulse.
+
+\section{MLOps and Production Machine Learning Systems}
+\label{sec:lit_mlops}
+
+Sculley et al. (2015) identify hidden technical debt as a central challenge in ML systems, emphasizing monitoring, reproducibility, and lifecycle management. MLOps extends DevOps principles to ML workflows, incorporating continuous integration, deployment automation, model versioning, and observability (Breck et al., 2017). Cloud-native, serverless architectures enable scalable and maintainable deployment with cost governance (Zhang et al., 2020; AWS, 2023). While RAG research frequently focuses on retrieval effectiveness, production-readiness---including pipeline idempotency, schema versioning, and budget-aware inference---remains underexplored.
+
+\section{Research Gap}
+\label{sec:gap}
+
+The reviewed literature establishes six key insights: (1) RAG improves factual grounding but baseline dense retrieval may lack precision; (2) hybrid retrieval outperforms vector-only search in heterogeneous settings; (3) lightweight reranking can improve relevance without prohibitive overhead; (4) production ML systems require robust MLOps practices beyond model accuracy; (5) even compact evaluation sets of 20--50 annotated examples can yield statistically meaningful RAG comparisons when evaluation dimensions are clearly scoped; and (6) hallucination in RAG systems can persist despite retrieval augmentation, necessitating explicit faithfulness verification mechanisms.
+
+Critically, existing hybrid RAG systems either address a subset of these concerns or are evaluated in static, single-source corpora that do not reflect the temporal dynamics of multi-source technology intelligence. Atlas (Izacard et al., 2022) and RETRO (Borgeaud et al., 2022) operate at scale but require pretraining pipelines and do not address operational cost governance or retrieval-quality drift. Production systems such as Perplexity AI and Bing Copilot incorporate real-time retrieval but do not expose evaluation methodology or reranking designs. Academic RAG prototypes frequently omit monitoring, idempotent ingestion, and budget constraints that are essential for sustained deployment. No existing published system integrates all six dimensions---hybrid retrieval, lightweight reranking, real-time multi-source ingestion, cost governance, MLOps monitoring, and explicit hallucination verification---into a unified, student-deployable, cloud-native architecture targeting dynamic emerging technology intelligence. TechPulse addresses this combined gap.
+
+Table~\ref{tab:related_work} summarizes representative related work and positions TechPulse relative to prior systems.
+
+\begin{table}[H]
+\caption{Comparison of Related Work and Positioning of TechPulse.}
+\label{tab:related_work}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{2.8cm}p{1.8cm}p{1.3cm}p{1.6cm}p{1.6cm}p{1.3cm}p{1.5cm}p{1.8cm}}
+\toprule
+\textbf{System} & \textbf{Retrieval} & \textbf{Rerank} & \textbf{Real-Time} & \textbf{Cost Gov.} & \textbf{MLOps} & \textbf{Drift Det.} & \textbf{Halluc.\ Verif.} \\
+\midrule
+RAG (Lewis et al., 2020) & Dense & No & No & No & No & No & No \\
+Atlas (Izacard et al., 2022) & Dense & No & No & No & No & No & No \\
+RETRO (Borgeaud et al., 2022) & Dense & No & No & No & No & No & No \\
+Typical RAG Prototype & Dense & Optional & Rare & No & Minimal & Rare & Rare \\
+\textbf{TechPulse (ours)} & \textbf{Hybrid} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes} & \textbf{Full$^{\dagger}$} & \textbf{Dual} & \textbf{3-Layer} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\noindent\small{$^{\dagger}$Full MLOps is implemented and under cloud validation; evaluation results are pending Phase~B execution.}
+
+\section{Chapter Summary}
+
+This chapter reviewed the evolution of RAG architectures, embedding-based retrieval, hybrid retrieval optimization, MLOps principles, RAG evaluation methodologies, drift detection strategies, and hallucination verification approaches. The literature confirms that hybrid retrieval with lightweight reranking and production-grade MLOps integration represents an underexplored but practically important direction, and that compact but well-scoped evaluation sets can yield statistically meaningful RAG comparisons. Importantly, no existing system integrates all six identified dimensions into a unified, cost-aware, cloud-native architecture for dynamic technology intelligence---the gap that TechPulse directly addresses. The following chapter presents the methodology and technical design decisions that operationalise this positioning.

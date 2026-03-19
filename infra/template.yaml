@@ -1,0 +1,600 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  TechPulse — SAM template for serverless RAG pipeline.
+  Deploys: Lambda functions, API Gateway, EventBridge scheduler,
+  Aurora Serverless v2 (pgvector), S3 medallion buckets, SQS + DLQ,
+  CloudWatch alarms, and SNS budget alerts.
+
+# ---------------------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------------------
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+  DBMasterUsername:
+    Type: String
+    Default: postgres
+    NoEcho: true
+
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+
+  OllamaModel:
+    Type: String
+    Default: llama3.2:3b
+
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+
+  LLMBackend:
+    Type: String
+    Default: bedrock
+    AllowedValues: [bedrock, ollama, huggingface]
+
+  MonthlyBudgetUSD:
+    Type: Number
+    Default: 15
+
+  AlertEmail:
+    Type: String
+    Default: ""
+
+# ---------------------------------------------------------------------------
+# Globals
+# ---------------------------------------------------------------------------
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 120
+    MemorySize: 512
+    Architectures: [x86_64]
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        DB_HOST: !GetAtt AuroraCluster.Endpoint.Address
+        DB_PORT: !GetAtt AuroraCluster.Endpoint.Port
+        DB_NAME: techpulse
+        DB_USER: !Ref DBMasterUsername
+        DB_PASSWORD: !Ref DBMasterPassword
+        S3_BUCKET_NAME: !Ref DataBucket
+        LLM_BACKEND: !Ref LLMBackend
+        OLLAMA_MODEL: !Ref OllamaModel
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        TOP_K: "5"
+        RERANK_ALPHA: "0.6"
+        RERANK_BETA: "0.2"
+        RERANK_GAMMA: "0.2"
+        RECENCY_LAMBDA: "0.01"
+        S3_ENABLED: "true"
+        SQS_ENABLED: "true"
+        SQS_QUEUE_URL: !Ref IngestionQueue
+        CLOUDWATCH_ENABLED: "true"
+        CITATION_GROUNDING_THRESHOLD: "0.5"
+        BUDGET_HALT_ENABLED: "true"
+        MONTHLY_BUDGET_USD: !Ref MonthlyBudgetUSD
+        ALLOWED_ORIGINS: !Sub "https://${FrontendBucket}.s3.${AWS::Region}.amazonaws.com"
+    VpcConfig:
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroupIds:
+        - !Ref LambdaSG
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # ============================
+  # Networking (minimal VPC)
+  # ============================
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-vpc
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-private-a
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-private-b
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-public-a
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnetA
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetARouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetBRouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTable
+
+  LambdaSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda functions security group
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  AuroraSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Aurora cluster security group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSG
+
+  # ============================
+  # S3 — Medallion layout
+  # ============================
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub techpulse-${Stage}-data-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 90
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Purpose
+          Value: "Medallion data lake (raw/<source>/, processed/, embeddings/)"
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub techpulse-${Stage}-frontend-${AWS::AccountId}
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ============================
+  # SQS — Ingestion queue + DLQ
+  # ============================
+  IngestionDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub techpulse-${Stage}-ingestion-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  IngestionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub techpulse-${Stage}-ingestion
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IngestionDLQ.Arn
+        maxReceiveCount: 3
+
+  # ============================
+  # Aurora Serverless v2 (pgvector)
+  # ============================
+  AuroraSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for Aurora
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: "16.4"
+      DatabaseName: techpulse
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPassword
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0.5
+        MaxCapacity: 4
+      DBSubnetGroupName: !Ref AuroraSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref AuroraSG
+      EnableHttpEndpoint: true
+      StorageEncrypted: true
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub techpulse-${Stage}-aurora
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: aurora-postgresql
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      PubliclyAccessible: false
+
+  # ============================
+  # Lambda — Ingestion
+  # ============================
+  IngestionFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-ingestion
+      Handler: src.pipeline.run_pipeline.lambda_handler
+      CodeUri: ../
+      Description: Fetches data from ArXiv, HN, DEV.to, GitHub, RSS and writes to S3 / SQS
+      MemorySize: 512
+      Timeout: 300
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucket
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt IngestionQueue.QueueName
+        - Statement:
+            Effect: Allow
+            Action: [bedrock:InvokeModel]
+            Resource: "*"
+      Events:
+        ScheduledIngestion:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(6 hours)
+            Description: Trigger ingestion pipeline every 6 hours
+
+  # ============================
+  # Lambda — Preprocessor + Embedder (SQS-triggered)
+  # ============================
+  PreprocessFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-preprocess
+      Handler: src.pipeline.run_pipeline.preprocess_handler
+      CodeUri: ../
+      Description: Chunks, embeds, and indexes documents from SQS
+      MemorySize: 1024
+      Timeout: 300
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref DataBucket
+        - S3CrudPolicy:
+            BucketName: !Ref DataBucket
+        - Statement:
+            Effect: Allow
+            Action: [bedrock:InvokeModel]
+            Resource: "*"
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt IngestionQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  # ============================
+  # Lambda — RAG API (behind API Gateway)
+  # ============================
+  RagApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-rag-api
+      Handler: src.api.main.handler
+      CodeUri: ../
+      Description: FastAPI RAG endpoint served via Mangum
+      MemorySize: 512
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action: [bedrock:InvokeModel]
+            Resource: "*"
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: ANY
+
+  # ============================
+  # Lambda — Health Check (CloudWatch scheduled)
+  # ============================
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub techpulse-${Stage}-healthcheck
+      Handler: src.api.main.health_handler
+      CodeUri: ../
+      Description: Periodic health check for Aurora + API readiness
+      MemorySize: 256
+      Timeout: 30
+      Events:
+        HealthSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            Description: Periodic health check
+
+  # ============================
+  # API Gateway (HTTP API)
+  # ============================
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+      Description: TechPulse HTTP API
+
+  # ============================
+  # SNS — Alert topic
+  # ============================
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub techpulse-${Stage}-alerts
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # ============================
+  # CloudWatch — Alarms
+  # ============================
+  RagApiErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub techpulse-${Stage}-rag-api-errors
+      AlarmDescription: Fires when RAG API Lambda error rate exceeds 5% in 5 min
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref RagApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  IngestionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub techpulse-${Stage}-ingestion-errors
+      AlarmDescription: Fires when ingestion Lambda errors exceed threshold
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref IngestionFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  DLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub techpulse-${Stage}-dlq-depth
+      AlarmDescription: Fires when DLQ has unprocessed messages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt IngestionDLQ.QueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AlertTopic
+
+  # ============================
+  # AWS Budgets — Cost governance
+  # ============================
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub techpulse-${Stage}-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetUSD
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref AlertTopic
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref AlertTopic
+
+# ---------------------------------------------------------------------------
+# Conditions
+# ---------------------------------------------------------------------------
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  ApiUrl:
+    Description: HTTP API endpoint URL
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+  AuroraEndpoint:
+    Description: Aurora cluster writer endpoint
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+
+  DataBucketName:
+    Description: S3 data bucket (medallion layout)
+    Value: !Ref DataBucket
+
+  FrontendBucketName:
+    Description: S3 frontend hosting bucket
+    Value: !Ref FrontendBucket
+
+  FrontendUrl:
+    Description: S3 static website URL for the frontend
+    Value: !GetAtt FrontendBucket.WebsiteURL
+
+  IngestionQueueUrl:
+    Description: SQS ingestion queue URL
+    Value: !Ref IngestionQueue
+
+  DLQUrl:
+    Description: Dead letter queue URL
+    Value: !Ref IngestionDLQ
+
+  AlertTopicArn:
+    Description: SNS alert topic ARN
+    Value: !Ref AlertTopic

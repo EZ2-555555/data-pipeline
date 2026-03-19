@@ -1,0 +1,13 @@
+# CDK configuration
+[tool.cdk]
+app = "python3 app.py"
+
+[project]
+name = "techpulse-infra"
+version = "0.1.0"
+description = "TechPulse AWS CDK infrastructure"
+requires-python = ">=3.11"
+dependencies = [
+    "aws-cdk-lib>=2.140.0",
+    "constructs>=10.0.0",
+]
