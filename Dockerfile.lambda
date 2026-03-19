@@ -1,6 +1,7 @@
 # Lambda-compatible container image — no 250 MB unzipped limit (up to 10 GB).
-# fastembed + onnxruntime exceed the zip deployment limit.
-FROM public.ecr.aws/lambda/python:3.11
+# Use Python 3.12 (AL2023) because onnxruntime wheels required by fastembed
+# are not available for the Python 3.11 AL2 base image.
+FROM public.ecr.aws/lambda/python:3.12
 
 # Upgrade pip first — older pip (24.x) can fail to resolve newer package metadata
 RUN pip install --upgrade pip
