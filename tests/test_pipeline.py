@@ -1,7 +1,6 @@
 """Tests for src/pipeline/run_pipeline.py — chunk/embed pipeline logic."""
 
 from unittest.mock import MagicMock, patch
-import pytest
 
 
 # ---------------------------------------------------------------------------
