@@ -2,6 +2,9 @@
 # fastembed + onnxruntime exceed the zip deployment limit.
 FROM public.ecr.aws/lambda/python:3.11
 
+# Upgrade pip first — older pip (24.x) can fail to resolve newer package metadata
+RUN pip install --upgrade pip
+ 
 # Install dependencies
 COPY requirements-lambda.txt .
 RUN pip install --no-cache-dir -r requirements-lambda.txt
