@@ -197,7 +197,7 @@ Resources:
           FromPort: 5432
           ToPort: 5432
           CidrIp: !Ref DBAllowedCidrIp
-          Description: PostgreSQL access — set DBAllowedCidrIp to your IP/32
+          Description: PostgreSQL access - set DBAllowedCidrIp to your IP/32
       Tags:
         - Key: Name
           Value: !Sub techpulse-${Stage}-db-sg
