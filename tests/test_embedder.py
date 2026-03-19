@@ -1,5 +1,6 @@
 """Tests for src/embedding/embedder.py — embedding model abstraction."""
 
+import sys
 from unittest.mock import MagicMock, patch
 import numpy as np
 
@@ -8,17 +9,21 @@ import numpy as np
 # get_model
 # ---------------------------------------------------------------------------
 
-@patch("sentence_transformers.SentenceTransformer")
-def test_get_model_creates_singleton(mock_st_cls):
-    import src.embedding.embedder as emb_mod
-    emb_mod._model = None  # reset singleton
-
+def test_get_model_creates_singleton():
+    # Create a fake sentence_transformers module so the lazy import works
+    # even when the real package isn't installed (CI).
+    fake_st = MagicMock()
+    mock_cls = fake_st.SentenceTransformer
     mock_model = MagicMock()
-    mock_st_cls.return_value = mock_model
+    mock_cls.return_value = mock_model
 
-    result = emb_mod.get_model()
-    assert result == mock_model
-    mock_st_cls.assert_called_once_with("all-MiniLM-L6-v2")
+    with patch.dict(sys.modules, {"sentence_transformers": fake_st}):
+        import src.embedding.embedder as emb_mod
+        emb_mod._model = None  # reset singleton
+
+        result = emb_mod.get_model()
+        assert result == mock_model
+        mock_cls.assert_called_once_with("all-MiniLM-L6-v2")
 
 
 def test_get_model_reuses_existing():
