@@ -171,6 +171,11 @@ Resources:
                 Resource:
                   - !GetAtt IngestionQueue.Arn
                   - !GetAtt IngestionDLQ.Arn
+              # Bedrock — LLM inference
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
               # CloudWatch — custom metrics
               - Effect: Allow
                 Action:
