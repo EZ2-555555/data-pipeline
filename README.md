@@ -17,7 +17,7 @@
 
 TechPulse is a Hybrid RAG system that continuously ingests emerging technology content from **five data sources**, embeds it into a pgvector-powered PostgreSQL database, and serves grounded, citation-backed answers through a React frontend.
 
-The system **runs locally via Docker Compose** and is **deployed to AWS via GitHub Actions + SAM** (RDS PostgreSQL, Lambda, API Gateway, EventBridge, S3, SQS, CloudWatch).
+The system **runs locally via Docker Compose** and is **deployed to AWS via GitHub Actions + SAM** (ECR container images, RDS PostgreSQL, Lambda, API Gateway, EventBridge, S3, SQS, CloudWatch).
 
 ### Data Sources
 
@@ -38,7 +38,8 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **HNSW vector index** — fast approximate nearest-neighbour search (works on empty tables)
 - **3-stage hybrid retrieval**: metadata filter → cosine similarity → recency-aware reranking
 - **Reranking weight grid search** — automated α/β/γ optimisation via evaluation framework
-- **Multi-backend LLM support**: HuggingFace Inference API (default on AWS) / Ollama (local) / Amazon Bedrock — configurable `LLM_MAX_TOKENS`
+- **Multi-backend LLM support**: HuggingFace Inference API (default on AWS) / Ollama (local) / Amazon Bedrock (requires explicit enablement) — configurable `LLM_MAX_TOKENS`
+- **Container-image Lambda deployment** — bypasses the 250 MB zip limit (fastembed + ONNX Runtime ~200 MB); up to 10 GB via ECR
 - **LLM retry with exponential backoff** — 2 retries on failures (2s → 4s); automatic retrieval-only fallback when LLM is unavailable
 - **Source-type filtering** — `/ask` accepts optional `sources` parameter (e.g. `["arxiv", "hn"]`)
 - **Per-query token & cost tracking** — prompt + completion token counts via tiktoken; estimated USD cost per query
@@ -122,7 +123,8 @@ FastAPI (/ask + /health + /drift) → CloudWatch metrics → React Frontend
 ┌──────────────┐     ┌───────────────┐              │
 │  React SPA   │────▶│ API Gateway   │────▶┌────────▼──────────┐
 │  (S3 hosted) │     │ (HTTP API)    │     │  RAG API λ        │
-└──────────────┘     └───────────────┘     │  HuggingFace/Ollama│
+└──────────────┘     └───────────────┘     │  (ECR container)   │
+                                           │  HuggingFace/Ollama│
                                            └───────────────────┘
 CloudWatch alarms ─── SNS alerts
 ```
@@ -216,11 +218,19 @@ push to main
     │
     ├── Stage 2 (parallel, main branch only):
     │   ├── build-frontend (npm ci → npm run build → upload artifact)
-    │   └── sam-deploy (sam build --cached --parallel → sam deploy)
+    │   └── sam-deploy:
+    │       ├── Create ECR repo (idempotent)
+    │       ├── ECR login
+    │       ├── docker build -f Dockerfile.lambda → push (tagged with git SHA)
+    │       └── sam deploy --parameter-overrides ECRImageUri=<image>
     │
     └── Stage 3 (main branch only):
         └── upload-frontend (aws s3 sync frontend/dist/ → S3)
 ```
+
+> **Why container images?** `fastembed` depends on `onnxruntime` (~150–200 MB on Linux x86_64),
+> which pushes zip deployments past Lambda's 250 MB unzipped limit. Container images support up
+> to 10 GB, solving this entirely.
 
 ### After Deploy
 
@@ -260,9 +270,11 @@ uvicorn src.api.main:app --reload   # Start API on :8000
 ```
 data-pipeline/
 ├── docker-compose.yml                # 6 services: db, pgadmin, localstack, api, frontend, scheduler
-├── Dockerfile                        # Python image for api + scheduler
+├── Dockerfile                        # Python image for api + scheduler (local Docker Compose)
+├── Dockerfile.lambda                 # Lambda container image (ECR) — bypasses 250 MB zip limit
 ├── requirements.txt
-├── .github/workflows/ci.yml          # GitHub Actions CI/CD (lint → test → docker → SAM validate → deploy)
+├── requirements-lambda.txt           # Lightweight deps for Lambda (fastembed, psycopg2, fastapi, etc.)
+├── .github/workflows/ci.yml          # GitHub Actions CI/CD (lint → test → ECR build/push → SAM deploy)
 ├── src/
 │   ├── config.py                     # Centralised env-var settings (DB, AWS, S3, SQS, CW)
 │   ├── scheduler.py                  # Continuous ingestion loop (SQS consumer or DB-poll)
@@ -295,7 +307,7 @@ data-pipeline/
 │   │   └── retriever.py              # Baseline (vector-only) + Hybrid (3-stage, grid search)
 │   └── orchestrator/
 │       ├── rag.py                    # Retrieve → prompt → generate → hallucination check
-│       └── llm_backends.py           # HuggingFace / Ollama / Bedrock router
+│       └── llm_backends.py           # HuggingFace / Ollama / Bedrock (requires enablement) router
 ├── frontend/
 │   ├── Dockerfile                    # Multi-stage: node build → nginx serve
 │   ├── nginx.conf                    # SPA routing + /api/ proxy to backend
@@ -325,7 +337,7 @@ data-pipeline/
 │   ├── test_storage.py
 │   └── test_sync_to_aws.py
 └── infra/
-    ├── template-freetier.yaml        # SAM template — active deployment (Free Tier, RDS db.t3.micro)
+    ├── template-freetier.yaml        # SAM template — active deployment (Free Tier, container images, RDS db.t3.micro)
     ├── template.yaml                 # SAM template — production reference (Aurora Serverless v2)
     ├── samconfig-freetier.toml       # SAM config for Free Tier manual deploys
     └── README.md
@@ -342,12 +354,12 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `DB_NAME` | `techpulse` | Database name |
 | `DB_USER` | `postgres` | Database user |
 | `DB_PASSWORD` | `dev` | Database password |
-| `LLM_BACKEND` | `ollama` | `ollama` / `bedrock` / `huggingface` |
+| `LLM_BACKEND` | `ollama` | `ollama` / `huggingface` (recommended) / `bedrock` (requires explicit enablement — **not** available on Free Tier by default) |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
 | `HF_API_TOKEN` | — | HuggingFace API token (when `LLM_BACKEND=huggingface`) |
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
-| `BEDROCK_MODEL_ID` | `anthropic.claude-3-haiku-20240307-v1:0` | Bedrock model (requires Bedrock enabled in your account) |
+| `BEDROCK_MODEL_ID` | `anthropic.claude-3-haiku-20240307-v1:0` | Bedrock model — **only** if Bedrock is explicitly enabled in your AWS account |
 | `LLM_MAX_TOKENS` | `300` | Max tokens for LLM generation |
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TOP_K` | `8` | Retrieval results count |
@@ -400,7 +412,7 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] SHA-256 deduplication across all ingesters
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
 - [x] Hybrid retrieval with 3-stage reranking + grid search
-- [x] Multi-backend LLM support (HuggingFace / Ollama / Bedrock)
+- [x] Multi-backend LLM support (HuggingFace / Ollama / Bedrock — Bedrock requires explicit enablement)
 - [x] FastAPI backend with deep `/health`, `/ask`, `/drift` endpoints
 - [x] React frontend (Vite) with source badges and mode selection
 - [x] Docker Compose (6 services: db, pgadmin, localstack, api, frontend, scheduler)
@@ -416,5 +428,6 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] Lambda `health_handler` proper response format (statusCode + body)
 - [x] pgvector extension error detection with actionable log message
 - [x] `DBAllowedCidrIp` and `HFModelId` configurable via GitHub secrets
+- [x] Container-image Lambda deployment via ECR (fixes 250 MB zip limit caused by fastembed/onnxruntime)
 - [ ] Migrate local data to AWS RDS after first deploy
 - [ ] RAGAS evaluation run on live AWS deployment

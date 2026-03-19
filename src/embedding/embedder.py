@@ -1,11 +1,12 @@
 """MiniLM embedding generator for TechPulse.
 
 Uses fastembed (ONNX Runtime) for lightweight, local embeddings.
-~50 MB footprint vs ~600 MB for PyTorch — fits comfortably in Lambda's
-250 MB limit with no network calls or API rate limits.
+Deployed via container image to bypass Lambda's 250 MB zip limit.
+Model is pre-downloaded at Docker build time (see Dockerfile.lambda).
 """
 
 import logging
+import os
 import threading
 
 from fastembed import TextEmbedding
@@ -27,7 +28,11 @@ def get_model() -> TextEmbedding:
     with _model_lock:
         if _model is None:
             logger.info("Loading embedding model: %s", MODEL_NAME)
-            _model = TextEmbedding(model_name=MODEL_NAME)
+            cache_dir = os.environ.get("FASTEMBED_CACHE_PATH")
+            kwargs = {"model_name": MODEL_NAME}
+            if cache_dir:
+                kwargs["cache_dir"] = cache_dir
+            _model = TextEmbedding(**kwargs)
     return _model
 
 

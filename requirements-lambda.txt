@@ -7,7 +7,7 @@ python-dotenv>=1.0.0
 feedparser>=6.0.0
 defusedxml>=0.7.1
 
-# Embeddings (ONNX-based, ~50 MB — no PyTorch needed)
+# Embeddings (ONNX-based — ~150-200 MB with onnxruntime; deployed via container image)
 fastembed>=0.4.0
 
 # Tokenisation

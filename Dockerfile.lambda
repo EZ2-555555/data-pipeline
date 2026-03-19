@@ -1,0 +1,21 @@
+# Lambda-compatible container image — no 250 MB unzipped limit (up to 10 GB).
+# fastembed + onnxruntime exceed the zip deployment limit.
+FROM public.ecr.aws/lambda/python:3.11
+
+# Install dependencies
+COPY requirements-lambda.txt .
+RUN pip install --no-cache-dir -r requirements-lambda.txt
+
+# Copy application code
+COPY src/ ${LAMBDA_TASK_ROOT}/src/
+
+# Pre-download the fastembed ONNX model at build time into a known path.
+# Without this, fastembed tries to download at runtime — Lambda's read-only
+# filesystem (outside /tmp) and cold-start timeout make that unreliable.
+ENV FASTEMBED_CACHE_PATH=/opt/fastembed_cache
+RUN python -c "\
+from fastembed import TextEmbedding; \
+TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/opt/fastembed_cache')"
+
+# Default handler — overridden per function via ImageConfig.Command in SAM template
+CMD ["src.pipeline.run_pipeline.lambda_handler"]

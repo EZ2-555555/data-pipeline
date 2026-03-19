@@ -2,6 +2,8 @@
 
 AWS serverless infrastructure for TechPulse deployed via **GitHub Actions + SAM**.
 
+Lambda functions use **ECR container images** (not zip packages) to accommodate `fastembed` + `onnxruntime` (~150–200 MB), which exceeds Lambda's 250 MB unzipped zip limit. Container images support up to 10 GB.
+
 ## Templates
 
 | Template | Target | Database | Status |
@@ -32,7 +34,8 @@ AWS serverless infrastructure for TechPulse deployed via **GitHub Actions + SAM*
 ┌──────────────┐     ┌───────────────┐              │
 │  React SPA   │────▶│ API Gateway   │────▶┌────────▼──────────┐
 │  (S3 hosted) │     │ (HTTP API)    │     │  RAG API λ        │
-└──────────────┘     └───────────────┘     │  HuggingFace/Ollama│
+└──────────────┘     └───────────────┘     │  (ECR container)   │
+                                           │  HuggingFace/Ollama│
                                            └───────────────────┘
 CloudWatch alarms ─── SNS topic ─── email (AlertEmail)
 ```
@@ -41,16 +44,17 @@ CloudWatch alarms ─── SNS topic ─── email (AlertEmail)
 
 | Resource | Name | Purpose |
 |----------|------|---------|
+| ECR | `techpulse-lambda` | Container images for all Lambda functions |
 | IAM Role | `techpulse-dev-lambda-role` | Execution role for all Lambda functions |
 | RDS PostgreSQL | `techpulse-dev-db` | Vector + relational store |
 | S3 data bucket | `techpulse-dev-data-<account-id>` | Medallion data lake |
 | S3 frontend bucket | `techpulse-dev-frontend-<account-id>` | Static website hosting |
 | SQS queue | `techpulse-dev-ingestion` | Decoupled ingestion pipeline |
 | SQS DLQ | `techpulse-dev-ingestion-dlq` | Failed message replay |
-| Lambda | `techpulse-dev-ingestion` | Fetches from 5 sources every 6h |
-| Lambda | `techpulse-dev-preprocess` | Chunks + embeds via SQS trigger |
-| Lambda | `techpulse-dev-rag-api` | FastAPI RAG endpoint |
-| Lambda | `techpulse-dev-healthcheck` | Pings health every 5 min |
+| Lambda | `techpulse-dev-ingestion` | Fetches from 5 sources every 6h (container image) |
+| Lambda | `techpulse-dev-preprocess` | Chunks + embeds via SQS trigger (container image) |
+| Lambda | `techpulse-dev-rag-api` | FastAPI RAG endpoint (container image) |
+| Lambda | `techpulse-dev-healthcheck` | Pings health every 5 min (container image) |
 | API Gateway | HTTP API | Public HTTPS endpoint |
 | CloudWatch | 3 alarms | RAG errors, ingestion errors, DLQ depth |
 | SNS | `techpulse-dev-alerts` | Email notifications |
@@ -108,16 +112,28 @@ After deploy, find these in AWS Console → CloudFormation → `techpulse-dev` �
 
 Only needed for testing outside CI. Ensure AWS credentials are configured first (`aws configure`).
 
+**Step 1 — Build and push the container image to ECR:**
+
 ```bash
-# From repo root
-make validate-config   # check samconfig-freetier.toml for unfilled placeholders
+# Get your account ID and region
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION=us-east-1
 
-sam build --template-file infra/template-freetier.yaml --config-file infra/samconfig-freetier.toml
+# Create ECR repo (idempotent)
+aws ecr describe-repositories --repository-names techpulse-lambda --region $REGION 2>/dev/null \
+  || aws ecr create-repository --repository-name techpulse-lambda --region $REGION
 
-sam deploy --config-file infra/samconfig-freetier.toml
+# Login to ECR
+aws ecr get-login-password --region $REGION \
+  | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+
+# Build and push
+IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/techpulse-lambda:latest
+docker build -f Dockerfile.lambda -t $IMAGE_URI .
+docker push $IMAGE_URI
 ```
 
-Or with explicit parameters:
+**Step 2 — Deploy with SAM:**
 
 ```bash
 sam deploy \
@@ -128,6 +144,7 @@ sam deploy \
   --resolve-s3 \
   --parameter-overrides \
     Stage=dev \
+    ECRImageUri=$IMAGE_URI \
     DBMasterUsername=postgres \
     DBMasterPassword=yourpassword \
     HFApiToken=hf_your_token \
@@ -142,6 +159,7 @@ sam deploy \
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `Stage` | `dev` | Environment name (used in all resource names) |
+| `ECRImageUri` | — | Full ECR image URI with tag (e.g. `123456789012.dkr.ecr.us-east-1.amazonaws.com/techpulse-lambda:abc1234`) |
 | `DBMasterUsername` | `postgres` | RDS master username |
 | `DBMasterPassword` | — | RDS master password (min 8 chars) |
 | `LLMBackend` | `huggingface` | `huggingface` or `ollama` (Bedrock not enabled on Free Tier) |
@@ -156,7 +174,7 @@ sam deploy \
 
 ```
 infra/
-├── template-freetier.yaml   # Active SAM template (Free Tier — RDS db.t3.micro, IAM role created)
+├── template-freetier.yaml   # Active SAM template (Free Tier — container images, RDS db.t3.micro, IAM role created)
 ├── template.yaml            # Production SAM template (Aurora Serverless v2) — reference only
 ├── samconfig-freetier.toml  # SAM config for Free Tier manual deploys
 ├── README.md                # This file

@@ -51,6 +51,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.head_commit.modified, 'Dockerfile') ||
+      contains(github.event.head_commit.modified, 'Dockerfile.lambda') ||
       contains(github.event.head_commit.modified, 'requirements') ||
       contains(github.event.head_commit.modified, 'docker-compose')
     steps:
@@ -140,13 +141,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: requirements-lambda.txt
-
       - name: Set up SAM CLI
         uses: aws-actions/setup-sam@v2
         with:
@@ -160,15 +154,27 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Restore SAM build cache
-        uses: actions/cache@v4
-        with:
-          path: .aws-sam/build
-          key: sam-build-${{ hashFiles('requirements-lambda.txt', 'Makefile', 'src/**/*.py') }}
-          restore-keys: sam-build-
+      - name: Get AWS account ID
+        id: account
+        run: echo "id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
 
-      - name: SAM build
-        run: sam build --cached --parallel --template-file infra/template-freetier.yaml
+      - name: Create ECR repository (idempotent)
+        run: |
+          aws ecr describe-repositories --repository-names techpulse-lambda --region ${{ env.AWS_REGION }} 2>/dev/null \
+            || aws ecr create-repository --repository-name techpulse-lambda --region ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
+            | docker login --username AWS --password-stdin \
+              ${{ steps.account.outputs.id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Build and push Lambda container image
+        run: |
+          IMAGE_URI=${{ steps.account.outputs.id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/techpulse-lambda:${{ github.sha }}
+          docker build -f Dockerfile.lambda -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: SAM deploy (dev)
         run: |
@@ -179,8 +185,10 @@ jobs:
             --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
+            --template-file infra/template-freetier.yaml \
             --parameter-overrides \
               "Stage=dev" \
+              "ECRImageUri=${{ env.IMAGE_URI }}" \
               "DBMasterUsername=${{ secrets.DB_USERNAME }}" \
               "DBMasterPassword=${{ secrets.DB_PASSWORD }}" \
               "HFApiToken=${{ secrets.HF_API_TOKEN }}" \
@@ -189,7 +197,7 @@ jobs:
               "DefaultVpcId=${{ secrets.DEFAULT_VPC_ID }}" \
               "DefaultSubnetA=${{ secrets.DEFAULT_SUBNET_A }}" \
               "DefaultSubnetB=${{ secrets.DEFAULT_SUBNET_B }}" \
-              "AlertEmail=${{ secrets.ALERT_EMAIL || 'noreply@example.com' }}"
+              "AlertEmail=${{ secrets.ALERT_EMAIL }}"
 
   # ---------------------------------------------------------------
   # Stage 3 — Upload frontend to S3 (after both deploy + build)

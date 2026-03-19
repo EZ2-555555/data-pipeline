@@ -1,44 +1,11 @@
 # ---------------------------------------------------------------------------
-# SAM Makefile build — thin function packages
+# SAM Makefile — container-image deployment
 # ---------------------------------------------------------------------------
 #
-# Embeddings use fastembed (ONNX Runtime) — lightweight, no PyTorch needed.
-# Each function packages lightweight deps + src/ only.
-#
-# Build graph:  build-*Function → install-light-deps → cp + src/
+# Lambda functions now use container images (Dockerfile.lambda) instead of
+# zip packages, bypassing the 250 MB unzipped limit.  The build-*Function
+# targets and install-light-deps are no longer needed.
 # ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Function packages — lightweight deps + src/
-# ---------------------------------------------------------------------------
-LIGHT_DEPS := $(CURDIR)/.lambda-light-deps
-
-.PHONY: install-light-deps
-install-light-deps:
-	@if [ ! -f "$(LIGHT_DEPS)/.installed" ]; then \
-		echo "Installing lightweight Lambda dependencies..."; \
-		mkdir -p $(LIGHT_DEPS); \
-		pip install -r requirements-lambda.txt -t $(LIGHT_DEPS)/; \
-		touch $(LIGHT_DEPS)/.installed; \
-	else \
-		echo "Lightweight dependencies already cached, skipping install."; \
-	fi
-
-build-IngestionFunction: install-light-deps
-	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r src $(ARTIFACTS_DIR)/src
-
-build-PreprocessFunction: install-light-deps
-	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r src $(ARTIFACTS_DIR)/src
-
-build-RagApiFunction: install-light-deps
-	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r src $(ARTIFACTS_DIR)/src
-
-build-HealthCheckFunction: install-light-deps
-	cp -r $(LIGHT_DEPS)/* $(ARTIFACTS_DIR)/ 2>/dev/null || true
-	cp -r src $(ARTIFACTS_DIR)/src
 
 # ---------------------------------------------------------------------------
 # Validate samconfig-freetier.toml has no unfilled placeholders

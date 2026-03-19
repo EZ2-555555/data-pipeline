@@ -60,6 +60,12 @@ Parameters:
       HuggingFace model ID to use for generation.
       Default is Mistral-7B-Instruct which works on the free HF Inference API tier.
 
+  ECRImageUri:
+    Type: String
+    Description: >
+      Full ECR image URI including tag, e.g.
+      123456789012.dkr.ecr.us-east-1.amazonaws.com/techpulse-lambda:abc1234
+
   AlertEmail:
     Type: String
     Default: ""
@@ -92,7 +98,6 @@ Parameters:
 # ---------------------------------------------------------------------------
 Globals:
   Function:
-    Runtime: python3.11
     Timeout: 120
     MemorySize: 512
     Architectures: [x86_64]
@@ -171,11 +176,6 @@ Resources:
                 Resource:
                   - !GetAtt IngestionQueue.Arn
                   - !GetAtt IngestionDLQ.Arn
-              # Bedrock — LLM inference
-              - Effect: Allow
-                Action:
-                  - bedrock:InvokeModel
-                Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
               # CloudWatch — custom metrics
               - Effect: Allow
                 Action:
@@ -294,12 +294,12 @@ Resources:
   # ============================
   IngestionFunction:
     Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: makefile
     Properties:
       FunctionName: !Sub techpulse-${Stage}-ingestion
-      Handler: src.pipeline.run_pipeline.lambda_handler
-      CodeUri: ../
+      PackageType: Image
+      ImageUri: !Ref ECRImageUri
+      ImageConfig:
+        Command: ["src.pipeline.run_pipeline.lambda_handler"]
       Description: Fetches data from ArXiv, HN, DEV.to, GitHub, RSS
       MemorySize: 512
       Timeout: 300
@@ -316,12 +316,12 @@ Resources:
   # ============================
   PreprocessFunction:
     Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: makefile
     Properties:
       FunctionName: !Sub techpulse-${Stage}-preprocess
-      Handler: src.pipeline.run_pipeline.preprocess_handler
-      CodeUri: ../
+      PackageType: Image
+      ImageUri: !Ref ECRImageUri
+      ImageConfig:
+        Command: ["src.pipeline.run_pipeline.preprocess_handler"]
       Description: Chunks, embeds, and indexes documents from SQS
       MemorySize: 1024
       Timeout: 300
@@ -340,12 +340,12 @@ Resources:
   # ============================
   RagApiFunction:
     Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: makefile
     Properties:
       FunctionName: !Sub techpulse-${Stage}-rag-api
-      Handler: src.api.main.handler
-      CodeUri: ../
+      PackageType: Image
+      ImageUri: !Ref ECRImageUri
+      ImageConfig:
+        Command: ["src.api.main.handler"]
       Description: FastAPI RAG endpoint served via Mangum
       MemorySize: 512
       Timeout: 120
@@ -369,12 +369,12 @@ Resources:
   # ============================
   HealthCheckFunction:
     Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: makefile
     Properties:
       FunctionName: !Sub techpulse-${Stage}-healthcheck
-      Handler: src.api.main.health_handler
-      CodeUri: ../
+      PackageType: Image
+      ImageUri: !Ref ECRImageUri
+      ImageConfig:
+        Command: ["src.api.main.health_handler"]
       Description: Periodic health check
       MemorySize: 256
       Timeout: 30
