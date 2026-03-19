@@ -164,7 +164,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .aws-sam/build
-          key: sam-build-${{ hashFiles('requirements-lambda.txt', 'requirements-layer.txt', 'Makefile', 'src/**/*.py') }}
+          key: sam-build-${{ hashFiles('requirements-lambda.txt', 'Makefile', 'src/**/*.py') }}
           restore-keys: sam-build-
 
       - name: SAM build

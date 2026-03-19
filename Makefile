@@ -1,27 +1,15 @@
 # ---------------------------------------------------------------------------
-# SAM Makefile build — Lambda Layer + thin function packages
+# SAM Makefile build — thin function packages
 # ---------------------------------------------------------------------------
 #
-# Heavy ML deps (torch, sentence-transformers, tiktoken) are built once
-# into a shared Lambda Layer.  Each function only packages lightweight
-# deps + src/, reducing per-function build from ~700 MB copy to ~20 MB.
+# Embeddings use the HuggingFace Inference API on Lambda (no torch needed).
+# Each function packages lightweight deps + src/ only.
 #
-# Build graph:  build-DepsLayer (layer, changes rarely)
-#               build-*Function → install-light-deps → cp + src/
+# Build graph:  build-*Function → install-light-deps → cp + src/
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Lambda Layer — heavy ML dependencies (changes rarely)
-# ---------------------------------------------------------------------------
-build-DepsLayer:
-	mkdir -p "$(ARTIFACTS_DIR)/python"
-	pip install torch --index-url https://download.pytorch.org/whl/cpu \
-		-t "$(ARTIFACTS_DIR)/python/" --no-cache-dir
-	pip install -r requirements-layer.txt \
-		-t "$(ARTIFACTS_DIR)/python/" --no-cache-dir
-
-# ---------------------------------------------------------------------------
-# Function packages — lightweight deps + src/ (Layer provides the rest)
+# Function packages — lightweight deps + src/
 # ---------------------------------------------------------------------------
 LIGHT_DEPS := $(CURDIR)/.lambda-light-deps
 

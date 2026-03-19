@@ -1,35 +1,28 @@
 """MiniLM embedding generator for TechPulse.
 
-Loads the sentence-transformer model and provides batch
-embedding functionality for document chunks.
-
-sentence_transformers is imported lazily so that modules which
-import embedder (e.g. during test collection) don't require
-torch/sentence-transformers to be installed.
+Uses fastembed (ONNX Runtime) for lightweight, local embeddings.
+~50 MB footprint vs ~600 MB for PyTorch — fits comfortably in Lambda's
+250 MB limit with no network calls or API rate limits.
 """
 
 import logging
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
-_model: "SentenceTransformer | None" = None
+_model: TextEmbedding | None = None
 
 
-def get_model() -> "SentenceTransformer":
+def get_model() -> TextEmbedding:
     """Lazy-load the embedding model (singleton)."""
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
-
         logger.info("Loading embedding model: %s", MODEL_NAME)
-        _model = SentenceTransformer(MODEL_NAME)
+        _model = TextEmbedding(model_name=MODEL_NAME)
     return _model
 
 
@@ -40,8 +33,8 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         List of 384-dim float vectors.
     """
     model = get_model()
-    embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
-    return embeddings.tolist()
+    embeddings = list(model.embed(texts))
+    return [e.tolist() for e in embeddings]
 
 
 def embed_query(query: str) -> list[float]:

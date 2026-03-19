@@ -96,8 +96,6 @@ Globals:
     Timeout: 120
     MemorySize: 512
     Architectures: [x86_64]
-    Layers:
-      - !Ref DepsLayer
     Environment:
       Variables:
         STAGE: !Ref Stage
@@ -129,23 +127,6 @@ Globals:
 # Resources
 # ---------------------------------------------------------------------------
 Resources:
-
-  # ============================
-  # Lambda Layer — Heavy ML deps (torch, sentence-transformers, tiktoken)
-  # Built once, shared by all 4 functions. Only rebuilt when
-  # requirements-layer.txt changes.
-  # ============================
-  DepsLayer:
-    Type: AWS::Serverless::LayerVersion
-    Metadata:
-      BuildMethod: makefile
-    Properties:
-      LayerName: !Sub techpulse-${Stage}-deps
-      Description: Shared ML dependencies (torch CPU, sentence-transformers, tiktoken)
-      ContentUri: ../
-      CompatibleRuntimes:
-        - python3.11
-      RetentionPolicy: Delete
 
   # ============================
   # IAM Role for Lambda functions

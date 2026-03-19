@@ -1,6 +1,0 @@
-# Heavy ML dependencies for the shared Lambda Layer.
-# These change rarely and are built separately from function code.
-# NOTE: torch is installed from the CPU index in the Makefile target.
-
-sentence-transformers>=2.2.2
-tiktoken>=0.5.0

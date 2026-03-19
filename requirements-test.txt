@@ -1,8 +1,5 @@
 # Lightweight requirements for CI lint + unit tests.
-# Tests mock all heavy dependencies (torch, sentence-transformers),
-# so we only need the import-time dependencies here.
-# sentence_transformers is lazy-imported in embedder.py, so torch
-# is NOT needed for test collection or execution.
+# fastembed uses ONNX Runtime (~50 MB) — no PyTorch needed.
 
 # Core
 boto3>=1.34.0
@@ -10,6 +7,9 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 feedparser>=6.0.0
 defusedxml>=0.7.1
+
+# Embeddings (ONNX-based)
+fastembed>=0.4.0
 
 # Database
 psycopg2-binary>=2.9.9
