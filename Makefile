@@ -2,7 +2,7 @@
 # SAM Makefile build — thin function packages
 # ---------------------------------------------------------------------------
 #
-# Embeddings use the HuggingFace Inference API on Lambda (no torch needed).
+# Embeddings use fastembed (ONNX Runtime) — lightweight, no PyTorch needed.
 # Each function packages lightweight deps + src/ only.
 #
 # Build graph:  build-*Function → install-light-deps → cp + src/

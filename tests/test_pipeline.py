@@ -247,6 +247,7 @@ def test_process_sqs_batch_missing_doc_id(mock_receive, mock_delete):
     from src.pipeline.run_pipeline import process_sqs_batch
     processed = process_sqs_batch()
     assert processed == 0
+    mock_delete.assert_called_once_with("rh1")
 
 
 @patch("src.queue.delete_message")

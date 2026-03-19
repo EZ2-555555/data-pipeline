@@ -165,7 +165,8 @@ def process_sqs_batch() -> int:
     for msg in messages:
         doc_id = msg["body"].get("document_id")
         if doc_id is None:
-            logger.warning("SQS message %s missing document_id, skipping", msg.get("message_id", "?"))
+            logger.warning("SQS message %s missing document_id, deleting", msg.get("message_id", "?"))
+            delete_message(msg["receipt_handle"])
             continue
 
         conn = get_connection()
