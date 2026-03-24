@@ -73,6 +73,11 @@ class _Settings:
         return os.getenv("GROQ_MODEL_ID", "llama-3.1-8b-instant")
 
     @property
+    def GROQ_EVAL_MODEL_ID(self) -> str:
+        """Larger model used as RAGAS LLM judge (free on Groq)."""
+        return os.getenv("GROQ_EVAL_MODEL_ID", "llama-3.3-70b-versatile")
+
+    @property
     def GITHUB_TOKEN(self) -> str:
         return os.getenv("GITHUB_TOKEN", "")
 

@@ -18,10 +18,29 @@ logger = logging.getLogger(__name__)
 MIN_SIMILARITY = 0.15
 
 
+def _deduplicate_by_url(results: list[dict]) -> list[dict]:
+    """Keep only the highest-scoring result per unique URL (document).
+
+    When multiple chunks from the same document are retrieved, the user
+    sees duplicate sources. This collapses them, keeping the chunk with
+    the highest ``score``.
+    """
+    best: dict[str, dict] = {}
+    for r in results:
+        url = r.get("url") or r.get("chunk_id")  # fallback if url is None
+        if url not in best or r["score"] > best[url]["score"]:
+            best[url] = r
+    # Preserve original score ordering
+    return sorted(best.values(), key=lambda x: x["score"], reverse=True)
+
+
 def baseline_retrieve(query: str, top_k: int | None = None) -> list[dict]:
     """Vector-only retrieval over the full indexed corpus."""
     top_k = top_k or settings.TOP_K
     query_emb = embed_query(query)
+
+    # Fetch extra candidates so deduplication still yields top_k unique docs
+    candidate_limit = top_k * 4
 
     conn = get_connection()
     try:
@@ -36,7 +55,7 @@ def baseline_retrieve(query: str, top_k: int | None = None) -> list[dict]:
                 ORDER BY c.embedding <=> %s::vector
                 LIMIT %s
                 """,
-                (query_emb, query_emb, top_k),
+                (query_emb, query_emb, candidate_limit),
             )
             rows = cur.fetchall()
     except Exception:
@@ -45,7 +64,7 @@ def baseline_retrieve(query: str, top_k: int | None = None) -> list[dict]:
     finally:
         put_connection(conn)
 
-    return [
+    candidates = [
         {
             "chunk_id": r[0],
             "chunk_text": r[1],
@@ -59,6 +78,8 @@ def baseline_retrieve(query: str, top_k: int | None = None) -> list[dict]:
         for r in rows
         if float(r[6]) >= MIN_SIMILARITY
     ]
+
+    return _deduplicate_by_url(candidates)[:top_k]
 
 
 def _compute_keyword_overlap(query: str, text: str) -> float:
@@ -161,7 +182,7 @@ def hybrid_retrieve(
             "score": score,
         })
 
-    # Filter low-similarity noise, sort by final score, take top_k
+    # Filter low-similarity noise, sort by final score, deduplicate, take top_k
     candidates = [c for c in candidates if c["similarity"] >= MIN_SIMILARITY]
     candidates.sort(key=lambda x: x["score"], reverse=True)
-    return candidates[:top_k]
+    return _deduplicate_by_url(candidates)[:top_k]

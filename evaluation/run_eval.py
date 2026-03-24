@@ -94,16 +94,17 @@ def run_evaluation(queries: list[dict]) -> dict:
 
 
 def run_ragas_evaluation(results: list[dict]) -> dict | None:
-    """Run RAGAS metrics using Ollama as the LLM judge (per-sample scoring)."""
-    logger.info("Setting up RAGAS with Ollama (%s)…", settings.OLLAMA_MODEL)
+    """Run RAGAS metrics using Groq as the LLM judge (per-sample scoring)."""
+    eval_model = settings.GROQ_EVAL_MODEL_ID
+    logger.info("Setting up RAGAS with Groq (%s)…", eval_model)
 
     try:
         client = AsyncOpenAI(
-            base_url=f"{settings.OLLAMA_BASE_URL}/v1",
-            api_key="ollama",
+            base_url="https://api.groq.com/openai/v1",
+            api_key=settings.GROQ_API_KEY,
         )
         wrapped_llm = llm_factory(
-            settings.OLLAMA_MODEL, provider="openai", client=client
+            eval_model, provider="openai", client=client
         )
         wrapped_embeddings = RagasHFEmbeddings(
             model="sentence-transformers/all-MiniLM-L6-v2"
