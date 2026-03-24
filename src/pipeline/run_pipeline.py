@@ -245,7 +245,19 @@ def preprocess_handler(event, context):
     """
     import json as _json
     from src.db.init_schema import init_schema
-    init_schema()
+    
+    # Initialize schema with fallback error handling
+    try:
+        init_schema()
+    except Exception as e:
+        logger.error(
+            "Failed to initialize database schema: %s. "
+            "Ensure pgvector extension is installed on your RDS instance. "
+            "Continuing with caution...",
+            e,
+        )
+        # Don't fail the entire Lambda — this may be a transient issue
+        # The connection will fail below if schema is truly missing
 
     records = event.get("Records", [])
     if not records:

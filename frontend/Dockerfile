@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Accept API_BASE as a build argument (e.g., from CloudFormation)
+ARG VITE_API_BASE=/api
+ENV VITE_API_BASE=$VITE_API_BASE
 RUN npm run build
 
 # Stage 2: Serve with nginx

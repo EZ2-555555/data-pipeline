@@ -42,9 +42,25 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     Returns:
         List of 384-dim float vectors.
     """
-    model = get_model()
-    embeddings = list(model.embed(texts))
-    return [e.tolist() for e in embeddings]
+    import signal
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Embedding operation exceeded 60-second timeout")
+    
+    # Set timeout (disabled on Windows; use signal.alarm only on Unix)
+    old_handler = None
+    if hasattr(signal, 'SIGALRM'):
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(60)
+    
+    try:
+        model = get_model()
+        embeddings = list(model.embed(texts))
+        return [e.tolist() for e in embeddings]
+    finally:
+        if hasattr(signal, 'SIGALRM') and old_handler is not None:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
 
 
 def embed_query(query: str) -> list[float]:

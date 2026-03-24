@@ -118,7 +118,7 @@ class ComputeStack(cdk.Stack):
         preprocess_function.add_event_source(
             event_sources.SqsEventSource(
                 ingestion_queue,
-                batch_size=5,
+                batch_size=2,
                 report_batch_item_failures=True,
             )
         )

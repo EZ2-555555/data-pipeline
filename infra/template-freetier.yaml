@@ -98,7 +98,7 @@ Parameters:
 # ---------------------------------------------------------------------------
 Globals:
   Function:
-    Timeout: 120
+    Timeout: 300
     MemorySize: 512
     Architectures: [x86_64]
     Environment:
@@ -331,7 +331,7 @@ Resources:
           Type: SQS
           Properties:
             Queue: !GetAtt IngestionQueue.Arn
-            BatchSize: 5
+            BatchSize: 2
             FunctionResponseTypes:
               - ReportBatchItemFailures
 
