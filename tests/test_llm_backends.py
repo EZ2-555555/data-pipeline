@@ -1,6 +1,5 @@
 """Tests for src/orchestrator/llm_backends.py — LLM backend abstraction."""
 
-import json
 from unittest.mock import MagicMock, patch
 import pytest
 
