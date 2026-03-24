@@ -38,7 +38,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **HNSW vector index** — fast approximate nearest-neighbour search (works on empty tables)
 - **3-stage hybrid retrieval**: metadata filter → cosine similarity → recency-aware reranking
 - **Reranking weight grid search** — automated α/β/γ optimisation via evaluation framework
-- **Multi-backend LLM support**: Amazon Bedrock (default on AWS) / HuggingFace Inference API / Ollama (local) — configurable `LLM_MAX_TOKENS`
+- **Multi-backend LLM support**: Groq (primary, free tier) / Amazon Bedrock / HuggingFace Inference API / Ollama (local) — automatic fallback chain with configurable `LLM_MAX_TOKENS`
 - **Container-image Lambda deployment** — bypasses the 250 MB zip limit (fastembed + ONNX Runtime ~200 MB); up to 10 GB via ECR
 - **LLM retry with exponential backoff** — 2 retries on failures (2s → 4s); automatic retrieval-only fallback when LLM is unavailable
 - **Source-type filtering** — `/ask` accepts optional `sources` parameter (e.g. `["arxiv", "hn"]`)
@@ -193,12 +193,13 @@ Go to your repo → **Settings → Environments → dev → Secrets** and add al
 | `AWS_SECRET_ACCESS_KEY` | Same as above | Permanent — no rotation needed |
 | `DB_USERNAME` | Your choice | e.g. `postgres` |
 | `DB_PASSWORD` | Your choice | Min 8 characters |
-| `HF_API_TOKEN` | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | Starts with `hf_...` |
+| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) | Starts with `gsk_...` — **required** (primary LLM backend) |
 | `DEFAULT_VPC_ID` | AWS Console → VPC → Your VPCs | e.g. `vpc-xxxxxxxx` |
 | `DEFAULT_SUBNET_A` | AWS Console → VPC → Subnets | Pick any public subnet |
 | `DEFAULT_SUBNET_B` | AWS Console → VPC → Subnets | Different AZ from A |
 | `ALERT_EMAIL` | Your email address | SNS alert notifications |
-| `HF_MODEL_ID` | Optional | Defaults to `mistralai/Mistral-7B-Instruct-v0.2` |
+| `GROQ_MODEL_ID` | Optional | Defaults to `llama-3.1-8b-instant` |
+| `HF_API_TOKEN` | Optional | Only needed if `LLM_BACKEND=huggingface` |
 | `DB_ALLOWED_CIDR` | Optional — your IP from [checkip.amazonaws.com](https://checkip.amazonaws.com) | e.g. `203.150.1.2/32` — defaults to `0.0.0.0/0` if not set |
 
 > **Note:** `AWS_SESSION_TOKEN` is **not required** for Free Tier personal accounts. Leave it empty or unset.
@@ -216,16 +217,18 @@ push to main
     │       ├── sam validate infra/template-freetier.yaml
     │       └── sam validate infra/template.yaml
     │
-    ├── Stage 2 (parallel, main branch only):
-    │   ├── build-frontend (npm ci → npm run build → upload artifact)
+    ├── Stage 2 (main branch only):
     │   └── sam-deploy:
     │       ├── Create ECR repo (idempotent)
     │       ├── ECR login
     │       ├── docker build -f Dockerfile.lambda → push (tagged with git SHA)
-    │       └── sam deploy --parameter-overrides ECRImageUri=<image>
+    │       └── sam deploy --parameter-overrides ECRImageUri=<image> LLMBackend=groq ...
     │
-    └── Stage 3 (main branch only):
-        └── upload-frontend (aws s3 sync frontend/dist/ → S3)
+    ├── Stage 2b (after SAM deploy):
+    │   └── build-frontend:
+    │       ├── Fetch ApiUrl from CloudFormation outputs
+    │       ├── npm ci → VITE_API_URL=$ApiUrl npm run build
+    │       └── aws s3 sync dist/ → S3 static website
 ```
 
 > **Why container images?** `fastembed` depends on `onnxruntime` (~150–200 MB on Linux x86_64),
@@ -307,7 +310,7 @@ data-pipeline/
 │   │   └── retriever.py              # Baseline (vector-only) + Hybrid (3-stage, grid search)
 │   └── orchestrator/
 │       ├── rag.py                    # Retrieve → prompt → generate → hallucination check
-│       └── llm_backends.py           # HuggingFace / Ollama / Bedrock (requires enablement) router
+│       └── llm_backends.py           # Groq / Bedrock / HuggingFace / Ollama — fallback chain router
 ├── frontend/
 │   ├── Dockerfile                    # Multi-stage: node build → nginx serve
 │   ├── nginx.conf                    # SPA routing + /api/ proxy to backend
@@ -354,12 +357,14 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `DB_NAME` | `techpulse` | Database name |
 | `DB_USER` | `postgres` | Database user |
 | `DB_PASSWORD` | `dev` | Database password |
-| `LLM_BACKEND` | `bedrock` | `bedrock` (default) / `huggingface` / `ollama` — ensure Bedrock model access is enabled in AWS Console → Bedrock → Model access |
+| `LLM_BACKEND` | `groq` | `groq` (default on AWS) / `bedrock` / `huggingface` / `ollama` (local) |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
+| `GROQ_API_KEY` | — | Groq API key (required when `LLM_BACKEND=groq`) |
+| `GROQ_MODEL_ID` | `llama-3.1-8b-instant` | Groq model ID |
+| `BEDROCK_MODEL_ID` | `amazon.nova-micro-v1:0` | Bedrock model ID — any model supported by the Converse API works |
 | `HF_API_TOKEN` | — | HuggingFace API token (when `LLM_BACKEND=huggingface`) |
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
-| `BEDROCK_MODEL_ID` | `amazon.nova-micro-v1:0` | Bedrock model ID — any model supported by the Converse API works |
 | `LLM_MAX_TOKENS` | `300` | Max tokens for LLM generation |
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TOP_K` | `8` | Retrieval results count |
@@ -412,7 +417,7 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] SHA-256 deduplication across all ingesters
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
 - [x] Hybrid retrieval with 3-stage reranking + grid search
-- [x] Multi-backend LLM support (Bedrock (default) / HuggingFace / Ollama)
+- [x] Multi-backend LLM support (Groq (primary) / Bedrock / HuggingFace / Ollama) with automatic fallback
 - [x] FastAPI backend with deep `/health`, `/ask`, `/drift` endpoints
 - [x] React frontend (Vite) with source badges and mode selection
 - [x] Docker Compose (6 services: db, pgadmin, localstack, api, frontend, scheduler)
@@ -429,5 +434,8 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] pgvector extension error detection with actionable log message
 - [x] `DBAllowedCidrIp` and `HFModelId` configurable via GitHub secrets
 - [x] Container-image Lambda deployment via ECR (fixes 250 MB zip limit caused by fastembed/onnxruntime)
+- [x] Groq free-tier LLM backend (llama-3.1-8b-instant) — replaces Bedrock on educational AWS accounts
+- [x] Automatic LLM fallback chain (groq → bedrock → ollama → huggingface)
+- [x] Bedrock Converse API (model-agnostic) for future migration
 - [ ] Migrate local data to AWS RDS after first deploy
 - [ ] RAGAS evaluation run on live AWS deployment
