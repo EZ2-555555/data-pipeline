@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const EXAMPLE_QUERIES = [
   "What are the latest trends in quantum computing?",

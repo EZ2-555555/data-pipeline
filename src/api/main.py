@@ -97,7 +97,7 @@ def ask_endpoint(req: AskRequest, request: Request):
 # ---------------------------------------------------------------------------
 # Lambda handlers (used by SAM / CDK deployments via Mangum)
 # ---------------------------------------------------------------------------
-handler = Mangum(app)
+handler = Mangum(app, api_gateway_base_path=f"/{os.getenv('STAGE', 'dev')}")
 
 
 def health_handler(event, context):
