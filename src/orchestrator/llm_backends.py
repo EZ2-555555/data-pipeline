@@ -48,16 +48,17 @@ def generate(prompt: str, max_tokens: int | None = None) -> str:
         raise ValueError(f"Unknown LLM_BACKEND: {primary}")
 
     chain = [primary] + _FALLBACK_CHAIN.get(primary, [])
-    last_exc: Exception | None = None
+    errors: dict[str, str] = {}
 
     for backend in chain:
         try:
             return _BACKENDS[backend](prompt, max_tokens)
         except Exception as exc:
-            last_exc = exc
+            errors[backend] = str(exc)
             logger.warning("Backend '%s' failed (%s), trying next fallback", backend, exc)
 
-    raise last_exc  # type: ignore[misc]
+    error_summary = "; ".join(f"{b}: {e}" for b, e in errors.items())
+    raise RuntimeError(f"All LLM backends failed — {error_summary}")
 
 
 def _generate_ollama(prompt: str, max_tokens: int) -> str:
