@@ -22,13 +22,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from ragas.llms import llm_factory
-from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
-from ragas.metrics.collections import (
+from ragas.embeddings import HuggingfaceEmbeddings as RagasHFEmbeddings
+from ragas.metrics import (
     Faithfulness,
     AnswerRelevancy,
-    ContextPrecisionWithoutReference,
+    ContextPrecision,
 )
-from openai import AsyncOpenAI
 
 from src.retrieval.retriever import baseline_retrieve, hybrid_retrieve
 from src.orchestrator.rag import ask
@@ -69,6 +68,13 @@ def compute_citation_grounding(answer: str, num_sources: int) -> float:
     return valid / len(citations)
 
 
+# Delay between queries to avoid Groq free-tier rate limits (tokens-per-minute)
+# Delay between queries to avoid Groq free-tier rate limits (tokens-per-minute)
+INTER_QUERY_DELAY_S = float(os.environ.get("INTER_QUERY_DELAY_S", "15.0"))
+# Delay between individual RAGAS metric score() calls within one sample
+INTER_METRIC_DELAY_S = float(os.environ.get("INTER_METRIC_DELAY_S", "10.0"))
+
+
 def run_evaluation(queries: list[dict]) -> dict:
     """Run both modes on all queries and collect raw results."""
     results = {"baseline": [], "hybrid": []}
@@ -89,30 +95,45 @@ def run_evaluation(queries: list[dict]) -> dict:
                 res["answer"], len(res["sources"])
             )
             results[mode].append(res)
+            time.sleep(INTER_QUERY_DELAY_S)
 
     return results
 
 
 def run_ragas_evaluation(results: list[dict]) -> dict | None:
-    """Run RAGAS metrics using Groq as the LLM judge (per-sample scoring)."""
-    eval_model = settings.GROQ_EVAL_MODEL_ID
-    logger.info("Setting up RAGAS with Groq (%s)…", eval_model)
+    """Run RAGAS metrics using an OpenAI-compatible LLM judge.
+
+    Uses Gemini Flash when GEMINI_API_KEY is set (generous free quota),
+    otherwise falls back to Groq.
+    """
+    import os
+
+    gemini_key = settings.GEMINI_API_KEY
+    if gemini_key:
+        eval_model = os.getenv("GEMINI_EVAL_MODEL", "gemini-2.0-flash")
+        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        os.environ["OPENAI_API_KEY"] = gemini_key
+        logger.info("Setting up RAGAS with Gemini (%s)\u2026", eval_model)
+    else:
+        eval_model = settings.GROQ_EVAL_MODEL_ID
+        base_url = "https://api.groq.com/openai/v1"
+        os.environ["OPENAI_API_KEY"] = settings.GROQ_API_KEY
+        logger.info("Setting up RAGAS with Groq (%s)\u2026", eval_model)
 
     try:
-        client = AsyncOpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=settings.GROQ_API_KEY,
-        )
         wrapped_llm = llm_factory(
-            eval_model, provider="openai", client=client
+            model=eval_model,
+            base_url=base_url,
         )
         wrapped_embeddings = RagasHFEmbeddings(
-            model="sentence-transformers/all-MiniLM-L6-v2"
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
         faith_metric = Faithfulness(llm=wrapped_llm)
         relevancy_metric = AnswerRelevancy(llm=wrapped_llm, embeddings=wrapped_embeddings)
-        precision_metric = ContextPrecisionWithoutReference(llm=wrapped_llm)
+        if not gemini_key:
+            relevancy_metric.strictness = 1  # Groq only supports n=1
+        precision_metric = ContextPrecision(llm=wrapped_llm)
 
         scores = {"faithfulness": [], "answer_relevancy": [], "context_precision": []}
 
@@ -120,29 +141,38 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
             contexts = [s.get("title", "") for s in r["sources"]]
             if not contexts:
                 contexts = ["N/A"]
-            kwargs = dict(
-                user_input=r["query"],
-                response=r["answer"],
-                retrieved_contexts=contexts,
-            )
+            row = {
+                "question": r["query"],
+                "answer": r["answer"],
+                "contexts": contexts,
+                "ground_truth": r.get("ground_truth", ""),
+            }
             logger.info("RAGAS scoring sample %d/%d…", i + 1, len(results))
             try:
-                f_result = faith_metric.score(**kwargs)
-                scores["faithfulness"].append(f_result.value)
+                score = faith_metric.score(row)
+                scores["faithfulness"].append(score)
             except Exception:
+                logger.warning("Faithfulness scoring failed for sample %d", i + 1, exc_info=True)
                 scores["faithfulness"].append(float("nan"))
+            time.sleep(INTER_METRIC_DELAY_S)
 
             try:
-                ar_result = relevancy_metric.score(**kwargs)
-                scores["answer_relevancy"].append(ar_result.value)
+                score = relevancy_metric.score(row)
+                scores["answer_relevancy"].append(score)
             except Exception:
+                logger.warning("AnswerRelevancy scoring failed for sample %d", i + 1, exc_info=True)
                 scores["answer_relevancy"].append(float("nan"))
+            time.sleep(INTER_METRIC_DELAY_S)
 
             try:
-                cp_result = precision_metric.score(**kwargs)
-                scores["context_precision"].append(cp_result.value)
+                score = precision_metric.score(row)
+                scores["context_precision"].append(score)
             except Exception:
+                logger.warning("ContextPrecision scoring failed for sample %d", i + 1, exc_info=True)
                 scores["context_precision"].append(float("nan"))
+
+            # Rate-limit delay between samples
+            time.sleep(INTER_QUERY_DELAY_S)
 
         return scores
     except Exception:
@@ -387,36 +417,60 @@ def run_grid_search(queries: list[dict]) -> dict:
 
 def main():
     queries = load_queries()
+    # Allow limiting the number of queries via env var for rate-limited runs
+    max_q = int(os.environ.get("EVAL_MAX_QUERIES", 0))
+    if max_q > 0:
+        # Sample evenly across categories
+        by_cat: dict[str, list] = {}
+        for q in queries:
+            by_cat.setdefault(q["category"], []).append(q)
+        per_cat = max(1, max_q // len(by_cat))
+        selected: list[dict] = []
+        for cat_qs in by_cat.values():
+            selected.extend(cat_qs[:per_cat])
+        queries = sorted(selected, key=lambda q: q["id"])[:max_q]
     logger.info("Loaded %d evaluation queries", len(queries))
 
-    # Phase 1: Run both retrieval modes
-    logger.info("Phase 1: Running RAG pipeline (baseline + hybrid) on all queries…")
-    raw_results = run_evaluation(queries)
-
-    # Save raw results
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     raw_path = RESULTS_DIR / "raw_results.json"
-    with open(raw_path, "w", encoding="utf-8") as f:
-        # Convert non-serializable fields
-        serializable = {}
-        for mode in ("baseline", "hybrid"):
-            serializable[mode] = []
-            for r in raw_results[mode]:
-                entry = dict(r)
-                entry["sources"] = [
-                    {k: (str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v)
-                     for k, v in s.items()}
-                    for s in entry.get("sources", [])
-                ]
-                serializable[mode].append(entry)
-        json.dump(serializable, f, indent=2, default=str)
-    logger.info("Raw results saved to %s", raw_path)
+
+    # Phase 1: Run both retrieval modes (skip if SKIP_PHASE1 is set and results exist)
+    skip_phase1 = os.environ.get("SKIP_PHASE1", "").lower() in ("1", "true", "yes")
+    if skip_phase1 and raw_path.exists():
+        logger.info("Phase 1: SKIPPED — loading saved raw results from %s", raw_path)
+        with open(raw_path, encoding="utf-8") as f:
+            raw_results = json.load(f)
+    else:
+        logger.info("Phase 1: Running RAG pipeline (baseline + hybrid) on all queries…")
+        raw_results = run_evaluation(queries)
+
+        # Save raw results
+        with open(raw_path, "w", encoding="utf-8") as f:
+            # Convert non-serializable fields
+            serializable = {}
+            for mode in ("baseline", "hybrid"):
+                serializable[mode] = []
+                for r in raw_results[mode]:
+                    entry = dict(r)
+                    entry["sources"] = [
+                        {k: (str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v)
+                         for k, v in s.items()}
+                        for s in entry.get("sources", [])
+                    ]
+                    serializable[mode].append(entry)
+            json.dump(serializable, f, indent=2, default=str)
+        logger.info("Raw results saved to %s", raw_path)
 
     # Phase 2: RAGAS evaluation (optional — may fail with small local model)
-    logger.info("Phase 2: Running RAGAS LLM-judged evaluation…")
-    # Combine baseline + hybrid for RAGAS (so we can compare side-by-side)
-    combined = raw_results["baseline"] + raw_results["hybrid"]
-    ragas_scores = run_ragas_evaluation(combined)
+    skip_ragas = os.environ.get("SKIP_RAGAS", "").lower() in ("1", "true", "yes")
+    if skip_ragas:
+        logger.info("Phase 2: SKIPPED (SKIP_RAGAS=1)")
+        ragas_scores = None
+    else:
+        logger.info("Phase 2: Running RAGAS LLM-judged evaluation…")
+        # Combine baseline + hybrid for RAGAS (so we can compare side-by-side)
+        combined = raw_results["baseline"] + raw_results["hybrid"]
+        ragas_scores = run_ragas_evaluation(combined)
 
     # Phase 3: Compute summary
     logger.info("Phase 3: Computing summary statistics…")

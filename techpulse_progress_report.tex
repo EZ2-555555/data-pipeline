@@ -204,7 +204,7 @@ The rapid expansion of emerging technologies has created a fragmented knowledge 
 
 This report presents the implementation progress of TechPulse, a cloud-native Hybrid RAG system designed to synthesize emerging technology intelligence under operational latency and cost constraints. The system ingests data from five heterogeneous sources---ArXiv, Hacker News, DEV.to, GitHub Trending, and curated RSS/Atom feeds---with deterministic preprocessing, token-based chunking, and semantic embedding via the MiniLM sentence-transformer. Embeddings are indexed in PostgreSQL with the pgvector extension, supporting integrated relational filtering and vector similarity search.
 
-The retrieval pipeline operates as a three-stage process: metadata-constrained filtering, cosine similarity search, and lightweight reranking incorporating semantic similarity, lexical overlap, and exponential recency weighting. An automatic LLM backend fallback chain ensures generation availability across deployment environments, with HuggingFace Inference API as the primary backend under AWS Academy Learner Lab constraints. The system further incorporates dual-criteria drift detection (Shewhart $3\sigma$ control charts and relative-drop thresholds), three-layer hallucination verification, and comprehensive health monitoring. A controlled evaluation framework comparing baseline and hybrid retrieval has been developed using RAGAS metrics and grid search over reranking weights.
+The retrieval pipeline operates as a three-stage process: metadata-constrained filtering, cosine similarity search, and lightweight reranking incorporating semantic similarity, lexical overlap, and exponential recency weighting. An automatic LLM backend fallback chain ensures generation availability across deployment environments, with Groq (\texttt{llama-3.1-8b-instant}) as the primary backend under AWS Academy Learner Lab constraints. The system further incorporates dual-criteria drift detection (Shewhart $3\sigma$ control charts and relative-drop thresholds), three-layer hallucination verification, and comprehensive health monitoring. A controlled evaluation framework comparing baseline and hybrid retrieval has been developed using RAGAS metrics and grid search over reranking weights.
 
 This report documents the system architecture, pipeline design, implementation decisions, deviations from the original proposal, current progress, and remaining work.
 
@@ -575,7 +575,7 @@ Message queue & Amazon SQS + DLQ & Decouples ingestion from embedding; failure r
 Raw storage & Amazon S3 (medallion layout) & Cost-effective, durable, prefix-based lineage tracking \\
 Embedding model & MiniLM (sentence-transformers) & Low latency, 384-dim, serverless-compatible \\
 Vector + relational store & RDS PostgreSQL + pgvector & Unified hybrid retrieval; Learner Lab compatible \\
-Generative model & Bedrock (default) / HuggingFace / Ollama & Multi-backend with auto-cascade; Bedrock enabled on Free Tier \\
+Generative model & Groq (default) / Bedrock / HuggingFace / Ollama & Multi-backend auto-cascade; Groq free tier primary \\
 Frontend & React (S3 static hosting) & Lightweight, decoupled from backend \\
 API routing & Amazon API Gateway (HTTP) & Managed, HTTPS, CORS support \\
 CI/CD & GitHub Actions + SAM & Reproducible IaC deployments, automated testing \\
@@ -611,7 +611,7 @@ TechPulse has been implemented as a six-layer, cloud-native system adapted for d
 \node[rectangle, draw=awsgray!50, fill=awslightorange, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l6]
-  (l5) {Layer 5 --- Generative Synthesis (HuggingFace / Ollama / Bedrock) \quad \textcolor{awsgray}{\scriptsize Auto-fallback chain}};
+  (l5) {Layer 5 --- Generative Synthesis (Groq / Bedrock / Ollama / HuggingFace) \quad \textcolor{awsgray}{\scriptsize Auto-fallback chain}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightpurple, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
@@ -655,7 +655,7 @@ The TechPulse architecture is designed in explicit alignment with the AWS Well-A
 \textbf{Security} & Controlled API access via Amazon API Gateway with CORS; rate limiting via slowapi; all services managed within AWS default VPC; no direct model invocation from the frontend \\[4pt]
 \textbf{Reliability} & Decoupled ingestion and embedding pipelines via SQS; Dead Letter Queue for failure recovery and replay with 14-day retention; bounded retry logic with exponential backoff for LLM invocations; automatic LLM backend fallback chain \\[4pt]
 \textbf{Performance Efficiency} & Serverless Lambda scaling; lightweight MiniLM embedding model (384-dim); metadata pre-filtering reduces vector search scope; HNSW index for approximate nearest-neighbor search \\[4pt]
-\textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; HuggingFace free-tier inference as primary backend in Learner Lab; db.t3.micro RDS instance \\[4pt]
+\textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; Groq free-tier inference as primary backend in Learner Lab; db.t3.micro RDS instance \\[4pt]
 \textbf{Sustainability} & Event-driven processing avoids idle compute; SQS decoupling prevents over-provisioning; right-sized Lambda memory allocations (512MB--1024MB) \\
 \bottomrule
 \end{tabular}
@@ -729,7 +729,7 @@ The pipeline has been implemented around four design principles: determinism (id
 
 % ---- Retrieval / LLM ----
 \node[compnode=awsorange, right=0.7cm of rds] (rag) {RAG\\Orchestrator};
-\node[compnode=awsblue, right=0.7cm of rag] (llm) {LLM Backend\\(HF/Ollama)};
+\node[compnode=awsblue, right=0.7cm of rag] (llm) {LLM Backend\\(Groq/Bedrock)};
 
 % ---- API GW + React ----
 \node[compnode=awsgreen, right=0.7cm of llm] (apigw) {API\\Gateway};
@@ -909,14 +909,15 @@ To ensure generation availability across diverse deployment environments, TechPu
 \toprule
 \textbf{Tier} & \textbf{Backend} & \textbf{Fallback Chain} & \textbf{Notes} \\
 \midrule
-1 & Amazon Bedrock (Claude Haiku) & $\to$ Ollama $\to$ HuggingFace & Default backend on Free Tier deployment \\
-2 & Ollama (local) & $\to$ HuggingFace & OpenAI-compatible API; local inference \\
-3 & HuggingFace Inference API & $\to$ Ollama & Primary in Learner Lab; Mistral-7B-Instruct \\
+1 & Groq (llama-3.1-8b-instant) & $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace & Primary backend; free tier, OpenAI-compatible API \\
+2 & Amazon Bedrock (Converse API) & $\to$ Ollama $\to$ HuggingFace & AWS-native; model-agnostic via Converse API \\
+3 & Ollama (local) & $\to$ HuggingFace & Local inference for development \\
+4 & HuggingFace Inference API & $\to$ Ollama & Mistral-7B-Instruct; serverless \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-All three backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with bounded retry logic (2 retries with exponential backoff) before cascading to the next tier. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
+All four backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with bounded retry logic (2 retries with exponential backoff) before cascading to the next tier. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
 
 \section{Deployment, Monitoring, and MLOps}
 \label{sec:mlops}
@@ -977,7 +978,7 @@ Generation is performed through the configured LLM backend with the following pa
 \midrule
 Max Output Tokens & 300 & Cost control \\
 Temperature & 0.2 & Reduce hallucination risk \\
-Timeout & 300 seconds (Ollama) / 60 seconds (HF) & Backend-appropriate limits \\
+Timeout & 30 seconds (Groq) / 300 seconds (Ollama) / 60 seconds (HF) & Backend-appropriate limits \\
 Retry Attempts & 2 & Transient failure handling \\
 Backoff Base & 2 seconds & Exponential backoff \\
 Context Window & 4096 tokens (Ollama) & Model-appropriate context \\
@@ -1135,7 +1136,7 @@ Figure~\ref{fig:eval_framework} summarizes the implemented evaluation framework.
 
 \subsection{Context Precision}
 
-Retrieval precision is measured using RAGAS \texttt{ContextPrecisionWithoutReference}, which evaluates whether retrieved documents are relevant to the query using automated LLM-based scoring (with Ollama as the evaluation judge).
+Retrieval precision is measured using RAGAS \texttt{ContextPrecisionWithoutReference}, which evaluates whether retrieved documents are relevant to the query using automated LLM-based scoring. The RAGAS evaluation judge uses Groq's \texttt{llama-3.3-70b-versatile} model (70B parameters) via the OpenAI-compatible API, providing substantially more capable structured evaluation output than smaller local models.
 
 \subsection{Faithfulness and Hallucination Verification}
 
@@ -1187,7 +1188,7 @@ Upon completion of the full evaluation run, the following analyses will be condu
 
 \textbf{Retrieval strictness vs.\ recall.} The 180-day metadata filter and minimum similarity threshold (0.15) reduce retrieval noise but may exclude relevant older documents. The analysis will examine whether filtered-out documents would have contributed positively to generation quality by inspecting borderline cases.
 
-\textbf{Cost--performance balance across LLM backends.} Token usage and estimated cost per query will be reported for the HuggingFace and Ollama backends. Since the prompt template is identical across backends, any faithfulness differences can be attributed to model capability rather than retrieval quality.
+\textbf{Cost--performance balance across LLM backends.} Token usage and estimated cost per query will be reported for the Groq backend (primary). Since the prompt template is identical across backends, any faithfulness differences can be attributed to model capability rather than retrieval quality.
 
 \textbf{Reranking weight sensitivity.} Grid search results across $\alpha \in \{0.4, 0.5, 0.6, 0.7\}$ will be presented as a precision--latency Pareto frontier to identify the optimal weight configuration.
 
@@ -1436,7 +1437,7 @@ Embedding Pipeline & Complete & MiniLM L6 v2 (384-dim), lazy singleton \\
 Hybrid Retrieval & Complete & 3-stage pipeline with configurable weights \\
 Baseline Retrieval & Complete & Vector-only comparison mode \\
 RAG Orchestrator & Complete & 3-layer hallucination verification \\
-LLM Backend Fallback & Complete & Auto-cascade across 3 backends \\
+LLM Backend Fallback & Complete & Groq (primary) $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace \\
 API Layer & Complete & FastAPI + Mangum; /health, /ask, /drift endpoints \\
 Database Schema & Complete & PostgreSQL + pgvector with HNSW index \\
 S3 Medallion Storage & Complete & Raw/processed/embeddings tiers \\
@@ -1468,7 +1469,7 @@ Several implementation decisions diverge from the original proposal due to AWS A
 \textbf{Proposal Claim} & \textbf{Implemented} & \textbf{Reason} & \textbf{Impact} \\
 \midrule
 Aurora Serverless + pgvector & RDS PostgreSQL db.t3.micro + pgvector & Aurora not available in Learner Lab & Functionally equivalent; HNSW index preserved \\[4pt]
-Amazon Bedrock (Claude Haiku) & Amazon Bedrock (Claude Haiku) as default + auto-fallback & Bedrock enabled on Free Tier (requires model access enablement) & Same prompt template; evaluation comparable \\[4pt]
+Amazon Bedrock (Claude Haiku) & Groq (llama-3.1-8b-instant) as primary + auto-fallback chain & Educational AWS account has 0 Bedrock model quota (not adjustable); Groq free tier provides reliable generation & Same prompt template; evaluation comparable; Groq latency $<$ Bedrock \\[4pt]
 2 data sources (ArXiv, HN) & 5 data sources (+DEV.to, GitHub, RSS) & Improved corpus diversity and breadth & Enhanced retrieval coverage \\[4pt]
 Custom VPC + NAT Gateway & Default VPC & Custom VPCs restricted in Learner Lab & Simplified networking; publicly accessible RDS \\[4pt]
 AWS Budgets alerts & Cost Explorer programmatic check & AWS Budgets restricted in Learner Lab & Budget guard preserved via Cost Explorer API \\[4pt]
@@ -1500,11 +1501,11 @@ Adapting the system for AWS Academy Learner Lab required systematic identificati
 
 \begin{itemize}[leftmargin=0.5in]
   \item \textbf{No Aurora Serverless.} Replaced with standard RDS PostgreSQL \texttt{db.t3.micro} (PostgreSQL 16.4, 20GB gp2). The pgvector extension and HNSW indexing remain fully functional.
-  \item \textbf{Amazon Bedrock now enabled.} The Free Tier template (\texttt{template-freetier.yaml}) has been updated to support Bedrock as the default LLM backend (\texttt{LLM\_BACKEND=bedrock}), with IAM permissions for \texttt{bedrock:InvokeModel}. HuggingFace Inference API and Ollama remain available as fallbacks. Bedrock model access must be enabled in the AWS Console (Bedrock $\to$ Model access $\to$ enable Claude Haiku).
+  \item \textbf{Groq as primary LLM backend.} The educational AWS account (AWS Academy) has all Amazon Bedrock model quotas set to 0 and marked ``Not adjustable,'' making Bedrock unusable for generation. The system now uses Groq (\texttt{LLM\_BACKEND=groq}) as the primary LLM backend, running \texttt{llama-3.1-8b-instant} via an OpenAI-compatible API with a free tier sufficient for the project workload. Bedrock, Ollama, and HuggingFace remain in the automatic fallback chain. The RAGAS evaluation judge uses a larger Groq model (\texttt{llama-3.3-70b-versatile}, 70B parameters) for more reliable structured scoring output.
   \item \textbf{No custom VPCs or NAT Gateways.} The SAM template uses the default VPC with two subnets. RDS is configured as publicly accessible with security group restrictions.
   \item \textbf{No custom IAM roles.} All Lambda functions use the pre-existing \texttt{LabRole} provided by the Learner Lab environment.
   \item \textbf{No AWS Budgets service.} Budget governance is maintained through programmatic Cost Explorer API queries integrated into the inference path.
-  \item \textbf{LLM backend set to \texttt{huggingface}.} The \texttt{LLM\_BACKEND} environment variable defaults to \texttt{huggingface} in the Learner Lab template, with \texttt{BUDGET\_HALT\_ENABLED} set to \texttt{false} (Cost Explorer quota limitations).
+  \item \textbf{LLM backend set to \texttt{groq}.} The \texttt{LLM\_BACKEND} environment variable is set to \texttt{groq} in the Free Tier SAM template, with \texttt{BUDGET\_HALT\_ENABLED} set to \texttt{false} (Cost Explorer quota limitations). The Groq API key is stored as a GitHub Actions secret (\texttt{GROQ\_API\_KEY}) and injected at deploy time.
 \end{itemize}
 
 A dedicated SAM template (\texttt{template-learnerlab.yaml}) and configuration file (\texttt{samconfig-learnerlab.toml}) were created to encapsulate all Learner Lab-specific resource definitions.
@@ -1694,6 +1695,10 @@ D & Final Report \& Submission & Apr W2 & Completed report with empirical eviden
   \item \textbf{Grid search weight optimization.} Run the reranking weight grid search across $\alpha \in \{0.4, 0.5, 0.6, 0.7\}$ with the latency constraint (p95 $\leq 2.0$s). Identify the optimal weight configuration that maximizes mean context precision.
 
   \item \textbf{Latency profiling and cost estimation.} Decompose end-to-end latency by stage (metadata filtering, vector search, reranking, LLM generation). Compute per-query cost estimates based on measured token usage across LLM backends.
+
+  \item \textbf{Source diversity analysis.} Investigate the per-source distribution of retrieved results to determine whether the corpus is skewed toward any single source (e.g., DEV.to). If imbalance is confirmed, evaluate mitigation strategies: balanced ingestion quotas per source, source-aware reranking weight adjustments, or post-retrieval diversity enforcement.
+
+  \item \textbf{HTTPS frontend via CloudFront (optional).} Add a CloudFront distribution in front of the S3 static website to serve the React frontend over HTTPS. This eliminates the browser ``Not secure'' warning visible in the current HTTP deployment and improves the production-readiness appearance for demonstration.
 \end{enumerate}
 
 \subsection{Phase C: Analysis and Monitoring Validation (Apr W1 -- Apr W2)}
@@ -1724,7 +1729,11 @@ D & Final Report \& Submission & Apr W2 & Completed report with empirical eviden
 
   \item The evaluation query set of 25 curated queries is sufficient for preliminary comparative analysis consistent with prior RAG evaluation practices (Es et al., 2023). However, a larger and more diverse query set would strengthen external validity.
 
-  \item Amazon Bedrock is unavailable in the Learner Lab environment, requiring evaluation with HuggingFace Inference API and Ollama. Since the prompt template, evaluation methodology, and RAGAS metrics are backend-agnostic, the comparative findings between baseline and hybrid retrieval remain valid and transferable to any LLM backend. Generation quality may vary when migrated to Bedrock, but the retrieval-layer conclusions are independent of the generative model.
+  \item Amazon Bedrock model quotas are set to 0 on the educational AWS account and marked ``Not adjustable,'' requiring the use of Groq (free tier) as the primary LLM backend. Since the prompt template, evaluation methodology, and RAGAS metrics are backend-agnostic, the comparative findings between baseline and hybrid retrieval remain valid and transferable to any LLM backend. The RAGAS evaluation judge uses Groq's \texttt{llama-3.3-70b-versatile} (70B parameters) to ensure reliable structured evaluation output.
+
+  \item The retrieval results may exhibit source diversity skew---preliminary observations suggest DEV.to articles dominate the retrieved sources due to higher ingestion volume and embedding density relative to other sources. This corpus imbalance may affect evaluation fairness across source types and requires investigation (balanced ingestion quotas or source-aware reranking).
+
+  \item The frontend is served over HTTP via S3 static website hosting. Adding a CloudFront distribution would provide HTTPS encryption and improve the production-readiness appearance for demonstration and submission.
 
   \item The \texttt{db.t3.micro} RDS instance provides limited compute and memory compared to Aurora Serverless. Under high ingestion volumes, database performance may become a bottleneck.
 
@@ -1930,6 +1939,8 @@ Several extensions are identified for post-prototype development:
   \item Embedding model fine-tuning or replacement based on drift analysis findings
   \item Integration testing suite with containerized database and mocked AWS services
   \item User feedback loop for continuous retrieval quality improvement
+  \item Source diversity balancing --- per-source ingestion quotas or source-aware reranking weights to prevent any single source from dominating retrieval results
+  \item CloudFront HTTPS distribution --- serve the React frontend over HTTPS via CloudFront, eliminating browser ``Not secure'' warnings and improving production-readiness for demonstration
 \end{itemize}
 
 % ============================================================
@@ -2020,7 +2031,7 @@ The repository includes the following implemented components:
 
 \item RAG orchestration with three-layer hallucination verification (prompt grounding, RAGAS faithfulness, citation traceability)
 
-\item Automatic LLM backend fallback chain supporting Bedrock, Ollama, and HuggingFace Inference API
+\item Automatic LLM backend fallback chain supporting Groq (primary), Bedrock, Ollama, and HuggingFace Inference API
 
 \item Dual-criteria drift detection combining Shewhart $3\sigma$ control charts with relative-drop thresholds
 

@@ -109,14 +109,16 @@ def test_generate_ollama_retries(mock_settings, mock_post, mock_sleep):
     mock_post.side_effect = [
         requests.RequestException("timeout"),
         requests.RequestException("timeout"),
-        requests.RequestException("timeout"),  # MAX_RETRIES = 2, so 3 total attempts
+        requests.RequestException("timeout"),
+        requests.RequestException("timeout"),
+        requests.RequestException("timeout"),  # MAX_RETRIES = 4, so 5 total attempts
     ]
 
     from src.orchestrator.llm_backends import _generate_ollama
     with pytest.raises(requests.RequestException):
         _generate_ollama("hello", 512)
 
-    assert mock_post.call_count == 3  # 1 + 2 retries
+    assert mock_post.call_count == 5  # 1 + 4 retries
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +165,7 @@ def test_generate_huggingface_success(mock_settings, mock_post, mock_sleep):
     mock_settings.HF_API_TOKEN = "hf_test_token"
 
     mock_resp = MagicMock()
-    mock_resp.json.return_value = [{"generated_text": "HF says hi"}]
+    mock_resp.json.return_value = {"choices": [{"message": {"content": "HF says hi"}}]}
     mock_resp.raise_for_status = MagicMock()
     mock_post.return_value = mock_resp
 
@@ -184,13 +186,15 @@ def test_generate_huggingface_retries(mock_settings, mock_post, mock_sleep):
         requests.RequestException("error"),
         requests.RequestException("error"),
         requests.RequestException("error"),
+        requests.RequestException("error"),
+        requests.RequestException("error"),  # MAX_RETRIES = 4, so 5 total attempts
     ]
 
     from src.orchestrator.llm_backends import _generate_huggingface
     with pytest.raises(requests.RequestException):
         _generate_huggingface("hello", 100)
 
-    assert mock_post.call_count == 3
+    assert mock_post.call_count == 5  # 1 + 4 retries
 
 
 # ---------------------------------------------------------------------------

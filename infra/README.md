@@ -11,7 +11,7 @@ Lambda functions use **ECR container images** (not zip packages) to accommodate 
 | `template-freetier.yaml` | AWS Free Tier (personal account) | RDS PostgreSQL 16 (`db.t3.micro`) | **Active — used by CI/CD** |
 | `template.yaml` | Production | Aurora Serverless v2 + pgvector | Reference only |
 
-> The active template uses `LLMBackend=bedrock` (Amazon Bedrock, default) with fallback to HuggingFace/Ollama. Ensure Bedrock model access is enabled in AWS Console → Bedrock → Model access → enable Claude Haiku.
+> The active template uses **Groq** (`llama-3.1-8b-instant`) as the primary LLM backend with a four-tier fallback chain: Groq → Bedrock → Ollama → HuggingFace. A `GROQ_API_KEY` secret must be set in the deployed environment.
 
 ## Architecture (Free Tier)
 
@@ -35,7 +35,7 @@ Lambda functions use **ECR container images** (not zip packages) to accommodate 
 │  React SPA   │────▶│ API Gateway   │────▶┌────────▼──────────┐
 │  (S3 hosted) │     │ (HTTP API)    │     │  RAG API λ        │
 └──────────────┘     └───────────────┘     │  (ECR container)   │
-                                           │  Bedrock/HF/Ollama │
+                                           │  Groq / Bedrock    │
                                            └───────────────────┘
 CloudWatch alarms ─── SNS topic ─── email (AlertEmail)
 ```

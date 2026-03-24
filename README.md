@@ -124,7 +124,7 @@ FastAPI (/ask + /health + /drift) → CloudWatch metrics → React Frontend
 │  React SPA   │────▶│ API Gateway   │────▶┌────────▼──────────┐
 │  (S3 hosted) │     │ (HTTP API)    │     │  RAG API λ        │
 └──────────────┘     └───────────────┘     │  (ECR container)   │
-                                           │  HuggingFace/Ollama│
+                                           │  Groq / Bedrock    │
                                            └───────────────────┘
 CloudWatch alarms ─── SNS alerts
 ```
@@ -362,6 +362,7 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
 | `GROQ_API_KEY` | — | Groq API key (required when `LLM_BACKEND=groq`) |
 | `GROQ_MODEL_ID` | `llama-3.1-8b-instant` | Groq model ID |
+| `GROQ_EVAL_MODEL_ID` | `llama-3.3-70b-versatile` | Larger Groq model used as RAGAS evaluation judge |
 | `BEDROCK_MODEL_ID` | `amazon.nova-micro-v1:0` | Bedrock model ID — any model supported by the Converse API works |
 | `HF_API_TOKEN` | — | HuggingFace API token (when `LLM_BACKEND=huggingface`) |
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
@@ -388,11 +389,12 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 
 The evaluation framework compares **baseline (vector-only)** vs **hybrid retrieval** across:
 
-- **RAGAS metrics**: faithfulness, answer relevancy, context precision
+- **RAGAS metrics**: faithfulness, answer relevancy, context precision (judged by Groq `llama-3.3-70b-versatile`)
 - **Latency**: per-query, mean, and p95 end-to-end
 - **Citation grounding**: ratio of valid `[Source N]` references
 - **Token / cost per query**: prompt + completion tokens; estimated USD cost
 - **Weight grid search**: automated α/β/γ optimisation (α ∈ {0.4, 0.5, 0.6, 0.7})
+- **Source diversity**: per-source retrieval distribution analysis
 
 ```bash
 python -m evaluation.run_eval
@@ -439,3 +441,5 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] Bedrock Converse API (model-agnostic) for future migration
 - [ ] Migrate local data to AWS RDS after first deploy
 - [ ] RAGAS evaluation run on live AWS deployment
+- [ ] Source diversity analysis — investigate and mitigate corpus skew toward any single source (e.g. DEV.to)
+- [ ] CloudFront HTTPS — add CloudFront distribution for S3 frontend to serve over HTTPS

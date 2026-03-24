@@ -19,8 +19,8 @@ from src.config import settings
 logger = logging.getLogger(__name__)
 
 # Retry configuration for Ollama / HuggingFace
-MAX_RETRIES = 2
-BACKOFF_BASE_S = 2.0  # exponential: 2s, 4s
+MAX_RETRIES = 4
+BACKOFF_BASE_S = 3.0  # exponential: 3s, 6s, 12s, 24s
 
 
 # Fallback order: primary → next tier → last tier
@@ -134,21 +134,23 @@ def _generate_bedrock(prompt: str, max_tokens: int) -> str:
 
 
 def _generate_huggingface(prompt: str, max_tokens: int) -> str:
-    """Call HuggingFace Inference API with retry/backoff."""
+    """Call HuggingFace Inference API (router) with retry/backoff."""
     last_exc: Exception | None = None
     for attempt in range(1 + MAX_RETRIES):
         try:
             resp = requests.post(
-                f"https://api-inference.huggingface.co/models/{settings.HF_MODEL_ID}",
-                headers={"Authorization": f"Bearer {settings.HF_API_TOKEN}"},
+                f"https://router.huggingface.co/hf-inference/models/{settings.HF_MODEL_ID}/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.HF_API_TOKEN}", "Content-Type": "application/json"},
                 json={
-                    "inputs": prompt,
-                    "parameters": {"max_new_tokens": max_tokens, "temperature": 0.2, "return_full_text": False},
+                    "model": settings.HF_MODEL_ID,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.2,
                 },
                 timeout=60,
             )
             resp.raise_for_status()
-            return resp.json()[0]["generated_text"]
+            return resp.json()["choices"][0]["message"]["content"]
         except (requests.RequestException, KeyError, IndexError) as exc:
             last_exc = exc
             if attempt < MAX_RETRIES:
