@@ -42,7 +42,7 @@ class ComputeStack(cdk.Stack):
             "DB_NAME": "techpulse",
             "S3_BUCKET_NAME": data_bucket.bucket_name,
             "LLM_BACKEND": "bedrock",
-            "BEDROCK_MODEL_ID": "anthropic.claude-3-5-haiku-20241022-v1:0",
+            "BEDROCK_MODEL_ID": "amazon.nova-micro-v1:0",
             "TOP_K": "8",
             "RERANK_ALPHA": "0.6",
             "RERANK_BETA": "0.2",

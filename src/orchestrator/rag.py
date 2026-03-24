@@ -185,8 +185,8 @@ def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
     backend = settings.LLM_BACKEND
     if backend in ("ollama", "huggingface"):
         return 0.0
-    # Bedrock Claude Haiku pricing (rough: $0.25 / 1M input, $1.25 / 1M output)
-    return (prompt_tokens * 0.25 + completion_tokens * 1.25) / 1_000_000
+    # Amazon Nova Micro pricing (rough: $0.035 / 1M input, $0.14 / 1M output)
+    return (prompt_tokens * 0.035 + completion_tokens * 0.14) / 1_000_000
 
 
 def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> dict:

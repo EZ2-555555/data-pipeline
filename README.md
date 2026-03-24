@@ -359,7 +359,7 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
 | `HF_API_TOKEN` | — | HuggingFace API token (when `LLM_BACKEND=huggingface`) |
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
-| `BEDROCK_MODEL_ID` | `anthropic.claude-3-5-haiku-20241022-v1:0` | Bedrock model ID — enable model access in AWS Console → Bedrock → Model access → Claude Haiku |
+| `BEDROCK_MODEL_ID` | `amazon.nova-micro-v1:0` | Bedrock model ID — any model supported by the Converse API works |
 | `LLM_MAX_TOKENS` | `300` | Max tokens for LLM generation |
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TOP_K` | `8` | Retrieval results count |

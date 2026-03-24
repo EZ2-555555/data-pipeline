@@ -91,7 +91,7 @@ Deployment triggers automatically on push to `main`. All secrets must be set in 
 | `DEFAULT_SUBNET_B` | Different subnet, different AZ from A |
 | `ALERT_EMAIL` | Email for SNS alarm notifications |
 | `HF_MODEL_ID` | *(optional)* Defaults to `mistralai/Mistral-7B-Instruct-v0.2` |
-| `BEDROCK_MODEL_ID` | *(optional)* Defaults to `anthropic.claude-3-5-haiku-20241022-v1:0` — ensure model access is enabled in AWS Console → Bedrock → Model access |
+| `BEDROCK_MODEL_ID` | *(optional)* Defaults to `amazon.nova-micro-v1:0` — any Bedrock model ID works (uses Converse API) |
 | `DB_ALLOWED_CIDR` | *(optional)* Your IP/32 — defaults to `0.0.0.0/0` if not set |
 
 > **Note:** `AWS_SESSION_TOKEN` is **not needed** for Free Tier personal accounts. Leave it empty or unset in your GitHub environment.

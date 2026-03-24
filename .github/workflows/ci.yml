@@ -171,7 +171,7 @@ jobs:
               "DBMasterUsername=${{ secrets.DB_USERNAME }}" \
               "DBMasterPassword=${{ secrets.DB_PASSWORD }}" \
               "LLMBackend=bedrock" \
-              "BedrockModelId=${{ secrets.BEDROCK_MODEL_ID || 'anthropic.claude-3-5-haiku-20241022-v1:0' }}" \
+              "BedrockModelId=${{ secrets.BEDROCK_MODEL_ID || 'amazon.nova-micro-v1:0' }}" \
               "HFApiToken=${{ secrets.HF_API_TOKEN }}" \
               "HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }}" \
               "DBAllowedCidrIp=${{ secrets.DB_ALLOWED_CIDR || '0.0.0.0/0' }}" \

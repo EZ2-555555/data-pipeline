@@ -88,25 +88,17 @@ def _generate_ollama(prompt: str, max_tokens: int) -> str:
 
 
 def _generate_bedrock(prompt: str, max_tokens: int) -> str:
-    """Call Amazon Bedrock."""
+    """Call Amazon Bedrock using the model-agnostic Converse API."""
     if boto3 is None:
         raise RuntimeError("boto3 is required for the 'bedrock' backend")
 
     client = boto3.client("bedrock-runtime", region_name=settings.AWS_REGION)
-    body = json.dumps({
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": max_tokens,
-        "temperature": 0.2,
-        "messages": [{"role": "user", "content": prompt}],
-    })
-    response = client.invoke_model(
+    response = client.converse(
         modelId=settings.BEDROCK_MODEL_ID,
-        body=body,
-        contentType="application/json",
-        accept="application/json",
+        messages=[{"role": "user", "content": [{"text": prompt}]}],
+        inferenceConfig={"maxTokens": max_tokens, "temperature": 0.2},
     )
-    result = json.loads(response["body"].read())
-    return result["content"][0]["text"]
+    return response["output"]["message"]["content"][0]["text"]
 
 
 def _generate_huggingface(prompt: str, max_tokens: int) -> str:

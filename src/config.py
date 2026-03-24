@@ -54,7 +54,7 @@ class _Settings:
 
     @property
     def BEDROCK_MODEL_ID(self) -> str:
-        return os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-haiku-20241022-v1:0")
+        return os.getenv("BEDROCK_MODEL_ID", "amazon.nova-micro-v1:0")
 
     @property
     def HF_API_TOKEN(self) -> str:
