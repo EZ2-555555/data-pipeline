@@ -188,6 +188,12 @@ export default function App() {
             </div>
             <div className="answer-text">{result.answer}</div>
 
+            {result.llm_error && (
+              <div className="error-card" style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+                LLM backend error: {result.llm_error}
+              </div>
+            )}
+
             {result.sources?.length > 0 && (
               <div className="sources-section">
                 <h3>Sources ({result.sources.length})</h3>

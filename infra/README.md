@@ -11,7 +11,7 @@ Lambda functions use **ECR container images** (not zip packages) to accommodate 
 | `template-freetier.yaml` | AWS Free Tier (personal account) | RDS PostgreSQL 16 (`db.t3.micro`) | **Active — used by CI/CD** |
 | `template.yaml` | Production | Aurora Serverless v2 + pgvector | Reference only |
 
-> Bedrock is not available on the Free Tier without explicit enablement. The active template uses `LLMBackend=huggingface` (HF Inference API) or `LLMBackend=ollama`.
+> The active template uses `LLMBackend=bedrock` (Amazon Bedrock, default) with fallback to HuggingFace/Ollama. Ensure Bedrock model access is enabled in AWS Console → Bedrock → Model access → enable Claude Haiku.
 
 ## Architecture (Free Tier)
 
@@ -35,7 +35,7 @@ Lambda functions use **ECR container images** (not zip packages) to accommodate 
 │  React SPA   │────▶│ API Gateway   │────▶┌────────▼──────────┐
 │  (S3 hosted) │     │ (HTTP API)    │     │  RAG API λ        │
 └──────────────┘     └───────────────┘     │  (ECR container)   │
-                                           │  HuggingFace/Ollama│
+                                           │  Bedrock/HF/Ollama │
                                            └───────────────────┘
 CloudWatch alarms ─── SNS topic ─── email (AlertEmail)
 ```
@@ -91,6 +91,7 @@ Deployment triggers automatically on push to `main`. All secrets must be set in 
 | `DEFAULT_SUBNET_B` | Different subnet, different AZ from A |
 | `ALERT_EMAIL` | Email for SNS alarm notifications |
 | `HF_MODEL_ID` | *(optional)* Defaults to `mistralai/Mistral-7B-Instruct-v0.2` |
+| `BEDROCK_MODEL_ID` | *(optional)* Defaults to `anthropic.claude-3-haiku-20240307-v1:0` — ensure model access is enabled in AWS Console → Bedrock → Model access |
 | `DB_ALLOWED_CIDR` | *(optional)* Your IP/32 — defaults to `0.0.0.0/0` if not set |
 
 > **Note:** `AWS_SESSION_TOKEN` is **not needed** for Free Tier personal accounts. Leave it empty or unset in your GitHub environment.
@@ -162,7 +163,7 @@ sam deploy \
 | `ECRImageUri` | — | Full ECR image URI with tag (e.g. `123456789012.dkr.ecr.us-east-1.amazonaws.com/techpulse-lambda:abc1234`) |
 | `DBMasterUsername` | `postgres` | RDS master username |
 | `DBMasterPassword` | — | RDS master password (min 8 chars) |
-| `LLMBackend` | `huggingface` | `huggingface` or `ollama` (Bedrock not enabled on Free Tier) |
+| `LLMBackend` | `bedrock` | `bedrock` (default) / `huggingface` / `ollama` |
 | `HFApiToken` | — | HuggingFace Inference API token |
 | `HFModelId` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
 | `DefaultVpcId` | — | Default VPC ID |

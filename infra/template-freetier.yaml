@@ -110,6 +110,7 @@ Globals:
     Environment:
       Variables:
         STAGE: !Ref Stage
+        AWS_REGION: !Ref AWS::Region
         DB_HOST: !GetAtt PostgresDB.Endpoint.Address
         DB_PORT: !GetAtt PostgresDB.Endpoint.Port
         DB_NAME: techpulse

@@ -239,6 +239,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
             "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", ""), "score": r["score"]} for r in results],
             "mode": mode,
             "llm_fallback": True,
+            "llm_error": str(exc),
             "hallucination_check": {"grounded": True, "flagged": False},
         }
 

@@ -575,7 +575,7 @@ Message queue & Amazon SQS + DLQ & Decouples ingestion from embedding; failure r
 Raw storage & Amazon S3 (medallion layout) & Cost-effective, durable, prefix-based lineage tracking \\
 Embedding model & MiniLM (sentence-transformers) & Low latency, 384-dim, serverless-compatible \\
 Vector + relational store & RDS PostgreSQL + pgvector & Unified hybrid retrieval; Learner Lab compatible \\
-Generative model & HuggingFace / Ollama (fallback) & Multi-backend with auto-cascade; no Bedrock in Learner Lab \\
+Generative model & Bedrock (default) / HuggingFace / Ollama & Multi-backend with auto-cascade; Bedrock enabled on Free Tier \\
 Frontend & React (S3 static hosting) & Lightweight, decoupled from backend \\
 API routing & Amazon API Gateway (HTTP) & Managed, HTTPS, CORS support \\
 CI/CD & GitHub Actions + SAM & Reproducible IaC deployments, automated testing \\
@@ -909,7 +909,7 @@ To ensure generation availability across diverse deployment environments, TechPu
 \toprule
 \textbf{Tier} & \textbf{Backend} & \textbf{Fallback Chain} & \textbf{Notes} \\
 \midrule
-1 & Amazon Bedrock (Claude Haiku) & $\to$ Ollama $\to$ HuggingFace & Not available in Learner Lab \\
+1 & Amazon Bedrock (Claude Haiku) & $\to$ Ollama $\to$ HuggingFace & Default backend on Free Tier deployment \\
 2 & Ollama (local) & $\to$ HuggingFace & OpenAI-compatible API; local inference \\
 3 & HuggingFace Inference API & $\to$ Ollama & Primary in Learner Lab; Mistral-7B-Instruct \\
 \bottomrule
@@ -1468,7 +1468,7 @@ Several implementation decisions diverge from the original proposal due to AWS A
 \textbf{Proposal Claim} & \textbf{Implemented} & \textbf{Reason} & \textbf{Impact} \\
 \midrule
 Aurora Serverless + pgvector & RDS PostgreSQL db.t3.micro + pgvector & Aurora not available in Learner Lab & Functionally equivalent; HNSW index preserved \\[4pt]
-Amazon Bedrock (Claude Haiku) & HuggingFace Inference API (Mistral-7B) + auto-fallback & Bedrock not available in Learner Lab & Same prompt template; evaluation comparable \\[4pt]
+Amazon Bedrock (Claude Haiku) & Amazon Bedrock (Claude Haiku) as default + auto-fallback & Bedrock enabled on Free Tier (requires model access enablement) & Same prompt template; evaluation comparable \\[4pt]
 2 data sources (ArXiv, HN) & 5 data sources (+DEV.to, GitHub, RSS) & Improved corpus diversity and breadth & Enhanced retrieval coverage \\[4pt]
 Custom VPC + NAT Gateway & Default VPC & Custom VPCs restricted in Learner Lab & Simplified networking; publicly accessible RDS \\[4pt]
 AWS Budgets alerts & Cost Explorer programmatic check & AWS Budgets restricted in Learner Lab & Budget guard preserved via Cost Explorer API \\[4pt]
@@ -1500,7 +1500,7 @@ Adapting the system for AWS Academy Learner Lab required systematic identificati
 
 \begin{itemize}[leftmargin=0.5in]
   \item \textbf{No Aurora Serverless.} Replaced with standard RDS PostgreSQL \texttt{db.t3.micro} (PostgreSQL 16.4, 20GB gp2). The pgvector extension and HNSW indexing remain fully functional.
-  \item \textbf{No Amazon Bedrock.} Replaced with HuggingFace Inference API as the primary LLM backend, with Ollama as local fallback. The auto-fallback chain ensures generation availability.
+  \item \textbf{Amazon Bedrock now enabled.} The Free Tier template (\texttt{template-freetier.yaml}) has been updated to support Bedrock as the default LLM backend (\texttt{LLM\_BACKEND=bedrock}), with IAM permissions for \texttt{bedrock:InvokeModel}. HuggingFace Inference API and Ollama remain available as fallbacks. Bedrock model access must be enabled in the AWS Console (Bedrock $\to$ Model access $\to$ enable Claude Haiku).
   \item \textbf{No custom VPCs or NAT Gateways.} The SAM template uses the default VPC with two subnets. RDS is configured as publicly accessible with security group restrictions.
   \item \textbf{No custom IAM roles.} All Lambda functions use the pre-existing \texttt{LabRole} provided by the Learner Lab environment.
   \item \textbf{No AWS Budgets service.} Budget governance is maintained through programmatic Cost Explorer API queries integrated into the inference path.
@@ -1925,7 +1925,6 @@ Several extensions are identified for post-prototype development:
 
 \begin{itemize}[leftmargin=0.5in]
   \item Migration to Aurora Serverless if deployed outside Learner Lab constraints
-  \item Integration with Amazon Bedrock for managed inference when access is available
   \item Expansion of data sources (StackExchange, academic conference proceedings)
   \item Cross-encoder reranking evaluation for precision-critical use cases
   \item Embedding model fine-tuning or replacement based on drift analysis findings

@@ -38,7 +38,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **HNSW vector index** — fast approximate nearest-neighbour search (works on empty tables)
 - **3-stage hybrid retrieval**: metadata filter → cosine similarity → recency-aware reranking
 - **Reranking weight grid search** — automated α/β/γ optimisation via evaluation framework
-- **Multi-backend LLM support**: HuggingFace Inference API (default on AWS) / Ollama (local) / Amazon Bedrock (requires explicit enablement) — configurable `LLM_MAX_TOKENS`
+- **Multi-backend LLM support**: Amazon Bedrock (default on AWS) / HuggingFace Inference API / Ollama (local) — configurable `LLM_MAX_TOKENS`
 - **Container-image Lambda deployment** — bypasses the 250 MB zip limit (fastembed + ONNX Runtime ~200 MB); up to 10 GB via ECR
 - **LLM retry with exponential backoff** — 2 retries on failures (2s → 4s); automatic retrieval-only fallback when LLM is unavailable
 - **Source-type filtering** — `/ask` accepts optional `sources` parameter (e.g. `["arxiv", "hn"]`)
@@ -354,12 +354,12 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `DB_NAME` | `techpulse` | Database name |
 | `DB_USER` | `postgres` | Database user |
 | `DB_PASSWORD` | `dev` | Database password |
-| `LLM_BACKEND` | `ollama` | `ollama` / `huggingface` (recommended) / `bedrock` (requires explicit enablement — **not** available on Free Tier by default) |
+| `LLM_BACKEND` | `bedrock` | `bedrock` (default) / `huggingface` / `ollama` — ensure Bedrock model access is enabled in AWS Console → Bedrock → Model access |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
 | `HF_API_TOKEN` | — | HuggingFace API token (when `LLM_BACKEND=huggingface`) |
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
-| `BEDROCK_MODEL_ID` | `anthropic.claude-3-haiku-20240307-v1:0` | Bedrock model — **only** if Bedrock is explicitly enabled in your AWS account |
+| `BEDROCK_MODEL_ID` | `anthropic.claude-3-haiku-20240307-v1:0` | Bedrock model ID — enable model access in AWS Console → Bedrock → Model access → Claude Haiku |
 | `LLM_MAX_TOKENS` | `300` | Max tokens for LLM generation |
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `TOP_K` | `8` | Retrieval results count |
@@ -412,7 +412,7 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] SHA-256 deduplication across all ingesters
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
 - [x] Hybrid retrieval with 3-stage reranking + grid search
-- [x] Multi-backend LLM support (HuggingFace / Ollama / Bedrock — Bedrock requires explicit enablement)
+- [x] Multi-backend LLM support (Bedrock (default) / HuggingFace / Ollama)
 - [x] FastAPI backend with deep `/health`, `/ask`, `/drift` endpoints
 - [x] React frontend (Vite) with source badges and mode selection
 - [x] Docker Compose (6 services: db, pgadmin, localstack, api, frontend, scheduler)
