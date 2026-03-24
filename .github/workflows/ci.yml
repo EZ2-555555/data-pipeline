@@ -171,16 +171,16 @@ jobs:
               "DBMasterUsername=${{ secrets.DB_USERNAME }}" \
               "DBMasterPassword=${{ secrets.DB_PASSWORD }}" \
               "LLMBackend=groq" \
-              "GroqApiKey=${{ secrets.GROQ_API_KEY }}" \
+              "GroqApiKey=${{ secrets.GROQ_API_KEY || 'NONE' }}" \
               "GroqModelId=${{ secrets.GROQ_MODEL_ID || 'llama-3.1-8b-instant' }}" \
               "BedrockModelId=${{ secrets.BEDROCK_MODEL_ID || 'amazon.nova-micro-v1:0' }}" \
-              "HFApiToken=${{ secrets.HF_API_TOKEN }}" \
+              "HFApiToken=${{ secrets.HF_API_TOKEN || 'NONE' }}" \
               "HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }}" \
               "DBAllowedCidrIp=${{ secrets.DB_ALLOWED_CIDR || '0.0.0.0/0' }}" \
               "DefaultVpcId=${{ secrets.DEFAULT_VPC_ID }}" \
               "DefaultSubnetA=${{ secrets.DEFAULT_SUBNET_A }}" \
               "DefaultSubnetB=${{ secrets.DEFAULT_SUBNET_B }}" \
-              "AlertEmail=${{ secrets.ALERT_EMAIL }}"
+              "AlertEmail=${{ secrets.ALERT_EMAIL || 'none@example.com' }}"
 
   # ---------------------------------------------------------------
   # Stage 2b — Build frontend (after SAM deploy)
