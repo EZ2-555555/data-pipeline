@@ -4,7 +4,7 @@ Description: >
   TechPulse — SAM template for AWS Free Tier (personal account).
   Adapted from Learner Lab template: creates its own IAM roles,
   uses db.t3.micro (Free Tier eligible), default VPC,
-  no Bedrock/Budgets/NAT/VPC-endpoints.
+  supports Bedrock/HuggingFace/Ollama — no Budgets/NAT/VPC-endpoints.
 
 # ---------------------------------------------------------------------------
 # Parameters
@@ -38,11 +38,17 @@ Parameters:
 
   LLMBackend:
     Type: String
-    Default: huggingface
-    AllowedValues: [ollama, huggingface]
+    Default: bedrock
+    AllowedValues: [bedrock, ollama, huggingface]
     Description: >
-      Bedrock is NOT available on the Free Tier without explicit enablement.
-      Use 'huggingface' (HF Inference API) or 'ollama' (self-hosted).
+      Choose LLM backend: 'bedrock' (AWS), 'huggingface' (HF Inference API),
+      or 'ollama' (self-hosted).
+
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+    Description: >
+      Bedrock model ID to use when LLMBackend=bedrock.
 
   HFApiToken:
     Type: String
@@ -111,6 +117,7 @@ Globals:
         DB_PASSWORD: !Ref DBMasterPassword
         S3_BUCKET_NAME: !Ref DataBucket
         LLM_BACKEND: !Ref LLMBackend
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
         OLLAMA_BASE_URL: !Ref OllamaBaseUrl
         OLLAMA_MODEL: !Ref OllamaModel
         HF_API_TOKEN: !Ref HFApiToken
@@ -180,6 +187,12 @@ Resources:
               - Effect: Allow
                 Action:
                   - cloudwatch:PutMetricData
+                Resource: "*"
+              # Bedrock — LLM invocation
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
                 Resource: "*"
               # CloudWatch Logs — Lambda logging
               - Effect: Allow

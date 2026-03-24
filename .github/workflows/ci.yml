@@ -154,25 +154,30 @@ jobs:
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      - name: SAM deploy (prod-bedrock)
+      - name: SAM deploy (dev)
         run: |
           sam deploy \
-            --stack-name "${{ env.SAM_STACK_NAME }}-prod-bedrock" \
+            --stack-name "${{ env.SAM_STACK_NAME }}-dev" \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM \
             --region "${{ env.AWS_REGION }}" \
             --resolve-s3 \
             --resolve-image-repos \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --template-file infra/template.yaml \
+            --template-file infra/template-freetier.yaml \
             --parameter-overrides \
-              "Stage=prod" \
+              "Stage=dev" \
               "ECRImageUri=$IMAGE_URI" \
               "DBMasterUsername=${{ secrets.DB_USERNAME }}" \
               "DBMasterPassword=${{ secrets.DB_PASSWORD }}" \
-              "BedrockModelId=${{ secrets.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0' }}" \
               "LLMBackend=bedrock" \
-              "MonthlyBudgetUSD=15" \
+              "BedrockModelId=${{ secrets.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0' }}" \
+              "HFApiToken=${{ secrets.HF_API_TOKEN }}" \
+              "HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }}" \
+              "DBAllowedCidrIp=${{ secrets.DB_ALLOWED_CIDR || '0.0.0.0/0' }}" \
+              "DefaultVpcId=${{ secrets.DEFAULT_VPC_ID }}" \
+              "DefaultSubnetA=${{ secrets.DEFAULT_SUBNET_A }}" \
+              "DefaultSubnetB=${{ secrets.DEFAULT_SUBNET_B }}" \
               "AlertEmail=${{ secrets.ALERT_EMAIL }}"
 
   # ---------------------------------------------------------------
