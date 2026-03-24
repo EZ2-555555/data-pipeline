@@ -170,7 +170,9 @@ jobs:
               "ECRImageUri=$IMAGE_URI" \
               "DBMasterUsername=${{ secrets.DB_USERNAME }}" \
               "DBMasterPassword=${{ secrets.DB_PASSWORD }}" \
-              "LLMBackend=bedrock" \
+              "LLMBackend=groq" \
+              "GroqApiKey=${{ secrets.GROQ_API_KEY }}" \
+              "GroqModelId=${{ secrets.GROQ_MODEL_ID || 'llama-3.1-8b-instant' }}" \
               "BedrockModelId=${{ secrets.BEDROCK_MODEL_ID || 'amazon.nova-micro-v1:0' }}" \
               "HFApiToken=${{ secrets.HF_API_TOKEN }}" \
               "HFModelId=${{ secrets.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.2' }}" \

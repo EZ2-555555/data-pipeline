@@ -38,11 +38,11 @@ Parameters:
 
   LLMBackend:
     Type: String
-    Default: bedrock
-    AllowedValues: [bedrock, ollama, huggingface]
+    Default: groq
+    AllowedValues: [groq, bedrock, ollama, huggingface]
     Description: >
-      Choose LLM backend: 'bedrock' (AWS), 'huggingface' (HF Inference API),
-      or 'ollama' (self-hosted).
+      Choose LLM backend: 'groq' (free Groq API), 'bedrock' (AWS),
+      'huggingface' (HF Inference API), or 'ollama' (self-hosted).
 
   BedrockModelId:
     Type: String
@@ -65,6 +65,20 @@ Parameters:
     Description: >
       HuggingFace model ID to use for generation.
       Default is Mistral-7B-Instruct which works on the free HF Inference API tier.
+
+  GroqApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Groq API key (from https://console.groq.com/keys).
+      Required when LLMBackend=groq.
+
+  GroqModelId:
+    Type: String
+    Default: llama-3.1-8b-instant
+    Description: >
+      Groq model ID. Default is Llama 3.1 8B Instant (fast, free tier).
 
   ECRImageUri:
     Type: String
@@ -122,6 +136,8 @@ Globals:
         OLLAMA_MODEL: !Ref OllamaModel
         HF_API_TOKEN: !Ref HFApiToken
         HF_MODEL_ID: !Ref HFModelId
+        GROQ_API_KEY: !Ref GroqApiKey
+        GROQ_MODEL_ID: !Ref GroqModelId
         TOP_K: "5"
         RERANK_ALPHA: "0.6"
         RERANK_BETA: "0.2"

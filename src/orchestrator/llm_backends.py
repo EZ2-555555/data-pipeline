@@ -1,6 +1,6 @@
 """LLM backend abstraction for TechPulse.
 
-Supports Bedrock, Ollama, and HuggingFace Inference API.
+Supports Groq, Bedrock, Ollama, and HuggingFace Inference API.
 Controlled by the LLM_BACKEND environment variable.
 """
 
@@ -26,12 +26,14 @@ BACKOFF_BASE_S = 2.0  # exponential: 2s, 4s
 
 # Fallback order: primary → next tier → last tier
 _FALLBACK_CHAIN = {
-    "bedrock": ["ollama", "huggingface"],
-    "ollama": ["huggingface"],
-    "huggingface": ["ollama"],
+    "groq": ["bedrock", "ollama", "huggingface"],
+    "bedrock": ["groq", "ollama", "huggingface"],
+    "ollama": ["groq", "huggingface"],
+    "huggingface": ["groq", "ollama"],
 }
 
 _BACKENDS = {
+    "groq": lambda p, t: _generate_groq(p, t),
     "ollama": lambda p, t: _generate_ollama(p, t),
     "bedrock": lambda p, t: _generate_bedrock(p, t),
     "huggingface": lambda p, t: _generate_huggingface(p, t),
@@ -83,6 +85,37 @@ def _generate_ollama(prompt: str, max_tokens: int) -> str:
             if attempt < MAX_RETRIES:
                 delay = BACKOFF_BASE_S * (2 ** attempt)
                 logger.warning("Ollama attempt %d failed (%s), retrying in %.1fs", attempt + 1, exc, delay)
+                time.sleep(delay)
+    raise last_exc  # type: ignore[misc]
+
+
+def _generate_groq(prompt: str, max_tokens: int) -> str:
+    """Call Groq API (OpenAI-compatible)."""
+    api_key = settings.GROQ_API_KEY
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY is required for the 'groq' backend")
+
+    last_exc: Exception | None = None
+    for attempt in range(1 + MAX_RETRIES):
+        try:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": settings.GROQ_MODEL_ID,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.2,
+                },
+                timeout=60,
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+        except (requests.RequestException, KeyError, IndexError) as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES:
+                delay = BACKOFF_BASE_S * (2 ** attempt)
+                logger.warning("Groq attempt %d failed (%s), retrying in %.1fs", attempt + 1, exc, delay)
                 time.sleep(delay)
     raise last_exc  # type: ignore[misc]
 

@@ -65,6 +65,14 @@ class _Settings:
         return os.getenv("HF_MODEL_ID", "mistralai/Mistral-7B-Instruct-v0.2")
 
     @property
+    def GROQ_API_KEY(self) -> str:
+        return os.getenv("GROQ_API_KEY", "")
+
+    @property
+    def GROQ_MODEL_ID(self) -> str:
+        return os.getenv("GROQ_MODEL_ID", "llama-3.1-8b-instant")
+
+    @property
     def GITHUB_TOKEN(self) -> str:
         return os.getenv("GITHUB_TOKEN", "")
 

@@ -127,15 +127,12 @@ def test_generate_ollama_retries(mock_settings, mock_post, mock_sleep):
 @patch("src.orchestrator.llm_backends.settings")
 def test_generate_bedrock_success(mock_settings):
     mock_settings.AWS_REGION = "us-east-1"
-    mock_settings.BEDROCK_MODEL_ID = "anthropic.claude-v2"
-
-    mock_body_stream = MagicMock()
-    mock_body_stream.read.return_value = json.dumps({
-        "content": [{"text": "Bedrock says hello"}]
-    }).encode()
+    mock_settings.BEDROCK_MODEL_ID = "amazon.nova-micro-v1:0"
 
     mock_client = MagicMock()
-    mock_client.invoke_model.return_value = {"body": mock_body_stream}
+    mock_client.converse.return_value = {
+        "output": {"message": {"content": [{"text": "Bedrock says hello"}]}}
+    }
 
     mock_boto3 = MagicMock()
     mock_boto3.client.return_value = mock_client
@@ -195,3 +192,45 @@ def test_generate_huggingface_retries(mock_settings, mock_post, mock_sleep):
         _generate_huggingface("hello", 100)
 
     assert mock_post.call_count == 3
+
+
+# ---------------------------------------------------------------------------
+# _generate_groq
+# ---------------------------------------------------------------------------
+
+@patch("src.orchestrator.llm_backends.time.sleep")
+@patch("src.orchestrator.llm_backends.requests.post")
+@patch("src.orchestrator.llm_backends.settings")
+def test_generate_groq_success(mock_settings, mock_post, mock_sleep):
+    mock_settings.GROQ_API_KEY = "gsk_test"
+    mock_settings.GROQ_MODEL_ID = "llama-3.1-8b-instant"
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"choices": [{"message": {"content": "Groq says hi"}}]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_post.return_value = mock_resp
+
+    from src.orchestrator.llm_backends import _generate_groq
+    result = _generate_groq("hello", 256)
+    assert result == "Groq says hi"
+
+
+@patch("src.orchestrator.llm_backends.settings")
+def test_generate_groq_no_api_key(mock_settings):
+    mock_settings.GROQ_API_KEY = ""
+
+    from src.orchestrator.llm_backends import _generate_groq
+    with pytest.raises(RuntimeError, match="GROQ_API_KEY is required"):
+        _generate_groq("prompt", 256)
+
+
+@patch("src.orchestrator.llm_backends._generate_groq", return_value="Groq response")
+@patch("src.orchestrator.llm_backends.settings")
+def test_generate_groq_primary(mock_settings, mock_groq):
+    mock_settings.LLM_BACKEND = "groq"
+    mock_settings.LLM_MAX_TOKENS = 256
+
+    from src.orchestrator.llm_backends import generate
+    result = generate("prompt")
+    assert result == "Groq response"
+    mock_groq.assert_called_once()
