@@ -47,9 +47,14 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     def timeout_handler(signum, frame):
         raise TimeoutError("Embedding operation exceeded 60-second timeout")
     
-    # Set timeout (disabled on Windows; use signal.alarm only on Unix)
+    # Set timeout — only works on Unix main thread (Lambda/Mangum runs
+    # sync endpoints in a worker thread, so skip the alarm there).
+    use_alarm = (
+        hasattr(signal, 'SIGALRM')
+        and threading.current_thread() is threading.main_thread()
+    )
     old_handler = None
-    if hasattr(signal, 'SIGALRM'):
+    if use_alarm:
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(60)
     
@@ -58,7 +63,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         embeddings = list(model.embed(texts))
         return [e.tolist() for e in embeddings]
     finally:
-        if hasattr(signal, 'SIGALRM') and old_handler is not None:
+        if use_alarm and old_handler is not None:
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
 
