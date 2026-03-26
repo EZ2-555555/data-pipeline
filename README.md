@@ -21,13 +21,15 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 
 ### Data Sources
 
-| Source | Type | Frequency | Content |
-|--------|------|-----------|---------|
-| ArXiv API | Scholarly | Every 6 hours | AI/ML/NLP research papers |
-| Hacker News API | Industry signal | Every 6 hours | Trending tech discussions |
-| DEV.to API | Practitioner | Every 6 hours | Developer blog articles |
-| GitHub Trending | Open-source | Every 6 hours | Trending repos + README |
-| RSS Feeds | Tech news | Every 6 hours | TechCrunch, Ars Technica, The Verge, IEEE Spectrum, etc. |
+| Source | Type | Frequency (local) | Content |
+|--------|------|-----------|---------||
+| ArXiv API | Scholarly | Every 12 hours | AI/ML/NLP research papers |
+| Hacker News API | Industry signal | Every 30 minutes | Trending tech discussions |
+| DEV.to API | Practitioner | Every 30 minutes | Developer blog articles |
+| GitHub Trending | Open-source | Every 30 minutes | Trending repos + README |
+| RSS Feeds | Tech news | Every 30 minutes | TechCrunch, Ars Technica, The Verge, IEEE Spectrum, etc. |
+
+> On AWS, a single EventBridge rule triggers the ingestion Lambda every **6 hours**, executing all five sources in one invocation.
 
 ### Key Features
 
@@ -40,7 +42,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **Reranking weight grid search** — automated α/β/γ optimisation via evaluation framework
 - **Multi-backend LLM support**: Groq (primary, free tier) / Amazon Bedrock / HuggingFace Inference API / Ollama (local) — automatic fallback chain with configurable `LLM_MAX_TOKENS`
 - **Container-image Lambda deployment** — bypasses the 250 MB zip limit (fastembed + ONNX Runtime ~200 MB); up to 10 GB via ECR
-- **LLM retry with exponential backoff** — 2 retries on failures (2s → 4s); automatic retrieval-only fallback when LLM is unavailable
+- **LLM retry with exponential backoff** — 4 retries per backend (3s base); automatic fallback chain and retrieval-only fallback when all LLMs unavailable
 - **Source-type filtering** — `/ask` accepts optional `sources` parameter (e.g. `["arxiv", "hn"]`)
 - **Per-query token & cost tracking** — prompt + completion token counts via tiktoken; estimated USD cost per query
 - **Retrieval quality drift detection** — probe queries tracked in `drift_baselines` table; >10% drop triggers CloudWatch alert
@@ -48,7 +50,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **Structured citation format** — every claim cites `[Source N]`; ungrounded responses are flagged and abstained
 - **Budget guard (programmatic halt)** — LLM invocation skipped when monthly spend >= `MONTHLY_BUDGET_USD`
 - **4-state document lifecycle** — RAW → PROCESSED → EMBEDDED → INDEXED with per-state DB updates
-- **Connection pooling** — `ThreadedConnectionPool` (1–10 connections) with graceful shutdown
+- **Connection pooling** — `ThreadedConnectionPool` (1–25 connections) with graceful shutdown
 - **HTTP retry with back-off** — shared `requests.Session` with 3 retries on 429/5xx across all ingesters
 - **API rate limiting** — `slowapi` at 10 requests/minute per IP on `/ask`
 - **CloudWatch custom metrics** — ingestion count, pipeline latency, API latency, hallucination flags
@@ -356,8 +358,8 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `techpulse` | Database name |
 | `DB_USER` | `postgres` | Database user |
-| `DB_PASSWORD` | `dev` | Database password |
-| `LLM_BACKEND` | `groq` | `groq` (default on AWS) / `bedrock` / `huggingface` / `ollama` (local) |
+| `DB_PASSWORD` | *(required)* | Database password |
+| `LLM_BACKEND` | `ollama` | `ollama` (local default) / `groq` (AWS default) / `bedrock` / `huggingface` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
 | `GROQ_API_KEY` | — | Groq API key (required when `LLM_BACKEND=groq`) |
@@ -368,7 +370,7 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
 | `LLM_MAX_TOKENS` | `300` | Max tokens for LLM generation |
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
-| `TOP_K` | `8` | Retrieval results count |
+| `TOP_K` | `5` | Retrieval results count |
 | `CHUNK_SIZE_TOKENS` | `500` | Tokens per chunk |
 | `CHUNK_OVERLAP_TOKENS` | `50` | Overlap between chunks |
 | `RERANK_ALPHA` | `0.6` | Cosine similarity weight |
@@ -380,7 +382,7 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `SQS_ENABLED` | `false` | Enable SQS ingestion queue |
 | `SQS_QUEUE_URL` | — | SQS queue URL |
 | `CLOUDWATCH_ENABLED` | `false` | Enable CloudWatch metric publishing |
-| `CITATION_GROUNDING_THRESHOLD` | `0.5` | Min citation ratio before flagging (AWS); `0.0` locally |
+| `CITATION_GROUNDING_THRESHOLD` | `0.0` | Min citation ratio before flagging |
 | `BUDGET_HALT_ENABLED` | `false` | Enable budget guard (`true` on AWS) |
 | `MONTHLY_BUDGET_USD` | `15` | Monthly cost threshold |
 | `STAGE` | `dev` | CloudWatch namespace suffix (`TechPulse/<stage>`) |
@@ -420,39 +422,25 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 
 ## Roadmap
 
-- [x] 5-source data ingestion pipeline (ArXiv, HN, DEV.to, GitHub, RSS)
-- [x] SHA-256 deduplication across all ingesters
+### Completed
+
+- [x] 5-source data ingestion pipeline (ArXiv, HN, DEV.to, GitHub, RSS) with SHA-256 deduplication
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
-- [x] Hybrid retrieval with 3-stage reranking + grid search
-- [x] Multi-backend LLM support (Groq (primary) / Bedrock / HuggingFace / Ollama) with automatic fallback
-- [x] FastAPI backend with deep `/health`, `/ask`, `/drift` endpoints
-- [x] React frontend (Vite) with source badges and mode selection
-- [x] Docker Compose (6 services: db, pgadmin, localstack, api, frontend, scheduler)
-- [x] RAGAS evaluation framework (50 queries, 3 categories, 9-phase pipeline, statistical tests)
-- [x] S3 medallion data lake (raw / processed tiers)
-- [x] SQS decoupling between ingestion and embedding pipeline
-- [x] CloudWatch custom metrics + deep health checks
-- [x] 3-layer hallucination verification (prompt + RAGAS + citation grounding)
-- [x] Retrieval quality drift detection (probe queries + `/drift` API + 5 simulation tests)
-- [x] AWS IaC — SAM template for Free Tier (RDS db.t3.micro) + production (Aurora Serverless v2)
-- [x] GitHub Actions CI/CD — lint → test (60% coverage gate) → SAM validate → SAM deploy → S3 frontend upload
-- [x] Frontend auto-deploy to S3 via CI/CD (Vite build + S3 sync)
-- [x] Lambda `health_handler` proper response format (statusCode + body)
-- [x] pgvector extension error detection with actionable log message
-- [x] `DBAllowedCidrIp` and `HFModelId` configurable via GitHub secrets
-- [x] Container-image Lambda deployment via ECR (fixes 250 MB zip limit caused by fastembed/onnxruntime)
-- [x] Groq free-tier LLM backend (llama-3.1-8b-instant) — replaces Bedrock on educational AWS accounts
-- [x] Automatic LLM fallback chain (groq → bedrock → ollama → huggingface)
-- [x] Bedrock Converse API (model-agnostic) for future migration
-- [x] 200 unit tests across 15 test modules (60%+ coverage gate)
-- [x] One-at-a-time sensitivity analysis for reranking weight justification (33 runs)
-- [x] Statistical tests: Wilcoxon signed-rank, Cohen's d, bootstrap 95% CI
-- [x] Composite performance metric (faithfulness + relevancy + precision + citation grounding)
-- [x] Drift detector validation with 4 simulated degradation scenarios
-- [x] Monthly cost projection (50/100/200 queries/day vs free-tier ceilings)
-- [x] Weighted partial-relevance citation grounding (fully/partially relevant + invalid decomposition)
-- [x] NULL metadata handling in hybrid SQL (documents with missing published_at no longer dropped)
+- [x] Hybrid retrieval with 3-stage reranking + grid search optimisation
+- [x] Multi-backend LLM fallback chain (Groq → Bedrock → Ollama → HuggingFace)
+- [x] FastAPI backend (`/health`, `/ask`, `/drift`) + React frontend (Vite)
+- [x] Docker Compose (6 services) + container-image Lambda deployment via ECR
+- [x] S3 medallion data lake + SQS-decoupled ingestion pipeline
+- [x] 3-layer hallucination verification + retrieval quality drift detection
+- [x] CloudWatch custom metrics + deep health checks + 3 alarms
+- [x] RAGAS evaluation framework (50 queries, 9-phase pipeline, statistical tests)
+- [x] AWS IaC via SAM (Free Tier + production templates)
+- [x] GitHub Actions CI/CD — lint → test → SAM validate → deploy → S3 frontend upload
+- [x] 200 unit tests across 15 modules (60%+ coverage gate)
+
+### Remaining
+
 - [ ] Migrate local data to AWS RDS after first deploy
 - [ ] RAGAS evaluation run on live AWS deployment
-- [ ] Source diversity analysis — investigate and mitigate corpus skew toward any single source (e.g. DEV.to)
-- [ ] CloudFront HTTPS — add CloudFront distribution for S3 frontend to serve over HTTPS
+- [ ] Source diversity analysis — investigate and mitigate corpus skew toward any single source
+- [ ] CloudFront HTTPS — add CloudFront distribution for S3 frontend
