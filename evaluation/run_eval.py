@@ -663,7 +663,7 @@ def run_sensitivity_analysis(queries: list[dict], best_config: dict) -> dict:
 # Phase 6: Statistical significance tests (professor feedback item #7)
 # ---------------------------------------------------------------------------
 
-def compute_statistical_tests(raw_results: dict) -> dict:
+def compute_statistical_tests(raw_results: dict, ragas_scores: dict | None = None) -> dict:
     """Paired Wilcoxon signed-rank test and effect size for baseline vs hybrid.
 
     Uses paired latency observations (same query, both modes) to determine
@@ -731,6 +731,31 @@ def compute_statistical_tests(raw_results: dict) -> dict:
     else:
         result["citation_wilcoxon"] = {"note": "no_significant_difference_in_pairs"}
 
+    # --- Wilcoxon signed-rank test on context precision (RAGAS) ---
+    if ragas_scores and "context_precision" in ragas_scores:
+        prec_vals = [
+            v for v in ragas_scores["context_precision"]
+            if isinstance(v, (int, float)) and not (isinstance(v, float) and math.isnan(v))
+        ]
+        half = len(prec_vals) // 2
+        if half >= 5:
+            b_prec = prec_vals[:half]
+            h_prec = prec_vals[half : half * 2]
+            diffs_prec = [h - b for b, h in zip(b_prec, h_prec)]
+            non_zero_prec = [d for d in diffs_prec if d != 0]
+            if len(non_zero_prec) >= 5:
+                stat_p, p_p = scipy_stats.wilcoxon(b_prec, h_prec)
+                result["precision_wilcoxon"] = {
+                    "statistic": round(float(stat_p), 4),
+                    "p_value": round(float(p_p), 6),
+                    "significant_at_005": p_p < 0.05,
+                    "mean_diff": round(statistics.mean(diffs_prec), 4),
+                }
+            else:
+                result["precision_wilcoxon"] = {"note": "too_few_non_zero_diffs"}
+        else:
+            result["precision_wilcoxon"] = {"note": "insufficient_ragas_pairs"}
+
     # --- Confidence interval for mean latency difference (bootstrap) ---
     import random
     rng = random.Random(42)
@@ -758,6 +783,11 @@ def compute_statistical_tests(raw_results: dict) -> dict:
     if "latency_cohens_d" in result:
         print(f"  Cohen's d: {result['latency_cohens_d']:.4f} ({result['effect_size']})")
     print(f"  95% CI for mean diff: [{result['latency_diff_95ci'][0]:.3f}, {result['latency_diff_95ci'][1]:.3f}]s")
+    if "precision_wilcoxon" in result and "p_value" in result["precision_wilcoxon"]:
+        pw = result["precision_wilcoxon"]
+        sig_p = "YES" if pw["significant_at_005"] else "NO"
+        print(f"  Wilcoxon signed-rank (precision): W={pw['statistic']}, p={pw['p_value']:.6f} → {sig_p} (α=0.05)")
+        print(f"  Mean precision diff: {pw['mean_diff']:.4f}  (positive = hybrid better)")
     print("=" * 70)
 
     return result
@@ -991,7 +1021,7 @@ def main():
 
     # Phase 6: Statistical significance tests (paired baseline vs hybrid)
     logger.info("Phase 6: Statistical significance tests…")
-    stat_tests = compute_statistical_tests(raw_results)
+    stat_tests = compute_statistical_tests(raw_results, ragas_scores)
     summary["statistical_tests"] = stat_tests
 
     # Phase 7: Drift detector validation

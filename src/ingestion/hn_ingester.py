@@ -91,7 +91,7 @@ def ingest_stories(stories: list[dict]) -> int:
                     """
                     INSERT INTO documents (source, title, content, url, published_at, content_hash, state)
                     VALUES (%s, %s, %s, %s, %s, %s, 'RAW')
-                    ON CONFLICT (content_hash) DO NOTHING
+                    ON CONFLICT DO NOTHING
                     RETURNING id
                     """,
                     (s["source"], s["title"], s["content"], s["url"], s["published_at"], s["content_hash"]),

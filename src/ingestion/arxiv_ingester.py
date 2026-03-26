@@ -86,7 +86,7 @@ def ingest_papers(papers: list[dict]) -> int:
                     """
                     INSERT INTO documents (source, title, content, url, published_at, content_hash, state)
                     VALUES (%s, %s, %s, %s, %s, %s, 'RAW')
-                    ON CONFLICT (content_hash) DO NOTHING
+                    ON CONFLICT DO NOTHING
                     RETURNING id
                     """,
                     (p["source"], p["title"], p["content"], p["url"], p["published_at"], p["content_hash"]),

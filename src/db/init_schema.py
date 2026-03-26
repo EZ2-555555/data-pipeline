@@ -51,6 +51,11 @@ CREATE INDEX IF NOT EXISTS idx_documents_source
 CREATE INDEX IF NOT EXISTS idx_documents_state
     ON documents (state);
 
+-- Prevent re-ingesting the same URL (content_hash catches identical content;
+-- this catches same article with minor content edits between runs).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_url_unique
+    ON documents (url) WHERE url IS NOT NULL;
+
 -- Drift detection baselines (probe query similarity over time)
 CREATE TABLE IF NOT EXISTS drift_baselines (
     id              SERIAL PRIMARY KEY,

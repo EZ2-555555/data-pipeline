@@ -174,7 +174,7 @@ def ingest_repos(repos: list[dict]) -> int:
                     """
                     INSERT INTO documents (source, title, content, url, published_at, content_hash, state)
                     VALUES (%s, %s, %s, %s, %s, %s, 'RAW')
-                    ON CONFLICT (content_hash) DO NOTHING
+                    ON CONFLICT DO NOTHING
                     RETURNING id
                     """,
                     (r["source"], r["title"], r["content"], r["url"], r["published_at"], r["content_hash"]),

@@ -136,7 +136,7 @@ All tests execute without external dependencies (database, AWS services) using m
 \section{Custom CloudWatch Metrics}
 \label{sec:metrics}
 
-Six custom CloudWatch metric namespaces have been implemented to provide operational visibility:
+Eight custom CloudWatch metrics have been implemented across six namespaces to provide operational visibility:
 
 \begin{enumerate}[leftmargin=0.5in]
   \item \texttt{IngestionCount} --- documents ingested per source per cycle
@@ -399,6 +399,3 @@ Figure~\ref{fig:demo_pgadmin} shows the pgAdmin interface with the \texttt{docum
 
 \medskip
 \noindent This chapter documented implementation status across 20 components, deviations from the original proposal, and key engineering observations. All core pipeline components are integration-tested; cloud deployment is in progress. Chapter~7 presents remaining work and the project timeline.
-
-\medskip
-\noindent\textbf{Team Contributions.} Aye Khin Khin Hpone led data ingestion, preprocessing, embedding, and the React frontend. Dechathon Niamsa-Ard led the RAG orchestrator, LLM fallback chain, AWS infrastructure (SAM templates), CI/CD pipeline, and evaluation framework. Both members contributed to the system architecture design, unit testing, and report writing.
