@@ -148,5 +148,155 @@
     "category": "comparative",
     "query": "What are the tradeoffs between serverless and container-based ML deployment?",
     "ground_truth": "Serverless offers cost efficiency and auto-scaling for bursty workloads but has cold start latency; containers provide consistent performance and more control but require capacity planning."
+  },
+  {
+    "id": 26,
+    "category": "research_trend",
+    "query": "What are recent advances in code generation using LLMs?",
+    "ground_truth": "Advances include models like Codex, StarCoder, and CodeLlama, with improvements in multi-file editing, test generation, and repository-level understanding."
+  },
+  {
+    "id": 27,
+    "category": "research_trend",
+    "query": "What techniques are being developed for efficient LLM inference?",
+    "ground_truth": "Techniques include speculative decoding, continuous batching, PagedAttention (vLLM), quantization-aware serving, and KV-cache compression."
+  },
+  {
+    "id": 28,
+    "category": "research_trend",
+    "query": "What is the state of research on LLM agents and tool use?",
+    "ground_truth": "Research includes ReAct, Toolformer, function calling, multi-agent debate, and frameworks for planning and executing multi-step tasks with external tools."
+  },
+  {
+    "id": 29,
+    "category": "tool_technology",
+    "query": "What tools exist for monitoring and observability in ML systems?",
+    "ground_truth": "Tools include Prometheus, Grafana, WhyLabs, Evidently AI, Arize, and custom dashboards tracking data drift, model performance, and infrastructure metrics."
+  },
+  {
+    "id": 30,
+    "category": "tool_technology",
+    "query": "What data pipeline orchestration tools are popular in 2025?",
+    "ground_truth": "Popular tools include Apache Airflow, Prefect, Dagster, Mage, and cloud-native options like AWS Step Functions and Google Cloud Workflows."
+  },
+  {
+    "id": 31,
+    "category": "tool_technology",
+    "query": "What are the emerging text chunking libraries for RAG systems?",
+    "ground_truth": "Libraries include LangChain text splitters, LlamaIndex node parsers, unstructured.io for document parsing, and semantic chunking approaches using embedding similarity."
+  },
+  {
+    "id": 32,
+    "category": "comparative",
+    "query": "How do BM25 and dense retrieval compare in terms of recall and precision?",
+    "ground_truth": "BM25 excels at exact keyword matching and is strong for precision; dense retrieval captures semantic similarity and improves recall. Hybrid approaches combining both often outperform either alone."
+  },
+  {
+    "id": 33,
+    "category": "comparative",
+    "query": "What are the differences between LoRA and full fine-tuning for LLMs?",
+    "ground_truth": "LoRA trains low-rank adapter matrices with far fewer parameters and less memory; full fine-tuning updates all weights for maximum performance but requires significant compute and risks catastrophic forgetting."
+  },
+  {
+    "id": 34,
+    "category": "comparative",
+    "query": "How does prompt engineering compare to fine-tuning for task adaptation?",
+    "ground_truth": "Prompt engineering requires no training and works well for general tasks but has limited capacity; fine-tuning provides deeper adaptation but needs labeled data and compute resources."
+  },
+  {
+    "id": 35,
+    "category": "research_trend",
+    "query": "What are current approaches to knowledge graph integration with LLMs?",
+    "ground_truth": "Approaches include using KGs for grounding LLM outputs, graph-augmented retrieval, KG construction from text, and combining structured knowledge with neural text generation."
+  },
+  {
+    "id": 36,
+    "category": "research_trend",
+    "query": "What privacy-preserving techniques are being applied to language models?",
+    "ground_truth": "Techniques include differential privacy in training, federated learning, on-device inference, model distillation for smaller deployable models, and secure multi-party computation."
+  },
+  {
+    "id": 37,
+    "category": "tool_technology",
+    "query": "What API gateway solutions are used for serving LLM endpoints?",
+    "ground_truth": "Solutions include LiteLLM, OpenRouter, AWS API Gateway, Kong, and custom proxy layers that handle rate limiting, caching, and multi-provider routing."
+  },
+  {
+    "id": 38,
+    "category": "comparative",
+    "query": "How do different vector indexing algorithms compare for similarity search?",
+    "ground_truth": "HNSW offers high recall with moderate memory; IVF is memory-efficient but needs tuning; flat search is exact but slow at scale; product quantization trades accuracy for compression."
+  },
+  {
+    "id": 39,
+    "category": "tool_technology",
+    "query": "What front-end frameworks are popular for building AI-powered web applications?",
+    "ground_truth": "React, Next.js, and Svelte are popular, with AI-specific UI libraries like Vercel AI SDK, Streamlit, and Gradio for rapid prototyping of chat interfaces."
+  },
+  {
+    "id": 40,
+    "category": "comparative",
+    "query": "What are the tradeoffs between synchronous and asynchronous data ingestion pipelines?",
+    "ground_truth": "Synchronous pipelines are simpler and easier to debug but block on I/O; asynchronous pipelines offer higher throughput and better resource utilization but add complexity in error handling and ordering."
+  },
+  {
+    "id": 41,
+    "category": "research_trend",
+    "query": "What are recent developments in synthetic data generation for training LLMs?",
+    "ground_truth": "Methods include using strong models to generate training data for weaker ones (self-instruct, Alpaca approach), evol-instruct for complexity scaling, and domain-specific synthetic corpus generation."
+  },
+  {
+    "id": 42,
+    "category": "research_trend",
+    "query": "What advances exist in mixture-of-experts architectures for language models?",
+    "ground_truth": "MoE models like Mixtral and Switch Transformer route tokens to specialized sub-networks, achieving larger effective capacity with lower per-token compute by activating only a fraction of parameters."
+  },
+  {
+    "id": 43,
+    "category": "tool_technology",
+    "query": "What tools are used for prompt management and versioning in production LLM systems?",
+    "ground_truth": "Tools include LangSmith, PromptLayer, Humanloop, Pezzo, and version-controlled prompt templates stored alongside application code for reproducibility."
+  },
+  {
+    "id": 44,
+    "category": "tool_technology",
+    "query": "What caching strategies are used to reduce LLM inference costs?",
+    "ground_truth": "Strategies include semantic caching (matching similar queries), KV-cache reuse, prompt caching (shared prefixes), and response caching with TTL-based invalidation."
+  },
+  {
+    "id": 45,
+    "category": "comparative",
+    "query": "How do small language models compare to large models for domain-specific tasks?",
+    "ground_truth": "Small models (1-7B) are cheaper and faster to serve, often matching large models on narrow tasks after fine-tuning, but lag on multi-step reasoning and generalization across domains."
+  },
+  {
+    "id": 46,
+    "category": "comparative",
+    "query": "What are the tradeoffs between batch and streaming ingestion for real-time ML systems?",
+    "ground_truth": "Batch processing is simpler and cost-effective for large volumes but introduces latency; streaming provides near-real-time freshness but adds complexity in exactly-once processing and state management."
+  },
+  {
+    "id": 47,
+    "category": "research_trend",
+    "query": "What techniques are used for grounding LLM outputs in external knowledge?",
+    "ground_truth": "Techniques include retrieval-augmented generation, tool calling with search APIs, citation generation, chain-of-verification against knowledge bases, and constrained decoding with fact databases."
+  },
+  {
+    "id": 48,
+    "category": "tool_technology",
+    "query": "What are the popular open-source model serving frameworks for LLM inference?",
+    "ground_truth": "Frameworks include vLLM, TGI (Text Generation Inference), Ollama, llama.cpp, TensorRT-LLM, and triton inference server, each optimizing for different deployment scenarios."
+  },
+  {
+    "id": 49,
+    "category": "research_trend",
+    "query": "What are current approaches to evaluating LLM reasoning capabilities?",
+    "ground_truth": "Approaches include chain-of-thought benchmarks (GSM8K, MATH), multi-hop QA datasets, logical reasoning tests, and LLM-as-judge frameworks for open-ended evaluation."
+  },
+  {
+    "id": 50,
+    "category": "comparative",
+    "query": "How do document-level and passage-level retrieval compare for question answering?",
+    "ground_truth": "Document-level retrieval preserves broader context but may include irrelevant content; passage-level retrieval is more precise but risks losing cross-paragraph context needed for complex questions."
   }
 ]

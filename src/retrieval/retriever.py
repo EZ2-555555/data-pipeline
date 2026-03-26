@@ -136,7 +136,8 @@ def hybrid_retrieve(
                 FROM chunks c
                 JOIN documents d ON c.document_id = d.id
                 WHERE d.state = 'INDEXED'
-                  AND d.published_at >= CURRENT_DATE - %s
+                  AND (d.published_at IS NULL
+                       OR d.published_at >= CURRENT_DATE - %s)
             """
             params: list = [query_emb, timedelta(days=recency_days)]
 

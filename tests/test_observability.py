@@ -346,3 +346,151 @@ def test_run_drift_check_empty_results(mock_probes, mock_retrieve,
     result = run_drift_check()
 
     assert result["mean_similarity"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Drift simulation scenarios — professor feedback item #10
+# ---------------------------------------------------------------------------
+
+@patch("src.observability.drift.put_metric")
+@patch("src.observability.drift.put_connection")
+@patch("src.observability.drift.get_connection")
+@patch("src.observability.drift.hybrid_retrieve")
+@patch("src.observability.drift._load_probes")
+def test_drift_gradual_degradation_detected(mock_probes, mock_retrieve,
+                                             mock_get_conn, mock_put_conn, mock_metric):
+    """Simulate gradual quality degradation: baseline=0.85, current=0.70 → 17.6% drop → alert."""
+    mock_probes.return_value = [{"query": "q1"}, {"query": "q2"}, {"query": "q3"}]
+    # Each query returns results with low similarity (degraded embedding index)
+    mock_retrieve.return_value = [{"similarity": 0.68}, {"similarity": 0.72}]
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (0.85,)  # stored baseline is healthy
+    # History for Shewhart: stable around 0.85
+    mock_cursor.fetchall.return_value = [(0.86,), (0.84,), (0.85,), (0.83,), (0.87,)]
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    mock_get_conn.return_value = mock_conn
+
+    from src.observability.drift import run_drift_check
+    result = run_drift_check()
+
+    assert result["alert_triggered"] is True
+    assert "relative drop" in (result.get("alert_reason") or "")
+    assert result["mean_similarity"] < 0.85
+
+
+@patch("src.observability.drift.put_metric")
+@patch("src.observability.drift.put_connection")
+@patch("src.observability.drift.get_connection")
+@patch("src.observability.drift.hybrid_retrieve")
+@patch("src.observability.drift._load_probes")
+def test_drift_normal_fluctuation_no_false_alarm(mock_probes, mock_retrieve,
+                                                  mock_get_conn, mock_put_conn, mock_metric):
+    """Normal ±3% fluctuation around baseline should NOT trigger alert."""
+    mock_probes.return_value = [{"query": "q1"}, {"query": "q2"}]
+    # Slightly below baseline but within 10% threshold
+    mock_retrieve.return_value = [{"similarity": 0.82}, {"similarity": 0.80}]
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (0.85,)  # baseline
+    # History for Shewhart: stable around 0.85
+    mock_cursor.fetchall.return_value = [(0.86,), (0.84,), (0.85,), (0.83,), (0.87,)]
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    mock_get_conn.return_value = mock_conn
+
+    from src.observability.drift import run_drift_check
+    result = run_drift_check()
+
+    assert result["alert_triggered"] is False
+
+
+@patch("src.observability.drift.put_metric")
+@patch("src.observability.drift.put_connection")
+@patch("src.observability.drift.get_connection")
+@patch("src.observability.drift.hybrid_retrieve")
+@patch("src.observability.drift._load_probes")
+def test_drift_shewhart_breach_detected(mock_probes, mock_retrieve,
+                                         mock_get_conn, mock_put_conn, mock_metric):
+    """Value within 10% threshold but below Shewhart 3σ LCL should trigger alert."""
+    mock_probes.return_value = [{"query": "q1"}, {"query": "q2"}]
+    # Tight history: mean=0.85, std≈0.01 → LCL≈0.82
+    # current≈0.78 → within 10% (8.2% drop) but below LCL
+    mock_retrieve.return_value = [{"similarity": 0.77}, {"similarity": 0.79}]
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (0.85,)
+    # Very tight history (low variance) → tight control limits
+    mock_cursor.fetchall.return_value = [(0.85,), (0.85,), (0.86,), (0.84,), (0.85,)]
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    mock_get_conn.return_value = mock_conn
+
+    from src.observability.drift import run_drift_check
+    result = run_drift_check()
+
+    assert result["alert_triggered"] is True
+    assert "Shewhart" in (result.get("alert_reason") or "")
+
+
+@patch("src.observability.drift.put_metric")
+@patch("src.observability.drift.put_connection")
+@patch("src.observability.drift.get_connection")
+@patch("src.observability.drift.hybrid_retrieve")
+@patch("src.observability.drift._load_probes")
+def test_drift_first_run_establishes_baseline(mock_probes, mock_retrieve,
+                                               mock_get_conn, mock_put_conn, mock_metric):
+    """First run with no baseline should record without triggering alert."""
+    mock_probes.return_value = [{"query": "q1"}, {"query": "q2"}, {"query": "q3"}]
+    mock_retrieve.return_value = [{"similarity": 0.82}, {"similarity": 0.88}]
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None  # no prior baseline
+    mock_cursor.fetchall.return_value = []    # no history
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    mock_get_conn.return_value = mock_conn
+
+    from src.observability.drift import run_drift_check
+    result = run_drift_check()
+
+    assert result["alert_triggered"] is False
+    assert result["baseline"] is None
+    assert result["mean_similarity"] > 0
+    # Confirm it recorded the run
+    mock_conn.commit.assert_called_once()
+
+
+@patch("src.observability.drift.put_metric")
+@patch("src.observability.drift.put_connection")
+@patch("src.observability.drift.get_connection")
+@patch("src.observability.drift.hybrid_retrieve")
+@patch("src.observability.drift._load_probes")
+def test_drift_catastrophic_drop_all_signals_fire(mock_probes, mock_retrieve,
+                                                   mock_get_conn, mock_put_conn, mock_metric):
+    """Catastrophic quality drop (0.85 → 0.1) triggers both threshold AND Shewhart."""
+    mock_probes.return_value = [{"query": "q1"}, {"query": "q2"}]
+    mock_retrieve.return_value = [{"similarity": 0.08}, {"similarity": 0.12}]
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (0.85,)
+    mock_cursor.fetchall.return_value = [(0.85,), (0.84,), (0.86,), (0.83,), (0.87,)]
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    mock_get_conn.return_value = mock_conn
+
+    from src.observability.drift import run_drift_check
+    result = run_drift_check()
+
+    assert result["alert_triggered"] is True
+    reason = result.get("alert_reason") or ""
+    assert "relative drop" in reason
+    assert "Shewhart" in reason
+    # Verify CloudWatch alert metric was pushed
+    mock_metric.assert_any_call("DriftAlert", 1, "Count")

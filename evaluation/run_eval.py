@@ -11,6 +11,7 @@ Usage:
 
 import json
 import logging
+import math
 import os
 import statistics
 import sys
@@ -68,6 +69,67 @@ def compute_citation_grounding(answer: str, num_sources: int) -> float:
     return valid / len(citations)
 
 
+def compute_citation_grounding_weighted(
+    answer: str, sources: list[dict], query: str
+) -> dict:
+    """Enhanced citation grounding with partial-relevance scoring.
+
+    Returns a dict with:
+      - grounding_ratio: fraction of citations pointing to valid indices
+      - relevance_score: mean keyword overlap between cited sources and query
+      - partial_count: number of citations with 0 < overlap < 0.5
+      - full_count: citations with overlap >= 0.5
+      - invalid_count: out-of-bounds citations
+
+    "Partially Relevant" is defined as a cited source whose keyword overlap
+    with the query is in (0, 0.5); "Fully Relevant" is >= 0.5.
+    """
+    import re
+
+    citations = re.findall(r"\[Source\s+(\d+)\]", answer)
+    if not citations:
+        return {
+            "grounding_ratio": 0.0,
+            "relevance_score": 0.0,
+            "partial_count": 0,
+            "full_count": 0,
+            "invalid_count": 0,
+            "total_citations": 0,
+        }
+
+    query_tokens = set(query.lower().split())
+    valid = 0
+    invalid = 0
+    partial = 0
+    full = 0
+    relevance_scores = []
+
+    for c in citations:
+        idx = int(c)
+        if 1 <= idx <= len(sources):
+            valid += 1
+            src = sources[idx - 1]
+            src_text = (src.get("title", "") + " " + src.get("chunk_text", "")).lower()
+            src_tokens = set(src_text.split())
+            overlap = len(query_tokens & src_tokens) / len(query_tokens) if query_tokens else 0
+            relevance_scores.append(overlap)
+            if overlap >= 0.5:
+                full += 1
+            elif overlap > 0:
+                partial += 1
+        else:
+            invalid += 1
+
+    return {
+        "grounding_ratio": valid / len(citations),
+        "relevance_score": round(statistics.mean(relevance_scores), 4) if relevance_scores else 0.0,
+        "partial_count": partial,
+        "full_count": full,
+        "invalid_count": invalid,
+        "total_citations": len(citations),
+    }
+
+
 # Delay between queries to avoid Groq free-tier rate limits (tokens-per-minute)
 # Delay between queries to avoid Groq free-tier rate limits (tokens-per-minute)
 INTER_QUERY_DELAY_S = float(os.environ.get("INTER_QUERY_DELAY_S", "15.0"))
@@ -93,6 +155,9 @@ def run_evaluation(queries: list[dict]) -> dict:
             res["ground_truth"] = q.get("ground_truth", "")
             res["citation_grounding"] = compute_citation_grounding(
                 res["answer"], len(res["sources"])
+            )
+            res["citation_detail"] = compute_citation_grounding_weighted(
+                res["answer"], res["sources"], query_text
             )
             results[mode].append(res)
             time.sleep(INTER_QUERY_DELAY_S)
@@ -259,6 +324,106 @@ def compute_summary(raw: dict, ragas_scores: dict | None = None) -> dict:
     return summary
 
 
+def compute_composite_score(summary: dict) -> dict:
+    """Combine RAGAS metrics + citation grounding into a single composite score.
+
+    Composite = 0.35 * faithfulness + 0.25 * answer_relevancy
+              + 0.20 * context_precision + 0.20 * citation_grounding
+
+    Weights reflect primacy of factual correctness (faithfulness)
+    and the system's key value-add (citation traceability).
+    """
+    weights = {
+        "faithfulness": 0.35,
+        "answer_relevancy": 0.25,
+        "context_precision": 0.20,
+        "citation_grounding": 0.20,
+    }
+
+    result = {}
+    for mode in ("baseline", "hybrid"):
+        components = {}
+        # Citation grounding is always available
+        components["citation_grounding"] = summary[mode]["mean_citation_grounding"]
+
+        # RAGAS scores (split: first half = baseline, second half = hybrid)
+        ragas = summary.get("ragas")
+        if ragas:
+            n = len(ragas.get("faithfulness", [])) // 2
+            offset = 0 if mode == "baseline" else n
+            for metric_name in ("faithfulness", "answer_relevancy", "context_precision"):
+                vals = ragas.get(metric_name, [])
+                slice_vals = [
+                    v for v in vals[offset : offset + n]
+                    if isinstance(v, (int, float)) and not (isinstance(v, float) and math.isnan(v))
+                ]
+                components[metric_name] = statistics.mean(slice_vals) if slice_vals else 0.0
+        else:
+            for m in ("faithfulness", "answer_relevancy", "context_precision"):
+                components[m] = 0.0
+
+        composite = sum(weights[k] * components[k] for k in weights)
+        result[mode] = {
+            "composite_score": round(composite, 4),
+            "components": {k: round(v, 4) for k, v in components.items()},
+            "weights": weights,
+        }
+
+    result["composite_diff"] = round(
+        result["hybrid"]["composite_score"] - result["baseline"]["composite_score"], 4
+    )
+    return result
+
+
+def compute_monthly_cost_projection(summary: dict) -> dict:
+    """Project monthly costs based on measured per-query token usage.
+
+    Assumes:
+    - Groq free tier: 500K tokens/day = ~15M tokens/month (no cost)
+    - Beyond free tier: standard Groq pricing
+    - Ingestion runs: 4x/day (scheduler)
+    - User queries: estimated 50-200/day for a small deployment
+    """
+    projection = {}
+    queries_per_day_scenarios = [50, 100, 200]
+
+    for mode in ("baseline", "hybrid"):
+        mode_data = summary.get(mode, {})
+        tokens_per_query = mode_data.get("mean_tokens_per_query", 0)
+        cost_per_query = 0
+        total_queries = mode_data.get("num_queries", 0)
+        if total_queries > 0 and mode_data.get("total_estimated_cost_usd"):
+            cost_per_query = mode_data["total_estimated_cost_usd"] / total_queries
+
+        scenarios = {}
+        for qpd in queries_per_day_scenarios:
+            monthly_queries = qpd * 30
+            monthly_tokens = tokens_per_query * monthly_queries
+            monthly_cost = cost_per_query * monthly_queries
+            fits_free_tier = monthly_tokens <= 15_000_000  # ~500K/day * 30
+            scenarios[f"{qpd}_queries_per_day"] = {
+                "monthly_queries": monthly_queries,
+                "monthly_tokens": round(monthly_tokens),
+                "monthly_cost_usd": round(monthly_cost, 4),
+                "fits_groq_free_tier": fits_free_tier,
+            }
+        projection[mode] = {
+            "tokens_per_query": round(tokens_per_query, 1),
+            "cost_per_query_usd": round(cost_per_query, 8),
+            "scenarios": scenarios,
+        }
+
+    # RDS free tier ceiling
+    projection["infra_monthly"] = {
+        "rds_free_tier": "$0.00 (750 hrs db.t3.micro, 20 GB)",
+        "ec2_free_tier": "$0.00 (750 hrs t2.micro or Lambda free tier)",
+        "s3_free_tier": "$0.00 (5 GB storage, 20K GETs)",
+        "total_within_free_tier": "$0.00",
+    }
+
+    return projection
+
+
 def print_comparison_table(summary: dict):
     """Print a formatted comparison table."""
     print("\n" + "=" * 70)
@@ -415,6 +580,356 @@ def run_grid_search(queries: list[dict]) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Phase 5: Sensitivity analysis (professor feedback item #4)
+# ---------------------------------------------------------------------------
+# Varies each weight individually while holding the best config's other
+# weights constant.  Shows how sensitive retrieval quality is to each
+# parameter, strengthening the justification beyond grid search alone.
+
+SENSITIVITY_STEPS = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+
+def run_sensitivity_analysis(queries: list[dict], best_config: dict) -> dict:
+    """One-at-a-time sensitivity sweep for α, β, γ around the best config."""
+    logger.info("=" * 60)
+    logger.info("  Sensitivity Analysis (one-at-a-time)")
+    logger.info("=" * 60)
+
+    base_alpha = best_config["alpha"]
+    base_beta = best_config["beta"]
+    base_gamma = best_config["gamma"]
+
+    sweep_results = {}
+
+    for param_name in ("alpha", "beta", "gamma"):
+        param_results = []
+        for val in SENSITIVITY_STEPS:
+            # Set the swept parameter; redistribute remaining weight to others
+            if param_name == "alpha":
+                a = val
+                remaining = 1.0 - a
+                b = remaining * (base_beta / (base_beta + base_gamma)) if (base_beta + base_gamma) > 0 else remaining / 2
+                g = remaining - b
+            elif param_name == "beta":
+                b = val
+                remaining = 1.0 - b
+                a = remaining * (base_alpha / (base_alpha + base_gamma)) if (base_alpha + base_gamma) > 0 else remaining / 2
+                g = remaining - a
+            else:  # gamma
+                g = val
+                remaining = 1.0 - g
+                a = remaining * (base_alpha / (base_alpha + base_beta)) if (base_alpha + base_beta) > 0 else remaining / 2
+                b = remaining - a
+
+            # Ensure non-negative
+            a, b, g = max(a, 0), max(b, 0), max(g, 0)
+            total = a + b + g
+            if total > 0:
+                a, b, g = a / total, b / total, g / total
+
+            sims = []
+            latencies = []
+            for q in queries:
+                start = time.perf_counter()
+                retrieved = hybrid_retrieve(q["query"], alpha=a, beta=b, gamma=g)
+                elapsed = time.perf_counter() - start
+                latencies.append(elapsed)
+                sims.append(_mean_topk_similarity(retrieved))
+
+            entry = {
+                "param_value": round(val, 2),
+                "alpha": round(a, 4),
+                "beta": round(b, 4),
+                "gamma": round(g, 4),
+                "mean_similarity": round(statistics.mean(sims), 4),
+                "p95_latency_s": round(_p95(latencies), 3),
+            }
+            param_results.append(entry)
+            logger.info(
+                "  %s=%.2f → α=%.3f β=%.3f γ=%.3f  sim=%.4f  p95=%.3fs",
+                param_name, val, a, b, g, entry["mean_similarity"], entry["p95_latency_s"],
+            )
+
+        sweep_results[param_name] = param_results
+
+    # Print summary
+    print("\n" + "=" * 70)
+    print("  Sensitivity Analysis Results")
+    print("=" * 70)
+    for param_name, entries in sweep_results.items():
+        print(f"\n  Sweeping {param_name} (others redistributed proportionally):")
+        print(f"  {'Value':>6}  {'α':>6}  {'β':>6}  {'γ':>6}  {'MeanSim':>8}  {'p95Lat':>8}")
+        print("  " + "-" * 52)
+        for e in entries:
+            print(
+                f"  {e['param_value']:>6.2f}  {e['alpha']:>6.3f}  {e['beta']:>6.3f}"
+                f"  {e['gamma']:>6.3f}  {e['mean_similarity']:>8.4f}  {e['p95_latency_s']:>7.3f}s"
+            )
+    print("=" * 70)
+
+    return sweep_results
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: Statistical significance tests (professor feedback item #7)
+# ---------------------------------------------------------------------------
+
+def compute_statistical_tests(raw_results: dict) -> dict:
+    """Paired Wilcoxon signed-rank test and effect size for baseline vs hybrid.
+
+    Uses paired latency observations (same query, both modes) to determine
+    if the hybrid improvement is statistically significant, not just average.
+    """
+    from scipy import stats as scipy_stats
+
+    baseline_entries = sorted(raw_results["baseline"], key=lambda x: x.get("query_id", 0))
+    hybrid_entries = sorted(raw_results["hybrid"], key=lambda x: x.get("query_id", 0))
+
+    n = min(len(baseline_entries), len(hybrid_entries))
+    if n < 5:
+        logger.warning("Too few paired observations (%d) for statistical tests", n)
+        return {"error": "insufficient_data", "n": n}
+
+    b_lat = [baseline_entries[i]["latency_s"] for i in range(n)]
+    h_lat = [hybrid_entries[i]["latency_s"] for i in range(n)]
+
+    b_cit = [baseline_entries[i].get("citation_grounding", 0) for i in range(n)]
+    h_cit = [hybrid_entries[i].get("citation_grounding", 0) for i in range(n)]
+
+    result = {"n_pairs": n}
+
+    # --- Wilcoxon signed-rank test on latency ---
+    diffs_lat = [b - h for b, h in zip(b_lat, h_lat)]
+    non_zero_diffs = [d for d in diffs_lat if d != 0]
+    if len(non_zero_diffs) >= 5:
+        stat, p_value = scipy_stats.wilcoxon(b_lat, h_lat)
+        result["latency_wilcoxon"] = {
+            "statistic": round(float(stat), 4),
+            "p_value": round(float(p_value), 6),
+            "significant_at_005": p_value < 0.05,
+            "significant_at_001": p_value < 0.01,
+            "mean_diff_s": round(statistics.mean(diffs_lat), 3),
+            "median_diff_s": round(statistics.median(diffs_lat), 3),
+        }
+    else:
+        result["latency_wilcoxon"] = {"error": "too_few_non_zero_diffs"}
+
+    # --- Effect size: Cohen's d for paired samples ---
+    if len(diffs_lat) >= 2:
+        mean_diff = statistics.mean(diffs_lat)
+        std_diff = statistics.stdev(diffs_lat)
+        cohens_d = mean_diff / std_diff if std_diff > 0 else 0
+        result["latency_cohens_d"] = round(cohens_d, 4)
+        if abs(cohens_d) >= 0.8:
+            result["effect_size"] = "large"
+        elif abs(cohens_d) >= 0.5:
+            result["effect_size"] = "medium"
+        elif abs(cohens_d) >= 0.2:
+            result["effect_size"] = "small"
+        else:
+            result["effect_size"] = "negligible"
+
+    # --- Citation grounding comparison ---
+    diffs_cit = [b - h for b, h in zip(b_cit, h_cit)]
+    non_zero_cit = [d for d in diffs_cit if d != 0]
+    if len(non_zero_cit) >= 5:
+        stat_c, p_c = scipy_stats.wilcoxon(b_cit, h_cit)
+        result["citation_wilcoxon"] = {
+            "statistic": round(float(stat_c), 4),
+            "p_value": round(float(p_c), 6),
+            "significant_at_005": p_c < 0.05,
+        }
+    else:
+        result["citation_wilcoxon"] = {"note": "no_significant_difference_in_pairs"}
+
+    # --- Confidence interval for mean latency difference (bootstrap) ---
+    import random
+    rng = random.Random(42)
+    n_boot = 1000
+    boot_means = []
+    for _ in range(n_boot):
+        sample = [rng.choice(diffs_lat) for _ in range(n)]
+        boot_means.append(statistics.mean(sample))
+    boot_means.sort()
+    ci_lo = boot_means[int(0.025 * n_boot)]
+    ci_hi = boot_means[int(0.975 * n_boot)]
+    result["latency_diff_95ci"] = [round(ci_lo, 3), round(ci_hi, 3)]
+
+    # Print summary
+    print("\n" + "=" * 70)
+    print("  Statistical Significance — Baseline vs Hybrid")
+    print("=" * 70)
+    print(f"  Paired observations: {n}")
+    if "latency_wilcoxon" in result and "p_value" in result["latency_wilcoxon"]:
+        lw = result["latency_wilcoxon"]
+        sig = "YES" if lw["significant_at_005"] else "NO"
+        print(f"  Wilcoxon signed-rank (latency): W={lw['statistic']}, p={lw['p_value']:.6f} → {sig} (α=0.05)")
+        print(f"  Mean latency diff: {lw['mean_diff_s']:.3f}s  (positive = hybrid faster)")
+        print(f"  Median latency diff: {lw['median_diff_s']:.3f}s")
+    if "latency_cohens_d" in result:
+        print(f"  Cohen's d: {result['latency_cohens_d']:.4f} ({result['effect_size']})")
+    print(f"  95% CI for mean diff: [{result['latency_diff_95ci'][0]:.3f}, {result['latency_diff_95ci'][1]:.3f}]s")
+    print("=" * 70)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: Drift detector validation (professor feedback item #10)
+# ---------------------------------------------------------------------------
+
+def run_drift_validation() -> dict:
+    """Simulate controlled quality degradation to prove the drift detector works.
+
+    Runs probe queries at normal quality, records the baseline, then patches
+    the retriever to return artificially low-similarity results and verifies
+    that the drift detector fires.  All done in-memory — no DB side-effects.
+    """
+    import math
+    from unittest.mock import patch as mock_patch, MagicMock
+
+    logger.info("=" * 60)
+    logger.info("  Drift Detector Validation")
+    logger.info("=" * 60)
+
+    # Load probe queries to measure "normal" retrieval quality
+    probe_path = Path(__file__).resolve().parent / "queries" / "probe_queries.json"
+    with open(probe_path, encoding="utf-8") as f:
+        probes = json.load(f)
+
+    scenarios = []
+
+    # --- Scenario 1: Healthy retrieval → no alert ---
+    healthy_sims = [0.85, 0.82, 0.88, 0.84, 0.86]
+    healthy_mean = statistics.mean(healthy_sims)
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None  # no prior baseline
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    with mock_patch("src.observability.drift.hybrid_retrieve") as mock_ret, \
+         mock_patch("src.observability.drift.get_connection", return_value=mock_conn), \
+         mock_patch("src.observability.drift.put_connection"), \
+         mock_patch("src.observability.drift.put_metric"):
+        mock_ret.return_value = [{"similarity": s} for s in healthy_sims]
+        from src.observability.drift import run_drift_check
+        healthy_result = run_drift_check()
+
+    scenarios.append({
+        "name": "Healthy baseline",
+        "mean_similarity": healthy_result["mean_similarity"],
+        "alert_triggered": healthy_result["alert_triggered"],
+        "expected_alert": False,
+        "correct": healthy_result["alert_triggered"] is False,
+    })
+    logger.info("  Scenario 1 (healthy): mean=%.4f, alert=%s ✓",
+                healthy_result["mean_similarity"], healthy_result["alert_triggered"])
+
+    # --- Scenario 2: 15% quality drop → alert expected ---
+    degraded_sims = [s * 0.82 for s in healthy_sims]  # ~18% degradation
+    degraded_mean = statistics.mean(degraded_sims)
+    mock_cursor2 = MagicMock()
+    mock_cursor2.fetchone.return_value = (healthy_mean,)  # stored baseline
+    mock_cursor2.fetchall.return_value = [(healthy_mean,)] * 5  # stable history
+    mock_conn2 = MagicMock()
+    mock_conn2.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor2)
+    mock_conn2.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    with mock_patch("src.observability.drift.hybrid_retrieve") as mock_ret, \
+         mock_patch("src.observability.drift.get_connection", return_value=mock_conn2), \
+         mock_patch("src.observability.drift.put_connection"), \
+         mock_patch("src.observability.drift.put_metric"):
+        mock_ret.return_value = [{"similarity": s} for s in degraded_sims]
+        degraded_result = run_drift_check()
+
+    scenarios.append({
+        "name": "18% quality degradation",
+        "mean_similarity": degraded_result["mean_similarity"],
+        "alert_triggered": degraded_result["alert_triggered"],
+        "alert_reason": degraded_result.get("alert_reason"),
+        "expected_alert": True,
+        "correct": degraded_result["alert_triggered"] is True,
+    })
+    logger.info("  Scenario 2 (degraded): mean=%.4f, alert=%s ✓",
+                degraded_result["mean_similarity"], degraded_result["alert_triggered"])
+
+    # --- Scenario 3: Marginal fluctuation (~5%) → no alert ---
+    marginal_sims = [s * 0.96 for s in healthy_sims]  # ~4% dip
+    mock_cursor3 = MagicMock()
+    mock_cursor3.fetchone.return_value = (healthy_mean,)
+    mock_cursor3.fetchall.return_value = [(healthy_mean,)] * 5
+    mock_conn3 = MagicMock()
+    mock_conn3.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor3)
+    mock_conn3.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    with mock_patch("src.observability.drift.hybrid_retrieve") as mock_ret, \
+         mock_patch("src.observability.drift.get_connection", return_value=mock_conn3), \
+         mock_patch("src.observability.drift.put_connection"), \
+         mock_patch("src.observability.drift.put_metric"):
+        mock_ret.return_value = [{"similarity": s} for s in marginal_sims]
+        marginal_result = run_drift_check()
+
+    scenarios.append({
+        "name": "4% normal fluctuation",
+        "mean_similarity": marginal_result["mean_similarity"],
+        "alert_triggered": marginal_result["alert_triggered"],
+        "expected_alert": False,
+        "correct": marginal_result["alert_triggered"] is False,
+    })
+    logger.info("  Scenario 3 (marginal): mean=%.4f, alert=%s ✓",
+                marginal_result["mean_similarity"], marginal_result["alert_triggered"])
+
+    # --- Scenario 4: Catastrophic failure → both checks fire ---
+    catastrophic_sims = [0.05, 0.08, 0.03, 0.06, 0.04]
+    mock_cursor4 = MagicMock()
+    mock_cursor4.fetchone.return_value = (healthy_mean,)
+    mock_cursor4.fetchall.return_value = [(healthy_mean,)] * 5
+    mock_conn4 = MagicMock()
+    mock_conn4.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor4)
+    mock_conn4.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    with mock_patch("src.observability.drift.hybrid_retrieve") as mock_ret, \
+         mock_patch("src.observability.drift.get_connection", return_value=mock_conn4), \
+         mock_patch("src.observability.drift.put_connection"), \
+         mock_patch("src.observability.drift.put_metric"):
+        mock_ret.return_value = [{"similarity": s} for s in catastrophic_sims]
+        catastrophic_result = run_drift_check()
+
+    scenarios.append({
+        "name": "Catastrophic failure (>90% drop)",
+        "mean_similarity": catastrophic_result["mean_similarity"],
+        "alert_triggered": catastrophic_result["alert_triggered"],
+        "alert_reason": catastrophic_result.get("alert_reason"),
+        "expected_alert": True,
+        "correct": catastrophic_result["alert_triggered"] is True,
+    })
+    logger.info("  Scenario 4 (catastrophic): mean=%.4f, alert=%s ✓",
+                catastrophic_result["mean_similarity"], catastrophic_result["alert_triggered"])
+
+    all_correct = all(s["correct"] for s in scenarios)
+
+    # Print summary
+    print("\n" + "=" * 70)
+    print("  Drift Detector Validation Results")
+    print("=" * 70)
+    print(f"  {'Scenario':<35} {'MeanSim':>8} {'Alert':>6} {'Expected':>9} {'Result':>7}")
+    print("  " + "-" * 65)
+    for s in scenarios:
+        check = "PASS" if s["correct"] else "FAIL"
+        print(f"  {s['name']:<35} {s['mean_similarity']:>8.4f} "
+              f"{'YES' if s['alert_triggered'] else 'NO':>6} "
+              f"{'YES' if s['expected_alert'] else 'NO':>9} "
+              f"{check:>7}")
+    print("  " + "-" * 65)
+    print(f"  Overall: {'ALL PASSED' if all_correct else 'SOME FAILED'}")
+    print("=" * 70)
+
+    return {"scenarios": scenarios, "all_passed": all_correct}
+
+
 def main():
     queries = load_queries()
     # Allow limiting the number of queries via env var for rate-limited runs
@@ -480,6 +995,31 @@ def main():
     logger.info("Phase 4: Reranking weight grid search…")
     grid_results = run_grid_search(queries)
     summary["grid_search"] = grid_results
+
+    # Phase 5: Sensitivity analysis around best grid-search config
+    logger.info("Phase 5: Sensitivity analysis…")
+    sensitivity = run_sensitivity_analysis(queries, grid_results["best"])
+    summary["sensitivity_analysis"] = sensitivity
+
+    # Phase 6: Statistical significance tests (paired baseline vs hybrid)
+    logger.info("Phase 6: Statistical significance tests…")
+    stat_tests = compute_statistical_tests(raw_results)
+    summary["statistical_tests"] = stat_tests
+
+    # Phase 7: Drift detector validation
+    logger.info("Phase 7: Drift detector validation…")
+    drift_validation = run_drift_validation()
+    summary["drift_validation"] = drift_validation
+
+    # Phase 8: Composite performance metric (RAGAS + citation grounding)
+    logger.info("Phase 8: Composite performance metric…")
+    composite = compute_composite_score(summary)
+    summary["composite_metric"] = composite
+
+    # Phase 9: Monthly cost projection
+    logger.info("Phase 9: Monthly cost projection…")
+    cost_projection = compute_monthly_cost_projection(summary)
+    summary["cost_projection"] = cost_projection
 
     summary_path = RESULTS_DIR / "eval_summary.json"
     with open(summary_path, "w", encoding="utf-8") as f:
