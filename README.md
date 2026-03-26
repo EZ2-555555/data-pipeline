@@ -1,15 +1,43 @@
+<div align="center">
+
 # TechPulse
 
-**A Real-Time Hybrid Retrieval-Augmented Generation System for Emerging Technology Intelligence**
+### A Real-Time Hybrid RAG System for Emerging Technology Intelligence
 
-## Team
+[![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16+pgvector-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![AWS SAM](https://img.shields.io/badge/AWS-SAM%20Free%20Tier-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/serverless/sam/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![Tests](https://img.shields.io/badge/Tests-200%20passed-brightgreen?logo=pytest&logoColor=white)](tests/)
+[![Coverage](https://img.shields.io/badge/Coverage-60%25+-brightgreen)](tests/)
+
+---
+
+**AT82.9002** Selected Topic: Data Engineering and MLOps — Asian Institute of Technology, 2026
 
 | Name | Student ID |
-|------|-----------|
+|:-----|:-----------|
 | Aye Khin Khin Hpone (Yolanda Lim) | st125970 |
 | Dechathon Niamsa-Ard | st126235 |
 
-> **AT82.9002** Selected Topic: Data Engineering and MLOps — Asian Institute of Technology, 2026
+</div>
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Quick Start (Local)](#quick-start-local)
+- [AWS Deployment](#aws-deployment-free-tier)
+- [Local Development (without Docker)](#local-development-without-docker)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Evaluation](#evaluation)
+- [Tests & CI](#tests--ci)
+- [Roadmap](#roadmap)
 
 ---
 
@@ -22,7 +50,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 ### Data Sources
 
 | Source | Type | Frequency (local) | Content |
-|--------|------|-----------|---------||
+|:-------|:-----|:-------------------|:--------|
 | ArXiv API | Scholarly | Every 12 hours | AI/ML/NLP research papers |
 | Hacker News API | Industry signal | Every 30 minutes | Trending tech discussions |
 | DEV.to API | Practitioner | Every 30 minutes | Developer blog articles |
@@ -33,29 +61,48 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 
 ### Key Features
 
-- **SHA-256 content-addressed deduplication** across all ingesters
-- **S3 medallion data lake** — raw / processed / embeddings tiers (local fallback for dev)
-- **SQS-decoupled pipeline** — ingesters produce messages, pipeline consumes asynchronously
-- **MiniLM semantic embeddings** via fastembed (all-MiniLM-L6-v2, 384-dim, ONNX Runtime — no PyTorch needed)
-- **HNSW vector index** — fast approximate nearest-neighbour search (works on empty tables)
-- **3-stage hybrid retrieval**: metadata filter → cosine similarity → recency-aware reranking
-- **Reranking weight grid search** — automated α/β/γ optimisation via evaluation framework
-- **Multi-backend LLM support**: Groq (primary, free tier) / Amazon Bedrock / HuggingFace Inference API / Ollama (local) — automatic fallback chain with configurable `LLM_MAX_TOKENS`
-- **Container-image Lambda deployment** — bypasses the 250 MB zip limit (fastembed + ONNX Runtime ~200 MB); up to 10 GB via ECR
-- **LLM retry with exponential backoff** — 4 retries per backend (3s base); automatic fallback chain and retrieval-only fallback when all LLMs unavailable
-- **Source-type filtering** — `/ask` accepts optional `sources` parameter (e.g. `["arxiv", "hn"]`)
-- **Per-query token & cost tracking** — prompt + completion token counts via tiktoken; estimated USD cost per query
-- **Retrieval quality drift detection** — probe queries tracked in `drift_baselines` table; >10% drop triggers CloudWatch alert
-- **3-layer hallucination verification** — prompt-level, RAGAS faithfulness, citation grounding check
-- **Structured citation format** — every claim cites `[Source N]`; ungrounded responses are flagged and abstained
-- **Budget guard (programmatic halt)** — LLM invocation skipped when monthly spend >= `MONTHLY_BUDGET_USD`
-- **4-state document lifecycle** — RAW → PROCESSED → EMBEDDED → INDEXED with per-state DB updates
-- **Connection pooling** — `ThreadedConnectionPool` (1–25 connections) with graceful shutdown
-- **HTTP retry with back-off** — shared `requests.Session` with 3 retries on 429/5xx across all ingesters
-- **API rate limiting** — `slowapi` at 10 requests/minute per IP on `/ask`
-- **CloudWatch custom metrics** — ingestion count, pipeline latency, API latency, hallucination flags
-- **Deep health checks** — `/health` verifies DB, S3, and SQS connectivity with structured response
-- **50 evaluation queries** across 3 categories with RAGAS automated scoring, statistical tests, sensitivity analysis, and 9-phase evaluation pipeline
+<table>
+<tr><td>
+
+**Ingestion & Processing**
+- SHA-256 content-addressed deduplication
+- S3 medallion data lake (raw / processed / embeddings)
+- SQS-decoupled pipeline (async produce / consume)
+- 4-state document lifecycle: RAW → PROCESSED → EMBEDDED → INDEXED
+- HTTP retry with back-off (3 retries on 429/5xx)
+
+</td><td>
+
+**Retrieval & Ranking**
+- MiniLM semantic embeddings (all-MiniLM-L6-v2, 384-dim, ONNX)
+- HNSW vector index for fast ANN search
+- 3-stage hybrid retrieval: metadata filter → cosine → reranking
+- Automated α/β/γ grid search optimisation
+- Source-type filtering on `/ask`
+
+</td></tr>
+<tr><td>
+
+**Generation & Safety**
+- Multi-backend LLM fallback: Groq → Bedrock → Ollama → HuggingFace
+- LLM retry with exponential backoff (4 retries, 3s base)
+- 3-layer hallucination verification
+- Structured `[Source N]` citations with grounding check
+- Budget guard — halts when monthly spend ≥ threshold
+
+</td><td>
+
+**Ops & Observability**
+- Container-image Lambda (up to 10 GB via ECR)
+- CloudWatch custom metrics + 3 alarms
+- Deep health checks (DB, S3, SQS)
+- Retrieval quality drift detection (>10% drop alert)
+- Per-query token & cost tracking via tiktoken
+- API rate limiting (10 req/min per IP)
+- Connection pooling (1–25 connections)
+
+</td></tr>
+</table>
 
 ### Reranking Formula
 
@@ -63,11 +110,13 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 Score_i = α × CosineSim_i + β × KeywordOverlap_i + γ × e^(−λ × age_days)
 ```
 
-Default weights: α = 0.6, β = 0.2, γ = 0.2, λ = 0.01
+> Default weights: `α = 0.6` · `β = 0.2` · `γ = 0.2` · `λ = 0.01`
 
 ---
 
 ## Architecture
+
+### Local (Docker Compose)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -151,7 +200,7 @@ docker compose up -d
 This launches **6 containers**:
 
 | Container | Port | Purpose |
-|-----------|------|----------|
+|:----------|:-----|:--------|
 | `techpulse-db` | 5432 | PostgreSQL 16 + pgvector |
 | `techpulse-pgadmin` | 5050 | Database GUI |
 | `techpulse-localstack` | 4566 | Local S3 + SQS (AWS emulation) |
@@ -159,13 +208,15 @@ This launches **6 containers**:
 | `techpulse-frontend` | 3000 | React UI (nginx) |
 | `techpulse-scheduler` | — | Continuous ingestion + chunking + embedding |
 
-The **scheduler** automatically initialises the database schema on first run, then fetches data from all 5 sources on a loop.
+> The **scheduler** automatically initialises the database schema on first run, then fetches data from all 5 sources on a loop.
 
 ### 2. Use the app
 
-- **Frontend**: http://localhost:3000
-- **API Swagger**: http://localhost:8000/docs
-- **pgAdmin**: http://localhost:5050 — login `admin@techpulse.dev` / `admin`
+| Service | URL |
+|:--------|:----|
+| Frontend | http://localhost:3000 |
+| API Swagger | http://localhost:8000/docs |
+| pgAdmin | http://localhost:5050 (login `admin@techpulse.dev` / `admin`) |
 
 ### 3. Query via API
 
@@ -187,24 +238,37 @@ Deployment is fully automated via **GitHub Actions** on every push to `main`.
 
 ### Required GitHub Secrets
 
-Go to your repo → **Settings → Environments → dev → Secrets** and add all of the following:
+Go to your repo → **Settings → Environments → dev → Secrets** and add:
+
+<details>
+<summary><strong>Required secrets</strong></summary>
 
 | Secret | Where to find it | Notes |
-|--------|-----------------|-------|
-| `AWS_ACCESS_KEY_ID` | AWS Console → IAM → Users → your user → Security credentials | Permanent — no rotation needed |
-| `AWS_SECRET_ACCESS_KEY` | Same as above | Permanent — no rotation needed |
+|:-------|:-----------------|:------|
+| `AWS_ACCESS_KEY_ID` | IAM → Users → Security credentials | Permanent |
+| `AWS_SECRET_ACCESS_KEY` | Same as above | Permanent |
 | `DB_USERNAME` | Your choice | e.g. `postgres` |
 | `DB_PASSWORD` | Your choice | Min 8 characters |
-| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) | Starts with `gsk_...` — **required** (primary LLM backend) |
-| `DEFAULT_VPC_ID` | AWS Console → VPC → Your VPCs | e.g. `vpc-xxxxxxxx` |
-| `DEFAULT_SUBNET_A` | AWS Console → VPC → Subnets | Pick any public subnet |
-| `DEFAULT_SUBNET_B` | AWS Console → VPC → Subnets | Different AZ from A |
+| `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) | Starts with `gsk_...` — **required** (primary LLM) |
+| `DEFAULT_VPC_ID` | VPC → Your VPCs | e.g. `vpc-xxxxxxxx` |
+| `DEFAULT_SUBNET_A` | VPC → Subnets | Any public subnet |
+| `DEFAULT_SUBNET_B` | VPC → Subnets | Different AZ from A |
 | `ALERT_EMAIL` | Your email address | SNS alert notifications |
-| `GROQ_MODEL_ID` | Optional | Defaults to `llama-3.1-8b-instant` |
-| `HF_API_TOKEN` | Optional | Only needed if `LLM_BACKEND=huggingface` |
-| `DB_ALLOWED_CIDR` | Optional — your IP from [checkip.amazonaws.com](https://checkip.amazonaws.com) | e.g. `203.150.1.2/32` — defaults to `0.0.0.0/0` if not set |
 
-> **Note:** `AWS_SESSION_TOKEN` is **not required** for Free Tier personal accounts. Leave it empty or unset.
+</details>
+
+<details>
+<summary><strong>Optional secrets</strong></summary>
+
+| Secret | Notes |
+|:-------|:------|
+| `GROQ_MODEL_ID` | Defaults to `llama-3.1-8b-instant` |
+| `HF_API_TOKEN` | Only needed if `LLM_BACKEND=huggingface` |
+| `DB_ALLOWED_CIDR` | Your IP (e.g. `203.150.1.2/32`); defaults to `0.0.0.0/0` |
+
+> `AWS_SESSION_TOKEN` is **not required** for Free Tier personal accounts.
+
+</details>
 
 ### CI/CD Pipeline
 
@@ -226,11 +290,11 @@ push to main
     │       ├── docker build -f Dockerfile.lambda → push (tagged with git SHA)
     │       └── sam deploy --parameter-overrides ECRImageUri=<image> LLMBackend=groq ...
     │
-    ├── Stage 2b (after SAM deploy):
-    │   └── build-frontend:
-    │       ├── Fetch ApiUrl from CloudFormation outputs
-    │       ├── npm ci → VITE_API_URL=$ApiUrl npm run build
-    │       └── aws s3 sync dist/ → S3 static website
+    └── Stage 2b (after SAM deploy):
+        └── build-frontend:
+            ├── Fetch ApiUrl from CloudFormation outputs
+            ├── npm ci → VITE_API_URL=$ApiUrl npm run build
+            └── aws s3 sync dist/ → S3 static website
 ```
 
 > **Why container images?** `fastembed` depends on `onnxruntime` (~150–200 MB on Linux x86_64),
@@ -239,16 +303,16 @@ push to main
 
 ### After Deploy
 
-Once deployed, find your live URLs in AWS Console → **CloudFormation → `techpulse-dev` → Outputs**:
+Find your live URLs in AWS Console → **CloudFormation → `techpulse-dev` → Outputs**:
 
 | Output | Description |
-|--------|-------------|
+|:-------|:------------|
 | `ApiUrl` | Backend API endpoint |
 | `FrontendUrl` | React frontend (S3 static website) |
 | `PostgresEndpoint` | RDS database host |
 
-**Trigger first ingestion manually** (don't wait 6 hours):
-AWS Console → Lambda → `techpulse-dev-ingestion` → Test → send `{}`
+> **Trigger first ingestion manually** (don't wait 6 hours):
+> AWS Console → Lambda → `techpulse-dev-ingestion` → Test → send `{}`
 
 ---
 
@@ -272,6 +336,9 @@ uvicorn src.api.main:app --reload   # Start API on :8000
 
 ## Project Structure
 
+<details>
+<summary>Click to expand full tree</summary>
+
 ```
 data-pipeline/
 ├── docker-compose.yml                # 6 services: db, pgadmin, localstack, api, frontend, scheduler
@@ -280,6 +347,7 @@ data-pipeline/
 ├── requirements.txt
 ├── requirements-lambda.txt           # Lightweight deps for Lambda (fastembed, psycopg2, fastapi, etc.)
 ├── .github/workflows/ci.yml          # GitHub Actions CI/CD (lint → test → ECR build/push → SAM deploy)
+│
 ├── src/
 │   ├── config.py                     # Centralised env-var settings (DB, AWS, S3, SQS, CW)
 │   ├── scheduler.py                  # Continuous ingestion loop (SQS consumer or DB-poll)
@@ -313,6 +381,7 @@ data-pipeline/
 │   └── orchestrator/
 │       ├── rag.py                    # Retrieve → prompt → generate → hallucination check
 │       └── llm_backends.py           # Groq / Bedrock / HuggingFace / Ollama — fallback chain router
+│
 ├── frontend/
 │   ├── Dockerfile                    # Multi-stage: node build → nginx serve
 │   ├── nginx.conf                    # SPA routing + /api/ proxy to backend
@@ -320,63 +389,87 @@ data-pipeline/
 │   └── src/
 │       ├── App.jsx
 │       └── App.css
+│
 ├── evaluation/
-│   ├── run_eval.py                   # 9-phase evaluation: RAGAS + latency + citation grounding + grid search + sensitivity + statistical tests + drift validation + composite metric + cost projection
+│   ├── run_eval.py                   # 9-phase evaluation pipeline
 │   └── queries/
-│       ├── eval_queries.json         # 50 queries (3 categories: research_trend, tool_technology, comparative)
+│       ├── eval_queries.json         # 50 queries (3 categories)
 │       └── probe_queries.json        # 20 probe queries for drift detection
-├── tests/                            # 200 tests (15 test files, 60%+ coverage)
-│   ├── test_api.py
-│   ├── test_db.py
-│   ├── test_embedder.py
-│   ├── test_http.py
-│   ├── test_ingestion.py
-│   ├── test_llm_backends.py
-│   ├── test_observability.py
-│   ├── test_pipeline.py
-│   ├── test_preprocessing.py
-│   ├── test_queue.py
-│   ├── test_rag.py
-│   ├── test_retriever.py
-│   ├── test_scheduler.py
-│   ├── test_storage.py
-│   └── test_sync_to_aws.py
+│
+├── tests/                            # 200 tests · 15 modules · 60%+ coverage
+│   ├── test_api.py          test_ingestion.py      test_queue.py
+│   ├── test_db.py           test_llm_backends.py   test_rag.py
+│   ├── test_embedder.py     test_observability.py  test_retriever.py
+│   ├── test_http.py         test_pipeline.py       test_scheduler.py
+│   │                        test_preprocessing.py  test_storage.py
+│   └──                                             test_sync_to_aws.py
+│
 └── infra/
-    ├── template-freetier.yaml        # SAM template — active deployment (Free Tier, container images, RDS db.t3.micro)
-    ├── template.yaml                 # SAM template — production reference (Aurora Serverless v2)
-    ├── samconfig-freetier.toml       # SAM config for Free Tier manual deploys
+    ├── template-freetier.yaml        # SAM — Free Tier (container images, RDS db.t3.micro)
+    ├── template.yaml                 # SAM — production reference (Aurora Serverless v2)
+    ├── samconfig-freetier.toml
     └── README.md
 ```
+
+</details>
+
+---
 
 ## Configuration
 
 All settings via environment variables (`.env` or Docker Compose `environment` block):
 
+<details>
+<summary><strong>Database</strong></summary>
+
 | Variable | Default | Description |
-|----------|---------|-------------|
+|:---------|:--------|:------------|
 | `DB_HOST` | `localhost` | PostgreSQL host (`db` in Docker) |
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `techpulse` | Database name |
 | `DB_USER` | `postgres` | Database user |
 | `DB_PASSWORD` | *(required)* | Database password |
-| `LLM_BACKEND` | `ollama` | `ollama` (local default) / `groq` (AWS default) / `bedrock` / `huggingface` |
+
+</details>
+
+<details>
+<summary><strong>LLM Backends</strong></summary>
+
+| Variable | Default | Description |
+|:---------|:--------|:------------|
+| `LLM_BACKEND` | `ollama` | `ollama` (local) / `groq` (AWS) / `bedrock` / `huggingface` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Model for generation |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model for generation |
 | `GROQ_API_KEY` | — | Groq API key (required when `LLM_BACKEND=groq`) |
 | `GROQ_MODEL_ID` | `llama-3.1-8b-instant` | Groq model ID |
-| `GROQ_EVAL_MODEL_ID` | `llama-3.3-70b-versatile` | Larger Groq model used as RAGAS evaluation judge |
-| `BEDROCK_MODEL_ID` | `amazon.nova-micro-v1:0` | Bedrock model ID — any model supported by the Converse API works |
-| `HF_API_TOKEN` | — | HuggingFace API token (when `LLM_BACKEND=huggingface`) |
+| `GROQ_EVAL_MODEL_ID` | `llama-3.3-70b-versatile` | Larger Groq model used as RAGAS judge |
+| `BEDROCK_MODEL_ID` | `amazon.nova-micro-v1:0` | Any model supported by Converse API |
+| `HF_API_TOKEN` | — | HuggingFace API token |
 | `HF_MODEL_ID` | `mistralai/Mistral-7B-Instruct-v0.2` | HuggingFace model ID |
 | `LLM_MAX_TOKENS` | `300` | Max tokens for LLM generation |
-| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
-| `TOP_K` | `5` | Retrieval results count |
+
+</details>
+
+<details>
+<summary><strong>Retrieval & Reranking</strong></summary>
+
+| Variable | Default | Description |
+|:---------|:--------|:------------|
+| `TOP_K` | `5` | Number of retrieval results |
 | `CHUNK_SIZE_TOKENS` | `500` | Tokens per chunk |
 | `CHUNK_OVERLAP_TOKENS` | `50` | Overlap between chunks |
 | `RERANK_ALPHA` | `0.6` | Cosine similarity weight |
 | `RERANK_BETA` | `0.2` | Keyword overlap weight |
 | `RERANK_GAMMA` | `0.2` | Recency decay weight |
 | `RECENCY_LAMBDA` | `0.01` | Exponential decay rate |
+
+</details>
+
+<details>
+<summary><strong>AWS & Infrastructure</strong></summary>
+
+| Variable | Default | Description |
+|:---------|:--------|:------------|
 | `S3_ENABLED` | `false` | Enable S3 medallion data lake |
 | `S3_BUCKET_NAME` | `techpulse-data` | S3 bucket name |
 | `SQS_ENABLED` | `false` | Enable SQS ingestion queue |
@@ -385,16 +478,21 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `CITATION_GROUNDING_THRESHOLD` | `0.0` | Min citation ratio before flagging |
 | `BUDGET_HALT_ENABLED` | `false` | Enable budget guard (`true` on AWS) |
 | `MONTHLY_BUDGET_USD` | `15` | Monthly cost threshold |
+| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
 | `STAGE` | `dev` | CloudWatch namespace suffix (`TechPulse/<stage>`) |
+
+</details>
+
+---
 
 ## Evaluation
 
 The evaluation framework implements a **9-phase pipeline** comparing **baseline (vector-only)** vs **hybrid retrieval**:
 
 | Phase | Name | Description |
-|-------|------|-------------|
+|:-----:|:-----|:------------|
 | 1 | RAG Query Execution | 50 queries × 2 modes (baseline + hybrid) with per-query latency |
-| 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision (Groq `llama-3.3-70b-versatile` judge) |
+| 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision |
 | 3 | Summary Statistics | Mean, median, p95, citation grounding, token costs per mode |
 | 4 | Grid Search | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2, optimise precision under p95 ≤ 2s |
 | 5 | Sensitivity Analysis | One-at-a-time sweep of α, β, γ through [0.0, 1.0] in 0.1 steps (33 runs) |
@@ -409,6 +507,8 @@ python -m evaluation.run_eval
 
 Results are written to `evaluation/results/` as JSON.
 
+---
+
 ## Tests & CI
 
 ```bash
@@ -416,7 +516,7 @@ ruff check src/ tests/                                          # lint
 pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + coverage
 ```
 
-CI enforces a **minimum 60% coverage** threshold — the build fails if coverage drops below this.
+> CI enforces a **minimum 60% coverage** threshold — the build fails if coverage drops below this.
 
 ---
 

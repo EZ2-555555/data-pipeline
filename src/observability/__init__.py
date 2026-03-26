@@ -21,7 +21,7 @@ from src.config import settings
 
 logger = logging.getLogger(__name__)
 
-_NAMESPACE = f"TechPulse/{os.getenv('STAGE', 'dev')}"
+_NAMESPACE = f"TechPulse/{settings.STAGE}"
 
 
 def _get_cw_client():

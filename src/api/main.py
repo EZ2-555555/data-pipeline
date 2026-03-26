@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from mangum import Mangum
 
 from src.orchestrator.rag import ask
+from src.config import settings
 from src.db.init_schema import init_schema
 from src.db.connection import close_pool
 from src.observability import deep_health_check, record_api_latency, record_hallucination_flag
@@ -97,7 +98,7 @@ def ask_endpoint(req: AskRequest, request: Request):
 # ---------------------------------------------------------------------------
 # Lambda handlers (used by SAM / CDK deployments via Mangum)
 # ---------------------------------------------------------------------------
-handler = Mangum(app, api_gateway_base_path=f"/{os.getenv('STAGE', 'dev')}")
+handler = Mangum(app, api_gateway_base_path=f"/{settings.STAGE}")
 
 
 def health_handler(event, context):

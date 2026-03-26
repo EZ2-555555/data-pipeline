@@ -166,24 +166,13 @@ def run_evaluation(queries: list[dict]) -> dict:
 
 
 def run_ragas_evaluation(results: list[dict]) -> dict | None:
-    """Run RAGAS metrics using an OpenAI-compatible LLM judge.
-
-    Uses Gemini Flash when GEMINI_API_KEY is set (generous free quota),
-    otherwise falls back to Groq.
-    """
+    """Run RAGAS metrics using Groq as OpenAI-compatible LLM judge."""
     import os
 
-    gemini_key = settings.GEMINI_API_KEY
-    if gemini_key:
-        eval_model = os.getenv("GEMINI_EVAL_MODEL", "gemini-2.0-flash")
-        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        os.environ["OPENAI_API_KEY"] = gemini_key
-        logger.info("Setting up RAGAS with Gemini (%s)\u2026", eval_model)
-    else:
-        eval_model = settings.GROQ_EVAL_MODEL_ID
-        base_url = "https://api.groq.com/openai/v1"
-        os.environ["OPENAI_API_KEY"] = settings.GROQ_API_KEY
-        logger.info("Setting up RAGAS with Groq (%s)\u2026", eval_model)
+    eval_model = settings.GROQ_EVAL_MODEL_ID
+    base_url = "https://api.groq.com/openai/v1"
+    os.environ["OPENAI_API_KEY"] = settings.GROQ_API_KEY
+    logger.info("Setting up RAGAS with Groq (%s)\u2026", eval_model)
 
     try:
         wrapped_llm = llm_factory(
@@ -196,8 +185,7 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
 
         faith_metric = Faithfulness(llm=wrapped_llm)
         relevancy_metric = AnswerRelevancy(llm=wrapped_llm, embeddings=wrapped_embeddings)
-        if not gemini_key:
-            relevancy_metric.strictness = 1  # Groq only supports n=1
+        relevancy_metric.strictness = 1  # Groq only supports n=1
         precision_metric = ContextPrecision(llm=wrapped_llm)
 
         scores = {"faithfulness": [], "answer_relevancy": [], "context_precision": []}

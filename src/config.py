@@ -78,8 +78,8 @@ class _Settings:
         return os.getenv("GROQ_EVAL_MODEL_ID", "llama-3.3-70b-versatile")
 
     @property
-    def GEMINI_API_KEY(self) -> str:
-        return os.getenv("GEMINI_API_KEY", "")
+    def STAGE(self) -> str:
+        return os.getenv("STAGE", "dev")
 
     @property
     def GITHUB_TOKEN(self) -> str:

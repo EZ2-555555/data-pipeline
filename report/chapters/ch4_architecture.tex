@@ -544,7 +544,7 @@ TechPulse implements a dual-criteria drift detection mechanism to identify degra
   \label{eq:shewhart}
 \end{equation}
 
-A drift alert is triggered if the current mean similarity falls below LCL. This statistical process control approach detects systematic degradation that may not be captured by point-wise comparison alone.
+A drift alert is triggered if the current mean similarity falls below LCL. This statistical process control approach detects systematic degradation that may not be captured by point-wise comparison alone. The Shewhart criterion requires a minimum of three stored non-alert baselines (\texttt{len(history) >= 3}); on fresh deployments with fewer than three baselines, only the relative drop threshold is active until sufficient history accumulates.
 
 Both criteria are evaluated independently, and either triggering constitutes a drift alert. A human-readable explanation (e.g., ``relative drop 15.2\%; Shewhart $3\sigma$ breach (LCL=0.4321, value=0.3890)'') is included in the returned result, logged to CloudWatch, and routed to SNS notification.
 
