@@ -8,7 +8,7 @@ This chapter documents the current implementation status, deviations from the or
 
 Table~\ref{tab:impl_status} summarizes the implementation status of each system component as of the reporting date.
 
-\noindent\textbf{Status key:} \textit{Unit-tested} = implemented and verified by unit tests only; \textit{Integration-tested} = verified end-to-end in local Docker Compose environment; \textit{Cloud-validated} = deployed and verified in AWS (Learner Lab or Free Tier).
+\noindent\textbf{Status key:} \textit{Unit-tested} = implemented and verified by unit tests only; \textit{Integration-tested} = verified end-to-end in local Docker Compose environment; \textit{Cloud-validated} = deployed and verified in the AWS Free Tier.
 
 \begin{table}[H]
 \caption{Component Implementation Status Summary.}
@@ -18,13 +18,13 @@ Table~\ref{tab:impl_status} summarizes the implementation status of each system 
 \toprule
 \textbf{Component} & \textbf{Status} & \textbf{Notes} \\
 \midrule
-Data Ingestion (5 sources) & Integration-tested & ArXiv, HN, DEV.to, GitHub, RSS fully implemented \\
+Data Ingestion (5 sources) & Integration-tested & ArXiv, Hacker News, DEV.to, GitHub, RSS fully implemented \\
 Preprocessing Pipeline & Integration-tested & 17-step normalization + token-based chunking \\
 Embedding Pipeline & Integration-tested & MiniLM L6 v2 (384-dim), lazy singleton \\
 Hybrid Retrieval & Integration-tested & 3-stage pipeline with configurable weights \\
 Baseline Retrieval & Integration-tested & Vector-only comparison mode \\
 RAG Orchestrator & Integration-tested & 3-layer hallucination verification \\
-LLM Backend Fallback & Unit-tested & Auto-cascade across 3 backends \\
+LLM Backend Fallback & Unit-tested & Auto-cascade across 4 backends \\
 API Layer & Integration-tested & FastAPI + Mangum; /health, /ask, /drift endpoints \\
 Database Schema & Integration-tested & PostgreSQL + pgvector with HNSW index \\
 S3 Medallion Storage & Integration-tested & Raw/processed/embeddings tiers (LocalStack locally) \\
@@ -32,12 +32,12 @@ SQS Queue + DLQ & Integration-tested & Ingestion--embedding decoupling (LocalSta
 Drift Detection & Unit-tested & Dual-criteria: 10\% threshold + Shewhart $3\sigma$ \\
 Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS, LLM) \\
 CloudWatch Integration & Cloud-validated & 6 custom metric namespaces \\
-Evaluation Framework & Unit-tested & 25 queries, RAGAS, grid search (code complete; full run pending) \\
+Evaluation Framework & Unit-tested & 50 queries, RAGAS, grid search, sensitivity analysis, statistical tests (code complete; full run pending) \\
 CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
-SAM Infrastructure (Learner Lab \& Free Tier) & Cloud-validated & Full SAM templates; stack creation in progress \\
+SAM Infrastructure & Cloud-validated & Full SAM template; stack creation in progress \\
 Docker Compose (Local) & Integration-tested & 6 services (db, pgadmin, api, frontend, scheduler, localstack) \\
 React Frontend & Integration-tested & Query interface with citation display \\
-Unit Tests & Integration-tested & 49 tests across 5 test files, all passing \\
+Unit Tests & Integration-tested & 200 tests across 15 test files, all passing \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -45,7 +45,7 @@ Unit Tests & Integration-tested & 49 tests across 5 test files, all passing \\
 \section{Deviations from the Original Proposal}
 \label{sec:deviations}
 
-Several implementation decisions diverge from the original proposal due to AWS Academy Learner Lab constraints and practical engineering considerations. The system has since been set up in both the AWS Academy Learner Lab and a personal AWS Free Tier account, which restores access to certain services that are restricted in the Learner Lab. Table~\ref{tab:deviations} documents each deviation, its rationale, and the implemented alternative.
+Several implementation decisions diverge from the original proposal due to AWS Free Tier constraints and practical engineering considerations. Table~\ref{tab:deviations} documents each deviation, its rationale, and the implemented alternative.
 
 \begin{table}[H]
 \caption{Deviations from the Original Proposal and Rationale.}
@@ -55,13 +55,13 @@ Several implementation decisions diverge from the original proposal due to AWS A
 \toprule
 \textbf{Proposal Claim} & \textbf{Implemented} & \textbf{Reason} & \textbf{Impact} \\
 \midrule
-Aurora Serverless + pgvector & RDS PostgreSQL db.t3.micro + pgvector & Aurora not available in Learner Lab & \textit{Trade-off:} No auto-scaling; db.t3.micro may bottleneck under high ingestion load. HNSW index and pgvector functionality preserved. \\[4pt]
-Amazon Bedrock (Claude Haiku) & HuggingFace Inference API (Mistral-7B) + auto-fallback (Learner Lab); Bedrock enabled (Free Tier) & Bedrock not available in Learner Lab & \textit{Trade-off:} HuggingFace free tier has rate limits; model quality differs from Claude Haiku. Retrieval-layer findings remain backend-agnostic. \\[4pt]
-2 data sources (ArXiv, HN) & 5 data sources (+DEV.to, GitHub, RSS) & Improved corpus diversity and breadth & Enhanced retrieval coverage; additional maintenance surface for 3 ingesters. \\[4pt]
-Custom VPC + NAT Gateway & Default VPC (Learner Lab); custom VPC available (Free Tier) & Custom VPCs restricted in Learner Lab & \textit{Trade-off:} RDS publicly accessible (Learner Lab); mitigated by security group restriction. Custom VPC used in Free Tier for improved isolation. \\[4pt]
-AWS Budgets alerts & Cost Explorer programmatic check (Learner Lab); AWS Budgets available (Free Tier) & AWS Budgets restricted in Learner Lab & \textit{Trade-off:} Cost Explorer data lags by up to 24 hours; real-time budget enforcement is not possible in Learner Lab. AWS Budgets used in Free Tier. \\[4pt]
+Aurora Serverless + pgvector & RDS PostgreSQL db.t3.micro + pgvector & Aurora exceeds Free Tier budget & \textit{Trade-off:} No auto-scaling; db.t3.micro may bottleneck under high ingestion load. HNSW index and pgvector functionality preserved. \\[4pt]
+Amazon Bedrock (Claude Haiku) & Groq (Llama 3.1 8B Instant) as primary + Bedrock (Amazon Nova Micro) as AWS-native fallback; Ollama / HuggingFace as local fallbacks & Groq free-tier API offers zero-cost inference & \textit{Trade-off:} Groq free tier has daily token limit (500k). Retrieval-layer findings remain backend-agnostic. \\[4pt]
+2 data sources (ArXiv, Hacker News) & 5 data sources (+DEV.to, GitHub, RSS) & Improved corpus diversity and breadth & Enhanced retrieval coverage; additional maintenance surface for 3 ingesters. \\[4pt]
+Custom VPC + NAT Gateway & Default VPC with security groups & Simplified initial deployment & \textit{Trade-off:} RDS publicly accessible; mitigated by security group restriction. Custom VPC migration identified as future improvement. \\[4pt]
+AWS Budgets alerts & Cost Explorer programmatic check + AWS Budgets & Cost Explorer provides programmatic access in inference path & \textit{Trade-off:} Cost Explorer data lags by up to 24 hours; supplemented by AWS Budgets alerts for real-time governance. \\[4pt]
 CDK or SAM deployment & SAM only & Simplified IaC management & Reduced toolchain complexity; CDK's higher-level abstractions foregone. \\[4pt]
-HN every 5 minutes & HN every 30 minutes & Rate limit considerations & Reduced API pressure; minor loss of near-real-time recency. \\[4pt]
+Hacker News every 5 minutes & Hacker News every 30 minutes & Rate limit considerations & Reduced API pressure; minor loss of near-real-time recency. \\[4pt]
 ArXiv weekly & ArXiv every 12 hours & More frequent scholarly updates & Improved corpus freshness; increased Lambda execution cost. \\[4pt]
 Simple 10\% drift threshold & Dual: 10\% threshold + Shewhart $3\sigma$ & Stronger statistical process control & More robust drift detection; requires 10 historical baselines before Shewhart is statistically meaningful. \\[4pt]
 Single LLM backend selection & Automatic fallback chain & Improve availability & Increased code complexity; fallback model quality may differ from primary. \\
@@ -81,44 +81,26 @@ All five ingesters share the same idempotent, SHA-256-based deduplication archit
 
 The preprocessing pipeline was substantially enhanced beyond the original proposal specification. The initial design specified HTML stripping, encoding normalization, whitespace consolidation, and removal of low-information tokens. The implemented 17-step normalization pipeline adds handling for: emoji and pictographic symbols (6 Unicode ranges), Unicode control characters and zero-width markers, Markdown blockquotes, HTML comments, strikethrough syntax, and repeated punctuation sequences. These additions were motivated by the diversity of content formats encountered across the five data sources, particularly the Markdown-heavy content from DEV.to and GitHub README files. The preprocessing pipeline is validated by 18 dedicated unit tests covering each normalization step.
 
-\section{Dual-Environment Deployment: Learner Lab and AWS Free Tier}
-\label{sec:learnerlab}
+\section{AWS Free Tier Deployment}
+\label{sec:freetier}
 
-TechPulse has been successfully deployed in two AWS environments: the AWS Academy Learner Lab and a personal AWS Free Tier account. This dual-environment setup allows the system to be evaluated under both constrained (Learner Lab) and more permissive (Free Tier) cloud conditions.
-
-\subsection{AWS Academy Learner Lab}
-
-Adapting the system for the AWS Academy Learner Lab required systematic identification and replacement of restricted services while preserving the core architectural capabilities. The key constraints and adaptations are:
+TechPulse is deployed on a personal AWS Free Tier account. The deployment adapts certain services from the original proposal to remain within Free Tier cost constraints while preserving full architectural capabilities. The key deployment characteristics are:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item \textbf{No Aurora Serverless.} Replaced with standard RDS PostgreSQL \texttt{db.t3.micro} (PostgreSQL 16.4, 20GB gp2). The pgvector extension and HNSW indexing remain fully functional.
-  \item \textbf{No Amazon Bedrock.} Replaced with HuggingFace Inference API as the primary LLM backend, with Ollama as local fallback. The auto-fallback chain ensures generation availability.
-  \item \textbf{No custom VPCs or NAT Gateways.} The SAM template uses the default VPC with two subnets. RDS is configured as publicly accessible with security group restrictions.
-  \item \textbf{No custom IAM roles.} All Lambda functions use the pre-existing \texttt{LabRole} provided by the Learner Lab environment.
-  \item \textbf{No AWS Budgets service.} Budget governance is maintained through programmatic Cost Explorer API queries integrated into the inference path.
-  \item \textbf{LLM backend set to \texttt{huggingface}.} The \texttt{LLM\_BACKEND} environment variable defaults to \texttt{huggingface} in the Learner Lab template, with \texttt{BUDGET\_HALT\_ENABLED} set to \texttt{false} (Cost Explorer quota limitations).
+  \item \textbf{RDS PostgreSQL instead of Aurora Serverless.} Standard RDS PostgreSQL \texttt{db.t3.micro} (PostgreSQL 16.6, 20GB gp2) replaces the originally proposed Aurora Serverless to stay within budget. The pgvector extension and HNSW indexing remain fully functional.
+  \item \textbf{Groq as primary LLM backend.} Groq free-tier API (Llama 3.1 8B Instant) serves as the primary backend, with Amazon Bedrock (Nova Micro), Ollama, and HuggingFace as fallbacks. The auto-fallback chain ensures generation availability.
+  \item \textbf{Default VPC with security groups.} The SAM template uses the default VPC with two subnets. RDS is configured as publicly accessible with security group restrictions; custom VPC migration is identified as a future improvement.
+  \item \textbf{Fine-grained IAM roles.} Custom IAM role definitions provide least-privilege access for each Lambda function.
+  \item \textbf{AWS Budgets alerts.} Native AWS Budgets alerts provide real-time cost governance, supplemented by programmatic Cost Explorer checks in the inference path.
+  \item \textbf{LLM backend set to \texttt{groq}.} The \texttt{LLM\_BACKEND} environment variable defaults to \texttt{groq}, with Amazon Bedrock and Ollama retained as fallbacks.
 \end{itemize}
 
-A dedicated SAM template (\texttt{template-learnerlab.yaml}) and configuration file (\texttt{samconfig-learnerlab.toml}) were created to encapsulate all Learner Lab-specific resource definitions.
-
-\subsection{AWS Free Tier}
-
-In parallel, the system has been set up on a personal AWS Free Tier account, which lifts several of the Learner Lab restrictions and allows a closer alignment with the original proposal. Key differences in the Free Tier environment are:
-
-\begin{itemize}[leftmargin=0.5in]
-  \item \textbf{Amazon Bedrock available.} Claude Haiku can be used as the primary LLM backend, restoring the originally proposed generative backend. The LLM fallback chain is fully exercisable from Bedrock downward.
-  \item \textbf{Custom IAM roles supported.} Fine-grained IAM role definitions can be used instead of the pre-assigned \texttt{LabRole}.
-  \item \textbf{AWS Budgets available.} Native AWS Budgets alerts replace the Cost Explorer programmatic workaround, enabling real-time cost governance.
-  \item \textbf{Custom VPCs permitted.} The deployment can use a dedicated VPC with private subnets and NAT Gateway for improved network isolation, consistent with the original proposal.
-  \item \textbf{LLM backend set to \texttt{bedrock}.} The \texttt{LLM\_BACKEND} environment variable defaults to \texttt{bedrock} in the Free Tier template, with the HuggingFace and Ollama backends retained as fallbacks.
-\end{itemize}
-
-A separate SAM template (\texttt{template.yaml}) and configuration file (\texttt{samconfig.toml}) encapsulate the Free Tier-specific resource definitions. This dual-template approach ensures that both environments can be independently deployed and maintained from the same codebase.
+All infrastructure is defined in a SAM template (\texttt{template-freetier.yaml}) and configuration file (\texttt{samconfig-freetier.toml}), ensuring reproducible and consistent deployments from the same codebase.
 
 \section{Test Coverage}
 \label{sec:tests}
 
-The system includes 49 unit tests distributed across five test modules:
+The system includes 200 unit tests distributed across 15 test modules:
 
 \begin{table}[H]
 \caption{Unit Test Distribution.}
@@ -129,12 +111,22 @@ The system includes 49 unit tests distributed across five test modules:
 \textbf{Test Module} & \textbf{Count} & \textbf{Coverage} \\
 \midrule
 \texttt{test\_preprocessing.py} & 18 & All 17 normalization steps + chunking behavior \\
-\texttt{test\_ingestion.py} & 14 & SHA-256 hash determinism and uniqueness for all 5 sources \\
-\texttt{test\_retriever.py} & 8 & Keyword overlap computation + recency weight decay \\
+\texttt{test\_ingestion.py} & 24 & SHA-256 hash determinism and uniqueness for all 5 sources \\
+\texttt{test\_retriever.py} & 9 & Keyword overlap computation + recency weight decay \\
 \texttt{test\_rag.py} & 7 & Citation grounding check + context block construction \\
 \texttt{test\_api.py} & 5 & FastAPI endpoint validation (health, error handling, success) \\
+\texttt{test\_db.py} & 9 & Database connection pooling + schema initialization \\
+\texttt{test\_embedder.py} & 4 & Embedding model initialization + vector generation \\
+\texttt{test\_http.py} & 3 & HTTP retry logic + session configuration \\
+\texttt{test\_llm\_backends.py} & 15 & Multi-backend LLM fallback chain (Groq/Bedrock/HuggingFace/Ollama) \\
+\texttt{test\_observability.py} & 27 & CloudWatch metrics + health checks + 5 drift simulation scenarios \\
+\texttt{test\_pipeline.py} & 19 & End-to-end pipeline (chunk $\to$ embed $\to$ index) \\
+\texttt{test\_queue.py} & 17 & SQS producer/consumer + DLQ behavior \\
+\texttt{test\_scheduler.py} & 14 & Ingestion loop scheduling + error handling \\
+\texttt{test\_storage.py} & 21 & S3 medallion layer operations \\
+\texttt{test\_sync\_to\_aws.py} & 8 & AWS sync operations + configuration \\
 \midrule
-\textbf{Total} & \textbf{49} (passing) & \\
+\textbf{Total} & \textbf{200} (passing) & \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -211,7 +203,7 @@ Figure~\ref{fig:demo_hybrid} shows the TechPulse frontend answering a technology
 \textbf{Save as:} \texttt{report/figures/demo\_hybrid.png} \quad (PNG, min 1200px wide)
 \vspace{0.4cm}
 }}
-\caption{TechPulse frontend: hybrid retrieval query with citation-grounded response. The response displays inline source citations and a ranked source list with relevance scores from all five data sources.}
+\caption{TechPulse frontend: hybrid retrieval query with citation-grounded response.}
 \label{fig:demo_hybrid}
 \end{figure}
 
@@ -245,13 +237,13 @@ Figure~\ref{fig:demo_baseline} shows the same query executed in baseline (vector
 \textbf{Save as:} \texttt{report/figures/demo\_baseline.png} \quad (PNG, min 1200px wide)
 \vspace{0.4cm}
 }}
-\caption{TechPulse frontend: baseline (vector-only) retrieval query on the same question as Figure~\ref{fig:demo_hybrid}, enabling visual comparison of response quality and source diversity.}
+\caption{TechPulse frontend: baseline (vector-only) retrieval query for comparison with Figure~\ref{fig:demo_hybrid}.}
 \label{fig:demo_baseline}
 \end{figure}
 
 \subsection{Unit Test Execution}
 
-Figure~\ref{fig:demo_tests} shows the terminal output of running the full test suite. All 49 tests pass across the five test modules, validating preprocessing, ingestion, retrieval, RAG orchestration, and API endpoint behavior.
+Figure~\ref{fig:demo_tests} shows the terminal output of running the full test suite. All 200 tests pass across the 15 test modules, validating preprocessing, ingestion, retrieval, RAG orchestration, API endpoint behavior, LLM backends, observability, drift detection, and infrastructure integration.
 
 \begin{figure}[H]
 \centering
@@ -268,8 +260,8 @@ Figure~\ref{fig:demo_tests} shows the terminal output of running the full test s
   \item Open a terminal in the project root directory
   \item Run: \texttt{pytest tests/ -v --tb=short}
   \item Wait for all tests to complete
-  \item The terminal must show \textbf{all 49 tests passing} (green dots or PASSED labels)
-  \item The final summary line must read: \texttt{49 passed} (optionally with warnings)
+  \item The terminal must show \textbf{all 200 tests passing} (green dots or PASSED labels)
+  \item The final summary line must read: \texttt{200 passed} (optionally with warnings)
   \item Make sure the following test module names are visible in the output:\\
     \texttt{test\_preprocessing.py}, \texttt{test\_ingestion.py}, \texttt{test\_retriever.py},\\
     \texttt{test\_rag.py}, \texttt{test\_api.py}
@@ -282,7 +274,7 @@ Figure~\ref{fig:demo_tests} shows the terminal output of running the full test s
 \textbf{Save as:} \texttt{report/figures/demo\_tests.png} \quad (PNG, capture full terminal output)
 \vspace{0.4cm}
 }}
-\caption{Pytest execution: 49 unit tests passing across 5 test modules (\texttt{test\_preprocessing}, \texttt{test\_ingestion}, \texttt{test\_retriever}, \texttt{test\_rag}, \texttt{test\_api}).}
+\caption{Pytest execution: 200 unit tests passing across 15 test modules.}
 \label{fig:demo_tests}
 \end{figure}
 
@@ -304,8 +296,7 @@ Figure~\ref{fig:demo_docker} shows all six Docker Compose services running simul
 \begin{itemize}
   \item Start the system: \texttt{docker compose up -d}
   \item Wait 30 seconds for all services to initialize
-  \item Run: \texttt{docker compose ps} (preferred --- shows service names clearly)\\
-    OR: \texttt{docker ps --format "table \{\{.Names\}\}\textbackslash t\{\{.Status\}\}\textbackslash t\{\{.Ports\}\}"}
+  \item Run: \texttt{docker compose ps} (preferred --- shows service names clearly)
   \item All \textbf{6 containers} must show status \texttt{Up} or \texttt{running}:
     \begin{itemize}\small
       \item \texttt{db} (PostgreSQL + pgvector) --- port 5432
@@ -324,7 +315,7 @@ Figure~\ref{fig:demo_docker} shows all six Docker Compose services running simul
 \textbf{Save as:} \texttt{report/figures/demo\_docker.png} \quad (PNG, full terminal capture)
 \vspace{0.4cm}
 }}
-\caption{Docker Compose deployment: six services running locally --- PostgreSQL+pgvector, pgAdmin, LocalStack, FastAPI API, React frontend, and the ingestion scheduler.}
+\caption{Docker Compose deployment: six services running locally.}
 \label{fig:demo_docker}
 \end{figure}
 
@@ -360,11 +351,11 @@ Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the
 \vspace{0.2cm}
 \hrule
 \vspace{0.3cm}
-\textbf{URL pattern:} \texttt{https://github.com/\{org\}/\{repo\}/actions/runs/\{run-id\}}\\[2pt]
+\textbf{URL pattern:} \texttt{https://github.com/\{org\}/\{repo\}/\\actions/runs/\{run-id\}}\\[2pt]
 \textbf{Save as:} \texttt{report/figures/demo\_cicd.png} \quad (PNG, capture the workflow graph, not just job list)
 \vspace{0.4cm}
 }}
-\caption{GitHub Actions CI/CD pipeline: four-stage workflow (lint \& test, Docker build, SAM build, deploy) executing successfully on the \texttt{main} branch.}
+\caption{GitHub Actions CI/CD pipeline: four-stage workflow executing successfully.}
 \label{fig:demo_cicd}
 \end{figure}
 
@@ -402,12 +393,12 @@ Figure~\ref{fig:demo_pgadmin} shows the pgAdmin interface with the \texttt{docum
 \textbf{Save as:} \texttt{report/figures/demo\_pgadmin.png} \quad (PNG, min 1400px wide to show both panels)
 \vspace{0.4cm}
 }}
-\caption{pgAdmin: the \texttt{documents} table populated with records from all five data sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS), demonstrating successful multi-source ingestion.}
+\caption{pgAdmin: the \texttt{documents} table populated with records from all five data sources.}
 \label{fig:demo_pgadmin}
 \end{figure}
 
 \medskip
-\noindent\textbf{Chapter Summary.} This chapter documented the implementation status across all 20 system components using a three-tier status classification (unit-tested, integration-tested, cloud-validated), deviations from the original proposal with honest trade-off analysis, key engineering observations from development, and the evaluation framework status. All core pipeline components are integration-tested via Docker Compose; cloud deployment is in progress across both AWS environments. Chapter~7 presents the remaining work plan, known limitations, and project timeline.
+\noindent This chapter documented implementation status across 20 components, deviations from the original proposal, and key engineering observations. All core pipeline components are integration-tested; cloud deployment is in progress. Chapter~7 presents remaining work and the project timeline.
 
 \medskip
 \noindent\textbf{Team Contributions.} Aye Khin Khin Hpone led data ingestion, preprocessing, embedding, and the React frontend. Dechathon Niamsa-Ard led the RAG orchestrator, LLM fallback chain, AWS infrastructure (SAM templates), CI/CD pipeline, and evaluation framework. Both members contributed to the system architecture design, unit testing, and report writing.

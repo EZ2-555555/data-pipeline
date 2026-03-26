@@ -8,7 +8,7 @@ TechPulse has been implemented as a cloud-native Hybrid Retrieval-Augmented Gene
 The core hypotheses under evaluation are stated formally as:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item \textbf{H\textsubscript{0}}: There is no statistically significant difference in mean context precision between hybrid and baseline (vector-only) retrieval, evaluated over 25 matched queries under identical corpus and embedding conditions.
+  \item \textbf{H\textsubscript{0}}: There is no statistically significant difference in mean context precision between hybrid and baseline (vector-only) retrieval, evaluated over 50 matched queries under identical corpus and embedding conditions.
   \item \textbf{H\textsubscript{1}}: Hybrid retrieval achieves statistically higher mean context precision than baseline retrieval (one-sided Wilcoxon signed-rank test, $\alpha = 0.05$).
 \end{itemize}
 
@@ -21,7 +21,7 @@ Three considerations motivate the hybrid RAG approach for this specific problem 
 
 \textbf{Domain characteristics.} Emerging technology knowledge is temporally dynamic and distributed across heterogeneous sources. Vector-only retrieval treats all documents equally regardless of recency or source authority; hybrid retrieval with recency-aware reranking explicitly addresses temporal drift, which is critical in rapidly evolving AI/ML domains where a paper from 18 months ago may already be superseded.
 
-\textbf{Operational constraints.} The system must operate within cost and latency bounds suitable for a research prototype deployed across two AWS environments: the AWS Academy Learner Lab and the AWS Free Tier. The lightweight linear reranking function (Equation~\ref{eq:reranking}) adds $O(k)$ computation over the top-$N$ filtered candidates---negligible compared to the $O(Nd)$ baseline search---and avoids the latency penalties of cross-encoder rerankers, which typically require a forward pass through a BERT-class model per candidate.
+\textbf{Operational constraints.} The system must operate within cost and latency bounds suitable for a research prototype deployed on the AWS Free Tier. The lightweight linear reranking function (Equation~\ref{eq:reranking}) adds $O(k)$ computation over the top-$N$ filtered candidates---negligible compared to the $O(Nd)$ baseline search---and avoids the latency penalties of cross-encoder rerankers, which typically require a forward pass through a BERT-class model per candidate.
 
 \textbf{Production feasibility.} The architecture uses AWS-managed services---Lambda, RDS PostgreSQL, API Gateway, EventBridge---eliminating the need to manage dedicated compute clusters or self-hosted vector databases. This enables a student team to deploy, iterate, and monitor a production-grade system within the course timeline and a prototype budget envelope.
 
@@ -34,7 +34,7 @@ The engineering contribution of TechPulse lies not in any single component but i
 
 \textbf{Unified vector--relational retrieval without dedicated infrastructure.} By extending PostgreSQL with pgvector, TechPulse achieves hybrid retrieval (structured SQL metadata filtering + cosine vector search) within a single managed database, eliminating the operational complexity of running a separate vector store. This design choice reduces architectural surface area, simplifies deployment automation, and enables cost-governed scaling through standard RDS instances.
 
-\textbf{Idempotent ingestion pipeline with SHA-256 content-addressed deduplication.} The SHA-256 hashing strategy applied to canonicalized document fields ensures that the pipeline can be re-run safely at any time without creating duplicate records. This is an often-overlooked but practically important data engineering innovation---it enables safe experiment replay, crash recovery, and corpus versioning without requiring a separate deduplication service.
+\textbf{Idempotent ingestion pipeline with SHA-256 content-addressed deduplication.} The SHA-256 hashing strategy applied to canonicalized document fields ensures that the pipeline can be re-run safely at any time without creating duplicate records. This often-overlooked but practically important engineering practice enables safe experiment replay, crash recovery, and corpus versioning without requiring a separate deduplication service.
 
 \textbf{Budget-aware inference with programmatic halt.} The integration of AWS Cost Explorer queries into the inference path---where invocations are halted programmatically when monthly cost thresholds are approached---represents an operational optimization strategy not typically addressed in RAG research prototypes. This transforms cost from a passive monitoring concern into an active constraint enforced at runtime, consistent with production-grade MLOps principles.
 
@@ -56,6 +56,8 @@ Top-$N$ documents are selected purely on similarity ranking with a minimum simil
 The hybrid configuration introduces three sequential refinement stages applied before generation.
 
 \textbf{Stage 1 --- Metadata Filtering.} Structured SQL constraints reduce the candidate space based on document recency (a 180-day sliding window), source type, and document state. Only documents in the \texttt{INDEXED} state are considered. The 180-day window was chosen to balance corpus recency with sufficient document volume: at the expected ingestion rates across five sources, the window is projected to yield 500--2,000 indexed chunks, providing a meaningful retrieval pool while excluding content more than six months old, which is considered stale for fast-moving AI/ML topics. This pre-filtering stage reduces retrieval noise prior to semantic ranking.
+
+\textit{Robustness to missing and noisy metadata.} Because the five ingestion sources vary in metadata completeness, the filter is designed to degrade gracefully. The recency filter uses an inclusive \texttt{OR} clause (\texttt{published\_at IS NULL OR published\_at >= threshold}), so documents with missing publication dates are retained rather than silently dropped---this is particularly relevant for Hacker News ``Ask HN'' and ``Show HN'' self-posts, which occasionally lack external URLs or have approximate timestamps. During ingestion, each source adapter normalizes metadata before insertion: titles and content are whitespace-normalized; empty URLs default to the source platform's item permalink; and missing timestamps are coerced from the API's Unix epoch field or, for RSS feeds, from the \texttt{<pubDate>} element with a fallback to ingestion time. The reranking stage further mitigates noisy metadata: documents with \texttt{NULL} publication dates receive a recency weight of~0 (Equation~\ref{eq:recency}), meaning they can still be retrieved via semantic similarity but are deprioritized by the temporal signal. This design ensures that incomplete metadata degrades relevance ranking gracefully rather than causing silent retrieval failures.
 
 \textbf{Stage 2 --- Vector Similarity Search.} Cosine similarity (Equation~\ref{eq:cosine}) is applied over the filtered candidate subset using the pgvector \texttt{<=>} operator. To provide sufficient candidates for reranking, $4 \times \text{top\_k}$ results are retrieved at this stage. The 4$\times$ multiplier follows the oversampling convention used in cross-encoder reranking pipelines (Nogueira \& Cho, 2019), giving the reranker enough diversity to meaningfully reorder results without expanding the candidate pool to the point where reranking overhead dominates latency.
 
@@ -122,17 +124,17 @@ Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference betw
 
 % annotation arrows
 \draw[-{Stealth}, dashed, color=propred!70, thick]
-  ([xshift=1.4cm]hmf.east) -- ++(0.5,0)
-  node[right, font=\scriptsize, color=propred, text width=2.0cm]
-  {Reduces candidate\\pool before search};
+  ([xshift=0.3cm]hmf.east) -- ++(0.4,0)
+  node[right, font=\scriptsize, color=propred, text width=1.8cm]
+  {Reduces candidate\\pool};
 
 \draw[-{Stealth}, dashed, color=awspurple!70, thick]
-  ([xshift=1.4cm]hrr.east) -- ++(0.5,0)
-  node[right, font=\scriptsize, color=awspurple, text width=2.0cm]
-  {Multi-factor\\relevance scoring};
+  ([xshift=0.3cm]hrr.east) -- ++(0.4,0)
+  node[right, font=\scriptsize, color=awspurple, text width=1.8cm]
+  {Multi-factor\\scoring};
 
 \end{tikzpicture}
-\caption{Comparison of Baseline Vector-Only Retrieval (left) and Implemented Hybrid Retrieval Pipeline (right). The hybrid pipeline adds a metadata filtering stage to reduce the candidate pool and a reranking-lite stage for multi-factor relevance scoring prior to final candidate selection.}
+\caption{Baseline vector-only retrieval (left) vs.\ implemented hybrid retrieval pipeline (right).}
 \label{fig:retrieval_comparison}
 \end{figure}
 
@@ -164,7 +166,7 @@ where $\tau$ is the p95 latency target of 2 seconds. This formulation makes the 
 \section{Tool Selection and Implementation Stack}
 \label{sec:tools}
 
-Table~\ref{tab:tools} summarizes the implemented tools and their justification. The stack has been adapted from the original proposal to accommodate AWS Academy Learner Lab constraints, with additional configuration for the AWS Free Tier environment, as detailed in Chapter~\ref{ch:progress}.
+Table~\ref{tab:tools} summarizes the implemented tools and their justification. The stack has been adapted from the original proposal to operate within AWS Free Tier constraints, as detailed in Chapter~\ref{ch:progress}.
 
 \begin{table}[H]
 \caption{Implemented Tools, Services, and Justification.}
@@ -178,8 +180,8 @@ Ingestion orchestration & AWS Lambda + EventBridge & Serverless, scheduled/event
 Message queue & Amazon SQS + DLQ & Decouples ingestion from embedding; failure resilience \\
 Raw storage & Amazon S3 (medallion layout) & Cost-effective, durable, prefix-based lineage tracking \\
 Embedding model & MiniLM (sentence-transformers) & Low latency, 384-dim, serverless-compatible \\
-Vector + relational store & RDS PostgreSQL + pgvector & Unified hybrid retrieval; compatible with both Learner Lab and Free Tier \\
-Generative model & HuggingFace / Ollama (fallback) in Learner Lab; Bedrock (Claude Haiku) in Free Tier & Multi-backend with auto-cascade; Bedrock unavailable in Learner Lab but enabled in Free Tier \\
+Vector + relational store & RDS PostgreSQL + pgvector & Unified hybrid retrieval; AWS Free Tier compatible \\
+Generative model & Groq (Llama 3.1 8B Instant, primary); Bedrock (Amazon Nova Micro, fallback); Ollama / HuggingFace (local fallbacks) & Auto-cascade fallback chain; Groq free-tier API available across all environments \\
 Frontend & React (S3 static hosting) & Lightweight, decoupled from backend \\
 API routing & Amazon API Gateway (HTTP) & Managed, HTTPS, CORS support \\
 CI/CD & GitHub Actions + SAM & Reproducible IaC deployments, automated testing \\
@@ -207,47 +209,45 @@ Figure~\ref{fig:system_context} presents a high-level context view of TechPulse,
   \scriptsize Hybrid RAG System\\
   \scriptsize (AWS Cloud + Docker Local)};
 
-% External data sources (left)
+% External data sources (left) — pushed further out
 \node[rectangle, draw=awsgreen!70, fill=awsgreen!15, rounded corners=4pt,
       text width=2.8cm, align=center, minimum height=0.65cm, font=\scriptsize]
-  (arxiv) at (-5.5, 1.6) {ArXiv / HN / DEV.to / GitHub / RSS};
+  (arxiv) at (-6.2, 1.6) {ArXiv / Hacker News / DEV.to / GitHub / RSS};
 
-% Technology professionals (right top)
+% Technology professionals (right top) — pushed further out
 \node[rectangle, draw=awsorange!70, fill=awsorange!15, rounded corners=4pt,
       text width=2.6cm, align=center, minimum height=0.65cm, font=\scriptsize]
-  (user) at (5.5, 1.0) {Technology Professional (User)};
+  (user) at (6.2, 1.0) {Technology Professional (User)};
 
-% Evaluation system (right bottom)
+% Evaluation system (right bottom) — pushed further out
 \node[rectangle, draw=awspurple!70, fill=awspurple!15, rounded corners=4pt,
       text width=2.6cm, align=center, minimum height=0.65cm, font=\scriptsize]
-  (eval) at (5.5, -1.0) {Evaluation (RAGAS + Grid Search)};
+  (eval) at (6.2, -1.0) {Evaluation (RAGAS + Grid Search)};
 
-% Cloud / ops (bottom)
+% Cloud / ops (bottom) — pushed further down
 \node[rectangle, draw=propgray!70, fill=propgray!15, rounded corners=4pt,
       text width=2.8cm, align=center, minimum height=0.65cm, font=\scriptsize]
-  (ops) at (0, -2.8) {Operators (CloudWatch / SNS Alerts)};
+  (ops) at (0, -3.2) {Operators (CloudWatch / SNS Alerts)};
 
-% Arrows
+% Arrows with white-filled labels for visibility
 \draw[-{Stealth}, thick, color=awsgreen!70]
-  (arxiv.east) -- node[above, font=\scriptsize, color=awsgreen!80] {raw content} (sys.west |- arxiv);
+  (arxiv.east) -- node[fill=white, inner sep=2pt, font=\scriptsize\bfseries, text=awsgreen!80] {raw content} (sys.west |- arxiv);
 
-\draw[-{Stealth}, thick, color=awsorange!70]
-  (user.west |- sys) -- node[above, font=\scriptsize, color=awsorange!80] {NL query}
-  ([xshift=2.2cm]sys.east |- user);
-\draw[{Stealth}-, thick, color=awsorange!70]
-  (user.west |- eval) -- node[below, font=\scriptsize, color=awsorange!80] {cited response}
-  ([xshift=2.2cm]sys.east |- eval);
+\draw[{Stealth}-{Stealth}, thick, color=awsorange!70]
+  (user.west) -- node[fill=white, inner sep=2pt, font=\scriptsize\bfseries, text=awsorange!80, above, pos=0.5] {NL query}
+                  node[fill=white, inner sep=2pt, font=\scriptsize\bfseries, text=awsorange!80, below, pos=0.5] {cited response}
+  (sys.east |- user);
 
 \draw[-{Stealth}, dashed, thick, color=awspurple!70]
-  ([xshift=1.8cm]sys.east) -- node[right, font=\scriptsize, color=awspurple!80] {eval queries / metrics} (eval.west);
+  (sys.east |- eval) -- node[fill=white, inner sep=2pt, font=\scriptsize\bfseries, text=awspurple!80] {eval metrics} (eval.west);
 
 \draw[-{Stealth}, dashed, thick, color=propgray!70]
-  (sys.south) -- node[right, font=\scriptsize, color=propgray!80] {drift alerts / health metrics} (ops.north);
+  (sys.south) -- node[fill=white, inner sep=2pt, font=\scriptsize\bfseries, text=propgray!80, right] {drift alerts / health} (ops.north);
 
 \end{tikzpicture}
-\caption{System Context Diagram for TechPulse. Solid arrows represent primary data and query flows; dashed arrows represent monitoring and evaluation signals. The system ingests from five external data sources and serves technology professionals via a query interface, while exposing evaluation and monitoring interfaces.}
+\caption{System context diagram for TechPulse. Solid arrows represent data and query flows; dashed arrows represent monitoring and evaluation signals.}
 \label{fig:system_context}
 \end{figure}
 
 \medskip
-\noindent\textbf{Chapter Summary.} This chapter presented the methodology underpinning TechPulse: the formal hypotheses (H\textsubscript{0}/H\textsubscript{1}), the rationale for the hybrid approach, the design of the three-stage retrieval pipeline, hallucination verification strategy, parameter choices and their justifications, and the tool stack. The next chapter translates these methodological decisions into a concrete system architecture and data engineering pipeline design.
+\noindent The remainder of this report translates these methodological decisions into a concrete system architecture (Chapter~4), evaluation framework (Chapter~5), implementation status (Chapter~6), and remaining work (Chapter~7).

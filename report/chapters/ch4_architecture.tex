@@ -4,71 +4,72 @@
 \section{Architectural Overview}
 \label{sec:arch_overview}
 
-TechPulse has been implemented as a six-layer, cloud-native system deployed in two AWS environments: the AWS Academy Learner Lab and a personal AWS Free Tier account. Each layer is logically independent with well-defined interfaces, enabling modular development, testing, and future extension. The architecture was initially adapted from the original proposal to replace services unavailable in the Learner Lab (Aurora Serverless, Amazon Bedrock, custom VPCs, AWS Budgets) with compatible alternatives. The Free Tier setup restores access to several of these services, including Amazon Bedrock, while preserving the core hybrid retrieval and MLOps capabilities across both environments.
+TechPulse has been implemented as a six-layer, cloud-native system deployed on the AWS Free Tier. Each layer is logically independent with well-defined interfaces, enabling modular development, testing, and future extension. The architecture was adapted from the original proposal to operate within Free Tier cost and service constraints, replacing Aurora Serverless with standard RDS PostgreSQL and favouring free-tier LLM APIs while preserving the core hybrid retrieval and MLOps capabilities.
 
 % ---- TikZ: Six-layer architectural stack ----
 \begin{figure}[H]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[node distance=0.0cm]
 
-\def\lw{13.5cm}
-\def\lh{0.90cm}
-\def\aw{2.8cm}   % arrow annotation width
+\def\lw{12.0cm}
+\def\lh{1.05cm}
 
 \node[rectangle, draw=awsgray!50, fill=awslightblue, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt]
-  (l6) {Layer 6 --- Deployment, Monitoring \& Interaction \quad \textcolor{awsgray}{\scriptsize CloudWatch, SNS, API GW, React}};
+  (l6) {Layer 6 --- Monitoring \& Interaction \quad \textcolor{awsgray}{\scriptsize CloudWatch, SNS, API GW, React}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightorange, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l6]
-  (l5) {Layer 5 --- Generative Synthesis (HuggingFace / Ollama / Bedrock) \quad \textcolor{awsgray}{\scriptsize Auto-fallback chain}};
+  (l5) {Layer 5 --- Generative Synthesis \quad \textcolor{awsgray}{\scriptsize Groq / Bedrock / Ollama (auto-fallback)}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightpurple, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l5]
-  (l4) {Layer 4 --- Hybrid Retrieval \& Reranking \quad \textcolor{awsgray}{\scriptsize 3-stage: filter $\to$ similarity $\to$ rerank}};
+  (l4) {Layer 4 --- Hybrid Retrieval \& Reranking \quad \textcolor{awsgray}{\scriptsize filter $\to$ similarity $\to$ rerank}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightgreen, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l4]
-  (l3) {Layer 3 --- Vector Storage \& Indexing (RDS PostgreSQL + pgvector) \quad \textcolor{awsgray}{\scriptsize HNSW index, cosine search + SQL filter}};
+  (l3) {Layer 3 --- Vector Storage \& Indexing \quad \textcolor{awsgray}{\scriptsize RDS PostgreSQL + pgvector (HNSW)}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightorange, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l3]
-  (l2) {Layer 2 --- Preprocessing \& Feature Engineering \quad \textcolor{awsgray}{\scriptsize 17-step normalize, chunk, SHA-256 hash}};
+  (l2) {Layer 2 --- Preprocessing \& Embedding \quad \textcolor{awsgray}{\scriptsize 17-step normalize, chunk, SHA-256}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightblue, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l2]
-  (l1) {Layer 1 --- Data Ingestion (5 sources) \quad \textcolor{awsgray}{\scriptsize ArXiv + HN + DEV.to + GitHub + RSS (batch + near-RT)}};
+  (l1) {Layer 1 --- Data Ingestion (5 sources) \quad \textcolor{awsgray}{\scriptsize ArXiv, HN, DEV.to, GitHub, RSS}};
 
 % Inter-layer flow arrows (right-hand side, upward ingestion path)
 \draw[-{Stealth}, thick, color=awsblue!70]
-  ([xshift=7.4cm]l1.east) -- node[right, font=\scriptsize, color=awsblue!80, xshift=2pt] {raw docs}
-  ([xshift=7.4cm]l2.east);
+  ([xshift=1.0cm]l1.east) -- node[right, font=\scriptsize, color=awsblue!80] {raw docs}
+  ([xshift=1.0cm]l2.east);
 \draw[-{Stealth}, thick, color=awsgreen!70]
-  ([xshift=7.4cm]l2.east) -- node[right, font=\scriptsize, color=awsgreen!80, xshift=2pt] {chunks + embeddings}
-  ([xshift=7.4cm]l3.east);
+  ([xshift=1.0cm]l2.east) -- node[right, font=\scriptsize, color=awsgreen!80] {chunks}
+  ([xshift=1.0cm]l3.east);
 \draw[-{Stealth}, thick, color=awspurple!70]
-  ([xshift=7.4cm]l3.east) -- node[right, font=\scriptsize, color=awspurple!80, xshift=2pt] {ranked docs}
-  ([xshift=7.4cm]l4.east);
+  ([xshift=1.0cm]l3.east) -- node[right, font=\scriptsize, color=awspurple!80] {ranked docs}
+  ([xshift=1.0cm]l4.east);
 \draw[-{Stealth}, thick, color=awsorange!70]
-  ([xshift=7.4cm]l4.east) -- node[right, font=\scriptsize, color=awsorange!80, xshift=2pt] {context block}
-  ([xshift=7.4cm]l5.east);
+  ([xshift=1.0cm]l4.east) -- node[right, font=\scriptsize, color=awsorange!80] {context}
+  ([xshift=1.0cm]l5.east);
 \draw[-{Stealth}, thick, color=awsblue!70]
-  ([xshift=7.4cm]l5.east) -- node[right, font=\scriptsize, color=awsblue!80, xshift=2pt] {grounded response}
-  ([xshift=7.4cm]l6.east);
+  ([xshift=1.0cm]l5.east) -- node[right, font=\scriptsize, color=awsblue!80] {response}
+  ([xshift=1.0cm]l6.east);
 
 % Query flow arrow (left-hand side, downward query path)
 \draw[-{Stealth}, dashed, thick, color=propgray!70]
-  ([xshift=-7.4cm]l6.west) -- node[left, font=\scriptsize, color=propgray!80, xshift=-2pt] {user query}
-  ([xshift=-7.4cm]l4.west);
+  ([xshift=-1.0cm]l6.west) -- node[left, font=\scriptsize, color=propgray!80] {query}
+  ([xshift=-1.0cm]l4.west);
 
-\end{tikzpicture}
-\caption{Six-Layer Conceptual Architecture of TechPulse. Right-hand solid arrows show the upward ingestion and generation data flow (raw documents $\to$ embeddings $\to$ retrieval $\to$ synthesis $\to$ response). The left-hand dashed arrow shows the downward query path from the user interface to the retrieval layer. Each layer has well-defined responsibilities and interfaces.}
+\end{tikzpicture}%
+}
+\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path.}
 \label{fig:six_layers}
 \end{figure}
 
@@ -89,7 +90,7 @@ The TechPulse architecture is designed in explicit alignment with the AWS Well-A
 \textbf{Security} & Controlled API access via Amazon API Gateway with CORS; rate limiting via slowapi; all services managed within AWS default VPC; no direct model invocation from the frontend \\[4pt]
 \textbf{Reliability} & Decoupled ingestion and embedding pipelines via SQS; Dead Letter Queue for failure recovery and replay with 14-day retention; bounded retry logic with exponential backoff for LLM invocations; automatic LLM backend fallback chain \\[4pt]
 \textbf{Performance Efficiency} & Serverless Lambda scaling; lightweight MiniLM embedding model (384-dim); metadata pre-filtering reduces vector search scope; HNSW index for approximate nearest-neighbor search \\[4pt]
-\textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; HuggingFace free-tier inference as primary backend in Learner Lab; Amazon Bedrock available in Free Tier; db.t3.micro RDS instance \\[4pt]
+\textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; Groq free-tier inference as primary backend (500k tokens/day); Amazon Bedrock available in Free Tier; db.t3.micro RDS instance \\[4pt]
 \textbf{Sustainability} & Event-driven processing avoids idle compute; SQS decoupling prevents over-provisioning; right-sized Lambda memory allocations (512MB--1024MB) \\
 \bottomrule
 \end{tabular}
@@ -110,12 +111,14 @@ The original proposal specified two data sources (ArXiv and Hacker News). During
 \midrule
 ArXiv API & Batch & Scholarly grounding corpus (cs.AI, cs.LG, cs.CL, cs.IR, cs.SE) & Every 12 hours \\
 Hacker News API & Near-real-time & Community-curated tech discussions & Every 30 minutes \\
-DEV.to API & Near-real-time & Practitioner tutorials and industry articles (21 tags) & Every 6 hours \\
-GitHub Trending & Batch & Open-source project intelligence (10 topic queries) & Every 6 hours \\
-RSS/Atom Feeds & Batch & Curated technology journalism (10 feeds) & Every 6 hours \\
+DEV.to API & Near-real-time & Practitioner tutorials and industry articles (21 tags) & Every 30 minutes \\
+GitHub Trending & Batch & Open-source project intelligence (10 topic queries) & Every 30 minutes \\
+RSS/Atom Feeds & Batch & Curated technology journalism (10 feeds) & Every 30 minutes \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The frequencies in Table~\ref{tab:data_sources} reflect the local scheduler (\texttt{scheduler.py}), which provides fine-grained per-source intervals. On AWS, a single EventBridge rule triggers the ingestion Lambda every 6 hours, executing all five sources in one invocation.
 
 The combination provides complementary temporal and authority profiles: ArXiv contributes rigorously authored research with stable identifiers; Hacker News contributes practitioner signals and community-curated trending discussions; DEV.to provides developer-focused tutorials and implementation insights; GitHub Trending captures emerging open-source tools and frameworks; and curated RSS feeds from outlets including Ars Technica, TechCrunch, Wired, IEEE Spectrum, and MIT News provide technology journalism coverage.
 
@@ -163,7 +166,7 @@ The pipeline has been implemented around four design principles: determinism (id
 
 % ---- Retrieval / LLM ----
 \node[compnode=awsorange, right=0.7cm of rds] (rag) {RAG\\Orchestrator};
-\node[compnode=awsblue, right=0.7cm of rag] (llm) {LLM Backend\\(HF/Ollama)};
+\node[compnode=awsblue, right=0.7cm of rag] (llm) {LLM Backend\\(Groq/Bedrock)};
 
 % ---- API GW + React ----
 \node[compnode=awsgreen, right=0.7cm of llm] (apigw) {API\\Gateway};
@@ -214,7 +217,7 @@ The pipeline has been implemented around four design principles: determinism (id
 
 \end{tikzpicture}%
 }
-\caption{Implemented End-to-End Data Engineering and Serving Pipeline for TechPulse. Five heterogeneous sources feed into the ingestion pipeline. Solid arrows indicate data and control flow; dashed arrows indicate monitoring and observability signals.}
+\caption{End-to-end data engineering and serving pipeline. Solid arrows indicate data flow; dashed arrows indicate monitoring signals.}
 \label{fig:pipeline}
 \end{figure}
 
@@ -249,17 +252,18 @@ Figure~\ref{fig:state_machine} illustrates the document state machine, showing t
 % ---- TikZ: Document State Machine ----
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[node distance=0.5cm and 2.2cm, font=\small,
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.5cm and 2.0cm, font=\small,
   snode/.style={rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
-                minimum width=2.4cm, minimum height=0.7cm, align=center, font=\small\bfseries}]
+                minimum width=2.2cm, minimum height=0.7cm, align=center, font=\small\bfseries}]
 
 \node[snode] (raw)      {RAW};
-\node[snode, right=2.8cm of raw]   (proc)  {PROCESSED};
-\node[snode, right=2.8cm of proc]  (emb)   {EMBEDDED};
-\node[snode, right=2.8cm of emb]   (idx)   {INDEXED};
+\node[snode, right=2.5cm of raw]   (proc)  {PROCESSED};
+\node[snode, right=2.5cm of proc]  (emb)   {EMBEDDED};
+\node[snode, right=2.5cm of emb]   (idx)   {INDEXED};
 
 \draw[-{Stealth}, thick]
-  (raw)  -- node[above, font=\scriptsize] {Preprocess Lambda}
+  (raw)  -- node[above, font=\scriptsize] {Preprocess}
              node[below, font=\scriptsize, color=awsgreen!70] {S3 /processed} (proc);
 \draw[-{Stealth}, thick]
   (proc) -- node[above, font=\scriptsize] {Embed (MiniLM)}
@@ -270,13 +274,14 @@ Figure~\ref{fig:state_machine} illustrates the document state machine, showing t
 
 % Entry arrow
 \draw[-{Stealth}, thick, color=awsblue!70]
-  ([xshift=-1.6cm]raw.west) -- node[above, font=\scriptsize] {Ingestion Lambda} (raw.west);
+  ([xshift=-1.4cm]raw.west) -- node[above, font=\scriptsize] {Ingestion} (raw.west);
 
 % S3 annotation for RAW
 \node[font=\scriptsize, color=awsgreen!70, below=0.6cm of raw] {S3 /raw/\{source\}};
 
-\end{tikzpicture}
-\caption{Document State Machine. Each document progresses through four deterministic states. Transition labels show the triggering process (top) and the primary storage destination (bottom). SHA-256 deduplication at ingestion prevents duplicate entries entering the RAW state.}
+\end{tikzpicture}%
+}
+\caption{Document state machine with four deterministic states. Transition labels show triggering processes (top) and storage destinations (bottom).}
 \label{fig:state_machine}
 \end{figure}
 
@@ -284,29 +289,27 @@ To guarantee idempotency, canonicalized content fields are hashed using SHA-256 
 
 \subsection{Preprocessing and Chunking}
 
-Textual preprocessing has been implemented as a comprehensive 17-step normalization pipeline in the \texttt{normalize\_text()} function. The following transformations are applied in sequence:
+Textual preprocessing has been implemented as a comprehensive 17-step normalization pipeline in the \texttt{normalize\_text()} function. Table~\ref{tab:preprocess_steps} summarises the grouped operations applied in sequence.
 
-\begin{enumerate}[leftmargin=0.5in]
-  \item HTML entity unescaping (\texttt{html.unescape})
-  \item HTML comment removal (\texttt{<!-- ... -->})
-  \item HTML tag stripping
-  \item Fenced code block removal
-  \item Inline code formatting removal
-  \item Markdown image and link syntax normalization
-  \item URL removal (HTTP/HTTPS/FTP)
-  \item Markdown heading marker removal
-  \item Bold and italic marker removal
-  \item Strikethrough syntax normalization (\texttt{\~{}\~{}text\~{}\~{}} $\to$ text)
-  \item Horizontal rule removal
-  \item Blockquote marker removal
-  \item Emoji and pictographic symbol removal (6 Unicode ranges)
-  \item Unicode control character and zero-width character removal
-  \item Repeated punctuation collapse (\texttt{!!!} $\to$ \texttt{!})
-  \item Non-breaking space normalization
-  \item Whitespace consolidation and trimming
-\end{enumerate}
+\begin{table}[H]
+\caption{Preprocessing Pipeline: 17-Step Text Normalization.}
+\label{tab:preprocess_steps}
+\centering
+\begin{tabular}{p{3.5cm}p{1.0cm}p{7.5cm}}
+\toprule
+\textbf{Category} & \textbf{Steps} & \textbf{Operations} \\
+\midrule
+HTML Cleanup & 1--3 & Entity unescaping, comment removal, tag stripping \\[2pt]
+Code \& Markdown & 4--6 & Fenced/inline code removal, image/link normalization \\[2pt]
+URL Removal & 7 & HTTP/HTTPS/FTP URL stripping \\[2pt]
+Formatting Cleanup & 8--12 & Heading, bold/italic, strikethrough, rule, blockquote markers \\[2pt]
+Unicode Normalization & 13--14 & Emoji/pictographic removal (6 Unicode ranges), control characters \\[2pt]
+Whitespace Normalization & 15--17 & Punctuation collapse, NBSP normalization, whitespace trimming \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-Following normalization, documents are segmented using token-based chunking with the \texttt{tiktoken} tokenizer (\texttt{cl100k\_base} encoding). The implemented configuration uses a 500-token window with 50-token overlap. The 500-token window was selected to fit comfortably within the top-$k$ context budget: with $k = 8$ chunks, the total retrieved context consumes approximately 4,000 tokens---well within the 4,096-token context window of Ollama-hosted Mistral-7B and the 200k-token window of Claude Haiku (Bedrock), while providing sufficient per-chunk semantic coherence. The 50-token (10\%) overlap prevents important information at chunk boundaries from being split across non-adjacent retrieval candidates.
+Following normalization, documents are segmented using token-based chunking with the \texttt{tiktoken} tokenizer (\texttt{cl100k\_base} encoding). The implemented configuration uses a 500-token window with 50-token overlap. The 500-token window was selected to fit comfortably within the top-$k$ context budget: with $k = 5$ chunks, the total retrieved context consumes approximately 2,500 tokens---well within the 128k-token window of Groq-hosted Llama 3.1 8B Instant and the 128k-token window of Amazon Nova Micro (Bedrock), while providing sufficient per-chunk semantic coherence. The 50-token (10\%) overlap prevents important information at chunk boundaries from being split across non-adjacent retrieval candidates.
 
 \section{Embedding and Indexing}
 \label{sec:embedding}
@@ -350,15 +353,18 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
       minimum width=4.2cm, text width=4.0cm, align=left, inner sep=6pt]
   (docs) {
   \textbf{\small documents}\\
-  \underline{id} \hfill UUID (PK)\\
-  source \hfill VARCHAR\\
+  \underline{id} \hfill SERIAL (PK)\\
+  source \hfill VARCHAR(20)\\
   title \hfill TEXT\\
   content \hfill TEXT\\
   url \hfill TEXT\\
-  published\_at \hfill TIMESTAMPTZ\\
-  content\_hash \hfill VARCHAR (UNIQUE)\\
-  state \hfill VARCHAR\\
-  created\_at \hfill TIMESTAMPTZ
+  published\_at \hfill DATE\\
+  content\_hash \hfill CHAR(64) (UNIQUE)\\
+  state \hfill VARCHAR(10)\\
+  created\_at \hfill TIMESTAMP\\
+  \textit{Index: B-tree (published\_at)}\\
+  \textit{Index: B-tree (source)}\\
+  \textit{Index: B-tree (state)}
   };
 
 % chunks table
@@ -367,15 +373,13 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
       right=3.0cm of docs]
   (chunks) {
   \textbf{\small chunks}\\
-  \underline{id} \hfill UUID (PK)\\
-  document\_id \hfill UUID (FK)\\
+  \underline{id} \hfill SERIAL (PK)\\
+  document\_id \hfill INTEGER (FK)\\
   chunk\_index \hfill INTEGER\\
-  content \hfill TEXT\\
+  chunk\_text \hfill TEXT\\
   embedding \hfill VECTOR(384)\\
-  token\_count \hfill INTEGER\\
-  created\_at \hfill TIMESTAMPTZ\\
-  \textit{Index: HNSW (embedding)}\\
-  \textit{Index: B-tree (document\_id)}
+  created\_at \hfill TIMESTAMP\\
+  \textit{Index: HNSW (embedding)}
   };
 
 % drift_baselines table
@@ -384,13 +388,12 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
       below=1.4cm of docs]
   (drift) {
   \textbf{\small drift\_baselines}\\
-  \underline{id} \hfill INTEGER (PK)\\
+  \underline{id} \hfill SERIAL (PK)\\
+  run\_date \hfill TIMESTAMP\\
   mean\_similarity \hfill FLOAT\\
   std\_similarity \hfill FLOAT\\
-  probe\_count \hfill INTEGER\\
-  is\_alert \hfill BOOLEAN\\
-  alert\_reason \hfill TEXT\\
-  recorded\_at \hfill TIMESTAMPTZ
+  num\_probes \hfill INTEGER\\
+  alert\_triggered \hfill BOOLEAN
   };
 
 % Relationship: documents -> chunks (1 to many)
@@ -398,14 +401,10 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
   (docs.east) -- node[above, font=\scriptsize, color=awspurple!80] {1} (chunks.west)
   node[pos=0.85, above, font=\scriptsize, color=awspurple!80] {N};
 
-% Indexes annotation under documents
-\node[font=\scriptsize, color=awsblue!80, below=0.15cm of docs, text width=4.0cm, align=left]
-  {\textit{Index: B-tree (published\_at DESC)}\\
-   \textit{Index: B-tree (source)}\\
-   \textit{Index: B-tree (state)}};
+% Indexes are now inside the documents node above
 
 \end{tikzpicture}
-\caption{Entity--Relationship Diagram of the TechPulse PostgreSQL Schema. The \texttt{documents} table stores ingested records; the \texttt{chunks} table stores preprocessed segments with their 384-dimensional pgvector embeddings (HNSW-indexed); and the \texttt{drift\_baselines} table persists drift monitoring history. The \texttt{content\_hash} unique constraint on \texttt{documents} enforces idempotent ingestion.}
+\caption{Entity--relationship diagram of the TechPulse PostgreSQL schema.}
 \label{fig:er_diagram}
 \end{figure}
 
@@ -450,14 +449,15 @@ To ensure generation availability across diverse deployment environments, TechPu
 \toprule
 \textbf{Tier} & \textbf{Backend} & \textbf{Fallback Chain} & \textbf{Notes} \\
 \midrule
-1 & Amazon Bedrock (Claude Haiku) & $\to$ Ollama $\to$ HuggingFace & Not available in Learner Lab; available in Free Tier \\
-2 & Ollama (local) & $\to$ HuggingFace & OpenAI-compatible API; local inference \\
-3 & HuggingFace Inference API & $\to$ Ollama & Primary in Learner Lab; fallback in Free Tier; Mistral-7B-Instruct \\
+1 & Groq (Llama 3.1 8B Instant) & $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace & Primary backend; free-tier API; 500k tokens/day \\[4pt]
+2 & Amazon Bedrock (Nova Micro) & $\to$ Groq $\to$ Ollama $\to$ HuggingFace & AWS-native fallback; Free Tier eligible \\[4pt]
+3 & Ollama (local) & $\to$ Groq $\to$ HuggingFace & OpenAI-compatible API; local inference \\[4pt]
+4 & HuggingFace Inference API & $\to$ Groq $\to$ Ollama & Fallback option; Mistral-7B-Instruct \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-All three backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with bounded retry logic (2 retries with exponential backoff) before cascading to the next tier. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
+All four backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with bounded retry logic (4 retries with exponential backoff) before cascading to the next tier. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
 
 \section{Deployment, Monitoring, and MLOps}
 \label{sec:mlops}
@@ -489,18 +489,18 @@ Figure~\ref{fig:mlops_loop} presents the implemented MLOps lifecycle loop.
 % CI/CD overlay
 \node[pbox=propgray, above=1.1cm of process, minimum width=5.0cm] (cicd)
   {CI/CD: GitHub Actions + SAM};
-\draw[-{Stealth}, dashed, color=propgray, thick] (cicd.south) -- (process.north);
-\draw[-{Stealth}, dashed, color=propgray, thick] (cicd.south) -- ++(0,-0.3) -| (index.north);
+\draw[-{Stealth}, dashed, color=propgray, thick] (cicd.south west) ++(1.2,0) -- ++(0,-0.6) -| (process.north);
+\draw[-{Stealth}, dashed, color=propgray, thick] (cicd.south east) ++(-1.2,0) -- ++(0,-0.6) -| (index.north);
 
 % Budget guard
-\node[pbox=propred, below=0.8cm of serve, minimum width=2.6cm] (budget)
+\node[pbox=propred, below=0.8cm of evaluate, minimum width=2.6cm] (budget)
   {Budget Guard\\(Cost Explorer)};
-\draw[-{Stealth}, dashed, color=propred, thick] (serve.south) -- (budget.north);
-\draw[-{Stealth}, dashed, color=propred, thick] (budget.south) -- ++(0,-0.5) -| (monitor.south);
+\draw[-{Stealth}, dashed, color=propred, thick] (serve.south) |- (budget.east);
+\draw[-{Stealth}, dashed, color=propred, thick] (budget.west) -| (monitor.south);
 
 \end{tikzpicture}%
 }
-\caption{Implemented MLOps lifecycle loop: continuous ingestion, preprocessing, indexing, serving, evaluation, and monitoring, with CI/CD automation and a budget governance guard.}
+\caption{MLOps lifecycle loop with continuous ingestion, evaluation, monitoring, and budget governance.}
 \label{fig:mlops_loop}
 \end{figure}
 
@@ -512,15 +512,15 @@ Generation is performed through the configured LLM backend with the following pa
 \caption{Implemented LLM Generation Parameter Configuration.}
 \label{tab:llm_params}
 \centering
-\begin{tabular}{lll}
+\begin{tabular}{p{3.0cm}p{5.5cm}p{4.0cm}}
 \toprule
 \textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
 \midrule
 Max Output Tokens & 300 & Cost control \\
 Temperature & 0.2 & Reduce hallucination risk \\
-Timeout & 300 seconds (Ollama) / 60 seconds (HF) & Backend-appropriate limits \\
-Retry Attempts & 2 & Transient failure handling \\
-Backoff Base & 2 seconds & Exponential backoff \\
+Timeout & 300 seconds (Ollama) / 60 seconds (Groq, HuggingFace) & Backend-appropriate limits \\
+Retry Attempts & 4 & Transient failure handling \\
+Backoff Base & 3 seconds & Exponential backoff \\
 Context Window & 4096 tokens (Ollama) & Model-appropriate context \\
 \bottomrule
 \end{tabular}
@@ -546,7 +546,7 @@ TechPulse implements a dual-criteria drift detection mechanism to identify degra
 
 A drift alert is triggered if the current mean similarity falls below LCL. This statistical process control approach detects systematic degradation that may not be captured by point-wise comparison alone.
 
-Both criteria are evaluated independently, and either triggering constitutes a drift alert. The \texttt{alert\_reason} field records a human-readable explanation (e.g., ``relative drop 15.2\%; Shewhart $3\sigma$ breach (LCL=0.4321, value=0.3890)'') routed through CloudWatch metrics and SNS notification.
+Both criteria are evaluated independently, and either triggering constitutes a drift alert. A human-readable explanation (e.g., ``relative drop 15.2\%; Shewhart $3\sigma$ breach (LCL=0.4321, value=0.3890)'') is included in the returned result, logged to CloudWatch, and routed to SNS notification.
 
 \textbf{Remediation protocol.} The ordered response upon drift alert includes: (1) corpus audit to identify localized drift by source or topic cluster; (2) metadata filter re-calibration if off-topic documents enter the corpus; (3) re-indexing affected corpus segments with updated preprocessing; and (4) embedding model refresh (deferred to post-prototype phase).
 
@@ -568,10 +568,10 @@ Results are logged to CloudWatch. Three CloudWatch alarms are configured: RAG AP
 A four-stage CI/CD pipeline has been implemented using GitHub Actions:
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Lint and Test} --- Python 3.11 setup, dependency installation, Ruff linting across \texttt{src/} and \texttt{tests/}, Pytest execution with coverage reporting.
+  \item \textbf{Lint and Test} --- Python 3.13 setup, dependency installation, Ruff linting across \texttt{src/} and \texttt{tests/}, Pytest execution with coverage reporting.
   \item \textbf{Docker Build} --- Builds \texttt{techpulse-backend} and \texttt{techpulse-frontend} container images.
-  \item \textbf{SAM Build} --- Builds and validates the SAM templates for both Learner Lab (\texttt{template-learnerlab.yaml}) and Free Tier (\texttt{template.yaml}) environments.
-  \item \textbf{Deploy (main branch only)} --- Deploys to AWS via SAM with parameterized database credentials, VPC configuration, and LabRole ARN from GitHub Secrets.
+  \item \textbf{SAM Build} --- Builds and validates the SAM templates (\texttt{template-freetier.yaml} and \texttt{template.yaml}).
+  \item \textbf{Deploy (main branch only)} --- Deploys to AWS via SAM with parameterized database credentials and VPC configuration from GitHub Secrets.
 \end{enumerate}
 
 All infrastructure is defined as code using AWS SAM, ensuring reproducible and consistent deployments. The SAM template defines: RDS PostgreSQL instance (\texttt{db.t3.micro}), S3 data and frontend buckets, SQS queue with DLQ, four Lambda functions (Ingestion, Preprocess, RAG API, Health Check), HTTP API Gateway, SNS alert topic, EventBridge schedules, and CloudWatch alarms.
@@ -579,7 +579,7 @@ All infrastructure is defined as code using AWS SAM, ensuring reproducible and c
 \section{AWS Cloud Deployment Architecture}
 \label{sec:cloud_arch}
 
-Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing the physical service placement for the primary (Learner Lab) configuration. The Free Tier configuration differs only in replacing the default VPC with a custom VPC, enabling custom IAM roles, and using Amazon Bedrock as the primary LLM backend.
+Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing the physical service placement for the Free Tier configuration.
 
 % ---- TikZ: AWS Deployment Architecture ----
 \begin{figure}[H]
@@ -593,8 +593,8 @@ Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing 
       label={[font=\scriptsize\bfseries, color=awsblue!70]above left:AWS VPC (default)}]
   (vpc) at (5.0, -1.5) {};
 
-% EventBridge
-\node[compnode=awsorange] (eb) at (-1.5, 0.5) {EventBridge\\Scheduler};
+% EventBridge — same y as Ingestion Lambda for a straight arrow
+\node[compnode=awsorange] (eb) at (-1.5, 0.8) {EventBridge\\Scheduler};
 
 % Lambda functions inside VPC
 \node[compnode=awsorange] (ingest)  at (2.0,  0.8) {Ingestion\\Lambda};
@@ -611,7 +611,7 @@ Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing 
 \node[compnode=awsblue] (apigw) at (9.0, 0.8) {API Gateway\\(HTTP)};
 
 % LLM Backend (external)
-\node[compnode=awsgray] (hf) at (9.0, -0.8) {HuggingFace\\Inference API};
+\node[compnode=awsgray] (hf) at (9.0, -0.8) {Groq / Bedrock\\Inference API};
 
 % Monitoring
 \node[compnode=propgray] (cw)  at (8.5, -2.8) {CloudWatch\\Logs + Metrics};
@@ -619,27 +619,39 @@ Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing 
 
 % External: user + GitHub
 \node[compnode=awsblue] (user) at (12.0, 0.8) {React Frontend\\(User)};
-\node[compnode=propgray] (gh)  at (-1.5, -1.5) {GitHub Actions\\CI/CD + SAM};
+\node[compnode=propgray] (gh)  at (-1.5, -2.8) {GitHub Actions\\CI/CD + SAM};
 
-% Arrows
-\draw[parrow] (eb) -- (ingest);
-\draw[parrow] (ingest) -- (preproc);
-\draw[parrow] (ingest.east) -- ++(0.4,0) |- (sqs.west);
-\draw[parrow] (sqs) -- (preproc.south |- sqs) -- (preproc.south);
-\draw[parrow] (preproc) -- (rds);
-\draw[parrow] (preproc.south) -- (s3.north);
-\draw[parrow] (rds.north) -- (ragapi.south |- rds) -- (ragapi.south);
-\draw[parrow] (ragapi) -- (apigw);
-\draw[parrow] (ragapi.east) -- ++(0.2,0) |- (hf.west);
-\draw[parrow] (apigw) -- (user);
-\draw[parrow, dashed, color=propgray] (ragapi.south) -- ++(0,-0.3) -| (cw.north);
-\draw[parrow, dashed, color=propgray] (hcheck) -- (cw);
-\draw[parrow, dashed, color=propgray] (cw) -- (sns);
-\draw[parrow, dashed, color=propgray] (gh.east) -- ++(0.6,0) |- (ingest.west);
+% === Arrows (all anchored to box centres / explicit anchors) ===
+% EventBridge → Ingestion (straight horizontal)
+\draw[parrow] (eb.east) -- (ingest.west);
+% Ingestion → Preprocess (straight vertical)
+\draw[parrow] (ingest.south) -- (preproc.north);
+% Ingestion → SQS (right-angle route)
+\draw[parrow] ([xshift=4pt]ingest.south) -- ++(0,-0.5) -| (sqs.north);
+% SQS → Preprocess
+\draw[parrow] ([xshift=-4pt]sqs.north) -- ++(0,0.5) -| (preproc.south);
+% Preprocess → RDS
+\draw[parrow] (preproc.east) -- ++(0.4,0) |- ([yshift=4pt]rds.north);
+% Preprocess → S3
+\draw[parrow] ([xshift=-4pt]preproc.south) -- ([xshift=-4pt]s3.north);
+% RDS → RAG API (routed right of Health Check box)
+\draw[parrow] ([yshift=-4pt]rds.north) -- ++(0,0.4) -- ++(0.5,0) |- (ragapi.south);
+% RAG API → API Gateway (straight horizontal)
+\draw[parrow] (ragapi.east) -- (apigw.west);
+% RAG API → LLM Backend
+\draw[parrow] ([yshift=-4pt]ragapi.east) -- ++(0.2,0) |- (hf.west);
+% API Gateway → User (straight horizontal)
+\draw[parrow] (apigw.east) -- (user.west);
+% Monitoring (dashed, routed left of LLM Backend box)
+\draw[parrow, dashed, color=propgray] ([xshift=-4pt]ragapi.south) -- ++(0,-0.6) -- ++(2.4,0) |- (cw.north);
+\draw[parrow, dashed, color=propgray] (hcheck.south) -- ++(0,-0.3) -| ([xshift=-4pt]cw.north);
+\draw[parrow, dashed, color=propgray] (cw.east) -- (sns.west);
+% GitHub Actions → VPC (enters from below)
+\draw[parrow, dashed, color=propgray] (gh.east) -- (s3.west);
 
 \end{tikzpicture}%
 }
-\caption{AWS Cloud Deployment Architecture (Learner Lab configuration). Lambda functions, RDS, SQS, and S3 reside within the default VPC. EventBridge schedules ingestion; SQS decouples ingestion from embedding; API Gateway exposes the RAG API to the React frontend. Dashed arrows indicate monitoring and CI/CD flows. The Free Tier configuration replaces the default VPC with a custom VPC, uses custom IAM roles, and enables Amazon Bedrock as the primary LLM backend.}
+\caption{AWS cloud deployment architecture (AWS Free Tier configuration).}
 \label{fig:aws_deploy}
 \end{figure}
 
@@ -649,4 +661,4 @@ Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing 
 The user interface is implemented as a lightweight React single-page application. It provides natural language query submission, structured response rendering with citation display, and retrieval metadata transparency. All responses are constrained through the RAG pipeline; direct model invocation is not permitted. When retrieval evidence is insufficient or hallucination is detected, the system returns an explicit fail-safe abstention message.
 
 \medskip
-\noindent\textbf{Chapter Summary.} This chapter described the complete system architecture of TechPulse: the six-layer conceptual model, the data engineering pipeline, document state lifecycle, preprocessing and embedding design, storage schema (with ER diagram), prompt construction, LLM fallback chain, drift detection and remediation, health monitoring, CI/CD automation, and cloud deployment topology. Chapter~5 presents the evaluation framework designed to measure the system's retrieval and generation quality.
+\noindent This chapter described the complete system architecture: the six-layer model, data engineering pipeline, document state lifecycle, preprocessing, storage schema, LLM fallback chain, drift detection, and cloud deployment topology. Chapter~5 presents the evaluation framework designed to measure retrieval and generation quality.

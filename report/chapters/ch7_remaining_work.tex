@@ -3,7 +3,7 @@
 \section{Remaining Work}
 \label{sec:remaining}
 
-The remaining work is organized into four phases spanning from mid-March through the second week of April 2026. Table~\ref{tab:remaining_phases} provides a phase-level overview, followed by detailed task descriptions.
+The remaining work is organized into four phases spanning approximately four weeks. Table~\ref{tab:remaining_phases} provides a phase-level overview, followed by detailed task descriptions.
 
 \begin{table}[H]
 \caption{Remaining Work: Phase Overview.}
@@ -15,8 +15,8 @@ The remaining work is organized into four phases spanning from mid-March through
 \midrule
 A & System Validation \& Corpus Building & Mar W3--W4 & Populated corpus; local integration verified \\
 B & Evaluation \& Experimentation & Mar W4--Apr W1 & Empirical results; grid search output \\
-C & Analysis \& Monitoring Validation & Apr W1--W2 & Drift validation; results visualization \\
-D & Final Report \& Submission & Apr W2 & Completed report with empirical evidence \\
+C & Analysis, Monitoring \& Dashboard & Apr W1--W3 & Drift validation; results dashboard; visualizations \\
+D & Final Report \& Submission & Apr W2--W3 & Completed report with empirical evidence \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -30,19 +30,23 @@ D & Final Report \& Submission & Apr W2 & Completed report with empirical eviden
 
   \item \textbf{Frontend integration verification.} Test the React frontend against the live API to verify citation-grounded response rendering, baseline/hybrid mode toggling, abstention message handling, source badge display, and retrieval metadata transparency.
 
-  \item \textbf{Cloud deployment (Learner Lab and Free Tier, in progress).} Deploy the full system to both cloud environments. The Learner Lab deployment uses \texttt{template-learnerlab.yaml} and \texttt{samconfig-learnerlab.toml}; the Free Tier deployment uses \texttt{template.yaml} and \texttt{samconfig.toml}, enabling Amazon Bedrock as the primary LLM backend. Both SAM templates have been prepared and validated, and initial stack creation is underway. Remaining: verify Lambda function execution, RDS connectivity, S3 storage operations, SQS message flow, and API Gateway routing under cloud conditions in each environment.
+  \item \textbf{Cloud deployment (in progress).} Deploy the full system to the AWS Free Tier. The deployment uses \texttt{template-freetier.yaml} and \texttt{samconfig-freetier.toml}. The SAM template has been prepared and validated, and initial stack creation is underway. Remaining: verify Lambda function execution, RDS connectivity, S3 storage operations, SQS message flow, and API Gateway routing under cloud conditions.
 \end{enumerate}
 
 \subsection{Phase B: Evaluation and Experimentation (Mar W4 -- Apr W1)}
 
 \begin{enumerate}[leftmargin=0.5in, resume]
-  \item \textbf{Full baseline evaluation run.} Execute 25 evaluation queries in vector-only (baseline) mode against the populated corpus. Record context precision, faithfulness, citation grounding ratio, and per-query latency for each query.
+  \item \textbf{Full baseline evaluation run.} Execute 50 evaluation queries in vector-only (baseline) mode against the populated corpus. Record context precision, faithfulness, citation grounding ratio, and per-query latency for each query.
 
-  \item \textbf{Full hybrid evaluation run.} Execute the same 25 evaluation queries in hybrid mode using the default reranking weights ($\alpha = 0.6$, $\beta = 0.2$, $\gamma = 0.2$). Record all metrics under identical corpus and embedding conditions to enable paired comparison.
+  \item \textbf{Full hybrid evaluation run.} Execute the same 50 evaluation queries in hybrid mode using the default reranking weights ($\alpha = 0.6$, $\beta = 0.2$, $\gamma = 0.2$). Record all metrics under identical corpus and embedding conditions to enable paired comparison.
 
   \item \textbf{Grid search weight optimization.} Run the reranking weight grid search across $\alpha \in \{0.4, 0.5, 0.6, 0.7\}$ with the latency constraint (p95 $\leq 2.0$s). Identify the optimal weight configuration that maximizes mean context precision.
 
-  \item \textbf{Latency profiling and cost estimation.} Decompose end-to-end latency by stage (metadata filtering, vector search, reranking, LLM generation). Compute per-query cost estimates based on measured token usage across LLM backends.
+  \item \textbf{Sensitivity analysis.} Execute one-at-a-time parameter sweep across $\alpha$, $\beta$, and $\gamma$ through $[0.0, 1.0]$ in 0.1 steps (33 runs) to quantify the marginal influence of each parameter and justify weight selection beyond grid search.
+
+  \item \textbf{Statistical testing.} Apply Wilcoxon signed-rank test, Cohen's $d$ effect size, and bootstrap 95\% confidence intervals to quantify significance and practical impact of baseline-vs-hybrid differences.
+
+  \item \textbf{Latency profiling and cost projection.} Decompose end-to-end latency by stage (metadata filtering, vector search, reranking, LLM generation). Project monthly costs for 50/100/200 queries/day scenarios against free-tier ceilings.
 \end{enumerate}
 
 \subsection{Phase C: Analysis and Monitoring Validation (Apr W1 -- Apr W2)}
@@ -52,7 +56,7 @@ D & Final Report \& Submission & Apr W2 & Completed report with empirical eviden
 
   \item \textbf{Results analysis and visualization.} Produce comparison tables and visualizations: baseline vs.\ hybrid precision paired differences, grid search Pareto frontier (precision vs.\ latency), per-source retrieval distribution, and latency breakdown charts.
 
-  \item \textbf{System demonstration screenshots.} Capture screenshots for all placeholder figures in the report (Figures~\ref{fig:demo_hybrid}--\ref{fig:demo_pgadmin} and Appendix~\ref{app:screenshots}), replacing placeholder boxes with actual system output from Docker Compose, Learner Lab, and Free Tier environments.
+  \item \textbf{System demonstration screenshots.} Capture screenshots for all placeholder figures in the report (Figures~\ref{fig:demo_hybrid}--\ref{fig:demo_pgadmin} and Appendix~\ref{app:screenshots}), replacing placeholder boxes with actual system output from Docker Compose and the AWS Free Tier environment.
 \end{enumerate}
 
 \subsection{Phase D: Final Report and Submission (Apr W2)}
@@ -71,9 +75,9 @@ D & Final Report \& Submission & Apr W2 & Completed report with empirical eviden
 \begin{enumerate}[leftmargin=0.5in]
   \item The evaluation corpus is limited to five technology-focused data sources; generalizability to other domains or larger corpora requires further study.
 
-  \item The evaluation query set of 25 curated queries is sufficient for preliminary comparative analysis consistent with prior RAG evaluation practices (Es et al., 2023). However, a larger and more diverse query set would strengthen external validity.
+  \item The evaluation query set of 50 curated queries across three balanced categories (research\_trend, tool\_technology, comparative) provides sufficient statistical power for the paired Wilcoxon test. However, a larger and more diverse query set would further strengthen external validity.
 
-  \item Amazon Bedrock is unavailable in the Learner Lab environment, requiring evaluation with HuggingFace Inference API and Ollama under that configuration. However, the system has also been deployed on the AWS Free Tier, where Bedrock (Claude Haiku) is available as the primary backend. Since the prompt template, evaluation methodology, and RAGAS metrics are backend-agnostic, the comparative findings between baseline and hybrid retrieval remain valid and transferable across both environments. A supplementary per-backend faithfulness comparison is planned during Phase~B to quantify the model quality difference.
+  \item Amazon Bedrock is available on the Free Tier but has not yet been evaluated as the primary backend. The primary backend (Groq Llama 3.1 8B Instant) is used for all evaluations. Since the prompt template, evaluation methodology, and RAGAS metrics are backend-agnostic, the comparative findings between baseline and hybrid retrieval remain valid and transferable across backends.
 
   \item The \texttt{db.t3.micro} RDS instance provides limited compute and memory compared to Aurora Serverless. Under high ingestion volumes, database performance may become a bottleneck.
 
@@ -81,11 +85,11 @@ D & Final Report \& Submission & Apr W2 & Completed report with empirical eviden
 
   \item Budget governance via Cost Explorer has higher latency than the originally proposed AWS Budgets integration, as Cost Explorer data may lag by up to 24 hours.
 
-  \item The current unit test suite (49 tests) covers core logic but lacks integration tests that exercise the full pipeline end-to-end with a live database and AWS services.
+  \item The current unit test suite (200 tests across 15 modules) covers core logic but lacks integration tests that exercise the full pipeline end-to-end with a live database and AWS services.
 
-  \item \textbf{Context window management.} The current implementation retrieves top-$k = 8$ chunks at 500 tokens each, consuming approximately 4,100 prompt tokens. For Mistral-7B on HuggingFace (4,096-token context window), this leaves only $\sim$few hundred tokens for system instruction and generation. If retrieved chunks are densely filled, the context may be truncated silently. A token budget check before prompt construction is identified as a near-term improvement.
+  \item \textbf{Context window management.} The current implementation retrieves top-$k = 5$ chunks at 500 tokens each, consuming approximately 2,600 prompt tokens. While this fits comfortably in Groq's 128k-token context window and Bedrock Nova Micro's 128k-token window, for Ollama-hosted Llama 3.2 3B (configured with 4,096-token context window), context may be truncated silently. A token budget check before prompt construction is identified as a near-term improvement.
 
-  \item \textbf{Secrets management.} API keys (HuggingFace token, GitHub token) are currently stored as environment variables in Lambda configurations. For production hardening, migration to AWS Secrets Manager or SSM Parameter Store is recommended to avoid key exposure in infrastructure-as-code templates.
+  \item \textbf{Secrets management.} API keys (Groq token, HuggingFace token, GitHub token) are currently stored as environment variables in Lambda configurations. For production hardening, migration to AWS Secrets Manager or SSM Parameter Store is recommended to avoid key exposure in infrastructure-as-code templates.
 \end{enumerate}
 
 \section{Project Timeline}
@@ -98,12 +102,12 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}
 
-% Header — 8 time columns (Apr W3/W4 removed; deadline = Apr W2)
+% Header — 9 time columns
 \node[font=\small\bfseries] at (-4.0, 0.5) {Phase};
 \foreach \m/\lab [count=\i from 0] in {
-  1/{Jan},2/{Feb},3/{Mar-W1},4/{Mar-W2},5/{Mar-W3},6/{Mar-W4},7/{Apr-W1},8/{Apr-W2}} {
+  1/{Jan},2/{Feb},3/{Mar-W1},4/{Mar-W2},5/{Mar-W3},6/{Mar-W4},7/{Apr-W1},8/{Apr-W2},9/{Apr-W3}} {
   \node[font=\scriptsize\bfseries] at ({\i*1.5+0.75}, 0.5) {\lab};
-  \draw[awsgray!20] ({\i*1.5}, -15.2) -- ({\i*1.5}, 0.2);
+  \draw[awsgray!20] ({\i*1.5}, -16.2) -- ({\i*1.5}, 0.2);
 }
 
 \def\barh{0.40}
@@ -196,80 +200,55 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 \fill[awspurple!20] (9.0,{13*\rsp+0.5-\barh/2}) rectangle (12.0,{13*\rsp+0.5+\barh/2});
 \draw[awspurple!60, thick] (9.0,{13*\rsp+0.5-\barh/2}) rectangle (12.0,{13*\rsp+0.5+\barh/2});
 
+% Row 14
+\node[font=\scriptsize, anchor=east] at (-0.2, {14*\rsp+0.5}) {Dashboard \& Visualization};
+\fill[awspurple!20] (9.0,{14*\rsp+0.5-\barh/2}) rectangle (13.5,{14*\rsp+0.5+\barh/2});
+\draw[awspurple!60, thick] (9.0,{14*\rsp+0.5-\barh/2}) rectangle (13.5,{14*\rsp+0.5+\barh/2});
+
 % ================================================================
-% PHASE D — Final Report & Submission (Apr W2)
+% PHASE D — Final Report & Submission (Apr W2 -- Apr W3)
 % ================================================================
-\node[font=\scriptsize\itshape, color=awsgray, anchor=east] at (-0.2, {13.7*\rsp+0.5})
+\node[font=\scriptsize\itshape, color=awsgray, anchor=east] at (-0.2, {14.7*\rsp+0.5})
   {\textbf{Phase D}};
 
-% Row 14
-\node[font=\scriptsize, anchor=east] at (-0.2, {14*\rsp+0.5}) {Final Report \& Submission};
-\fill[propred!25] (10.5,{14*\rsp+0.5-\barh/2}) rectangle (12.0,{14*\rsp+0.5+\barh/2});
-\draw[propred!60, thick] (10.5,{14*\rsp+0.5-\barh/2}) rectangle (12.0,{14*\rsp+0.5+\barh/2});
+% Row 15
+\node[font=\scriptsize, anchor=east] at (-0.2, {15*\rsp+0.5}) {Final Report \& Submission};
+\fill[propred!25] (10.5,{15*\rsp+0.5-\barh/2}) rectangle (13.5,{15*\rsp+0.5+\barh/2});
+\draw[propred!60, thick] (10.5,{15*\rsp+0.5-\barh/2}) rectangle (13.5,{15*\rsp+0.5+\barh/2});
 
 % ================================================================
-% Current date marker — Mar W3 midpoint ≈ x=6.75
+% Current date marker — Mar W4 midpoint ≈ x=8.25
 % ================================================================
-\draw[propred, very thick, dashed] (6.75, 0.8) -- (6.75, -14.5);
-\node[font=\scriptsize\bfseries, propred] at (6.75, 1.1) {Current Status};
+\draw[propred, very thick, dashed] (8.25, 0.8) -- (8.25, -15.5);
+\node[font=\scriptsize\bfseries, propred] at (8.25, 1.1) {Current Status};
 
 % ================================================================
 % Legend
 % ================================================================
-\fill[awsblue!60] (0.5,-17.2) rectangle (1.3,-16.9);
-\node[font=\scriptsize, anchor=west] at (1.4, -17.05) {Completed};
+\fill[awsblue!60] (0.5,-18.2) rectangle (1.3,-17.9);
+\node[font=\scriptsize, anchor=west] at (1.4, -18.05) {Completed};
 
-\fill[propblue!25] (3.5,-17.2) rectangle (4.3,-16.9);
-\draw[propblue!60, thick] (3.5,-17.2) rectangle (4.3,-16.9);
-\node[font=\scriptsize, anchor=west] at (4.4, -17.05) {Phase A (Validation)};
+\fill[propblue!25] (3.5,-18.2) rectangle (4.3,-17.9);
+\draw[propblue!60, thick] (3.5,-18.2) rectangle (4.3,-17.9);
+\node[font=\scriptsize, anchor=west] at (4.4, -18.05) {Phase A (Validation)};
 
-\fill[awsorange!20] (7.0,-17.2) rectangle (7.8,-16.9);
-\draw[awsorange!60, thick] (7.0,-17.2) rectangle (7.8,-16.9);
-\node[font=\scriptsize, anchor=west] at (7.9, -17.05) {Phase B (Evaluation)};
+\fill[awsorange!20] (7.0,-18.2) rectangle (7.8,-17.9);
+\draw[awsorange!60, thick] (7.0,-18.2) rectangle (7.8,-17.9);
+\node[font=\scriptsize, anchor=west] at (7.9, -18.05) {Phase B (Evaluation)};
 
-\fill[awspurple!20] (0.5,-17.7) rectangle (1.3,-17.4);
-\draw[awspurple!60, thick] (0.5,-17.7) rectangle (1.3,-17.4);
-\node[font=\scriptsize, anchor=west] at (1.4, -17.55) {Phase C};
+\fill[awspurple!20] (0.5,-18.7) rectangle (1.3,-18.4);
+\draw[awspurple!60, thick] (0.5,-18.7) rectangle (1.3,-18.4);
+\node[font=\scriptsize, anchor=west] at (1.4, -18.55) {Phase C};
 
-\fill[propred!25] (3.5,-17.7) rectangle (4.3,-17.4);
-\draw[propred!60, thick] (3.5,-17.7) rectangle (4.3,-17.4);
-\node[font=\scriptsize, anchor=west] at (4.4, -17.55) {Phase D (Final Report)};
+\fill[propred!25] (3.5,-18.7) rectangle (4.3,-18.4);
+\draw[propred!60, thick] (3.5,-18.7) rectangle (4.3,-18.4);
+\node[font=\scriptsize, anchor=west] at (4.4, -18.55) {Phase D (Final Report)};
 
 \end{tikzpicture}%
 }
-\caption{Project timeline (Gantt chart). Solid bars indicate completed phases; outlined bars indicate remaining work organized into four phases (A--D). The dashed vertical line marks the progress report submission. All remaining work is scheduled to complete by second week of April 2026.}
+\caption{Project timeline (Gantt chart). Solid bars indicate completed phases; outlined bars indicate remaining work (Phases A--D).}
 \label{fig:gantt}
 \end{figure}
-
-\section{Team Contributions}
-\label{sec:contributions}
-
-Table~\ref{tab:contributions} summarises the primary responsibilities of each team member.
-
-\begin{table}[H]
-\caption{Team Member Contribution Summary.}
-\label{tab:contributions}
-\centering
-\begin{tabular}{p{4.0cm}p{4.0cm}p{4.5cm}}
-\toprule
-\textbf{Component} & \textbf{Primary} & \textbf{Contributor} \\
-\midrule
-Data Ingestion (5 sources) & Aye Khin Khin Hpone & Dechathon Niamsa-Ard \\
-Preprocessing \& Chunking & Dechathon Niamsa-Ard & Aye Khin Khin Hpone \\
-Embedding \& Storage & Dechathon Niamsa-Ard & Aye Khin Khin Hpone \\
-Hybrid Retrieval \& RAG & Aye Khin Khin Hpone & Dechathon Niamsa-Ard \\
-LLM Backend Fallback & Dechathon Niamsa-Ard & Aye Khin Khin Hpone \\
-Drift Detection \& Monitoring & Aye Khin Khin Hpone & Dechathon Niamsa-Ard \\
-Infrastructure (SAM/CI-CD) & Dechathon Niamsa-Ard & Aye Khin Khin Hpone \\
-Evaluation Framework & Aye Khin Khin Hpone & Dechathon Niamsa-Ard \\
-Frontend (React) & Dechathon Niamsa-Ard & Aye Khin Khin Hpone \\
-Unit Tests (49 tests) & Both & --- \\
-Documentation \& Report & Both & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Both team members participated in architectural design decisions, code review, and debugging throughout the project.
 
 \section{Future Extensions}
 \label{sec:future}
@@ -277,8 +256,8 @@ Both team members participated in architectural design decisions, code review, a
 Several extensions are identified for post-prototype development:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item Migration to Aurora Serverless (already feasible in the Free Tier environment; applicable when moving beyond Learner Lab constraints)
-  \item Full evaluation with Amazon Bedrock (Claude Haiku) as the primary backend via the Free Tier deployment
+  \item Migration to Aurora Serverless (applicable when scaling beyond Free Tier constraints)
+  \item Full evaluation with Amazon Bedrock (Nova Micro) as the primary backend via the Free Tier deployment
   \item Expansion of data sources (StackExchange, academic conference proceedings)
   \item Cross-encoder reranking evaluation for precision-critical use cases
   \item Embedding model fine-tuning or replacement based on drift analysis findings
@@ -289,4 +268,4 @@ Several extensions are identified for post-prototype development:
 \end{itemize}
 
 \medskip
-\noindent\textbf{Chapter Summary.} This chapter presented the structured four-phase completion plan (March~W3 through April~W2), nine known limitations with honest assessments, the project Gantt chart, and seven future extension directions. The primary remaining risks are cloud deployment verification and the full evaluation run; both are mitigated by the dual-environment setup (Learner Lab + Free Tier) and the pre-built evaluation codebase. The final report will integrate empirical results, screenshots, and analysis completing the evidence base for the four research questions stated in Chapter~1.
+\noindent This chapter presented the four-phase completion plan, nine known limitations, and future extension directions. The primary remaining risks---cloud deployment verification and the full evaluation run---are mitigated by the dual-environment setup and the pre-built evaluation codebase.

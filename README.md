@@ -53,7 +53,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - **API rate limiting** — `slowapi` at 10 requests/minute per IP on `/ask`
 - **CloudWatch custom metrics** — ingestion count, pipeline latency, API latency, hallucination flags
 - **Deep health checks** — `/health` verifies DB, S3, and SQS connectivity with structured response
-- **25 evaluation queries** across 3 categories with RAGAS automated scoring + p95 latency
+- **50 evaluation queries** across 3 categories with RAGAS automated scoring, statistical tests, sensitivity analysis, and 9-phase evaluation pipeline
 
 ### Reranking Formula
 
@@ -319,11 +319,11 @@ data-pipeline/
 │       ├── App.jsx
 │       └── App.css
 ├── evaluation/
-│   ├── run_eval.py                   # RAGAS + latency + citation grounding + grid search
+│   ├── run_eval.py                   # 9-phase evaluation: RAGAS + latency + citation grounding + grid search + sensitivity + statistical tests + drift validation + composite metric + cost projection
 │   └── queries/
-│       ├── eval_queries.json         # 25 queries (3 categories)
+│       ├── eval_queries.json         # 50 queries (3 categories: research_trend, tool_technology, comparative)
 │       └── probe_queries.json        # 20 probe queries for drift detection
-├── tests/                            # 192 tests (15 test files, 60%+ coverage)
+├── tests/                            # 200 tests (15 test files, 60%+ coverage)
 │   ├── test_api.py
 │   ├── test_db.py
 │   ├── test_embedder.py
@@ -387,14 +387,19 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 
 ## Evaluation
 
-The evaluation framework compares **baseline (vector-only)** vs **hybrid retrieval** across:
+The evaluation framework implements a **9-phase pipeline** comparing **baseline (vector-only)** vs **hybrid retrieval**:
 
-- **RAGAS metrics**: faithfulness, answer relevancy, context precision (judged by Groq `llama-3.3-70b-versatile`)
-- **Latency**: per-query, mean, and p95 end-to-end
-- **Citation grounding**: ratio of valid `[Source N]` references
-- **Token / cost per query**: prompt + completion tokens; estimated USD cost
-- **Weight grid search**: automated α/β/γ optimisation (α ∈ {0.4, 0.5, 0.6, 0.7})
-- **Source diversity**: per-source retrieval distribution analysis
+| Phase | Name | Description |
+|-------|------|-------------|
+| 1 | RAG Query Execution | 50 queries × 2 modes (baseline + hybrid) with per-query latency |
+| 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision (Groq `llama-3.3-70b-versatile` judge) |
+| 3 | Summary Statistics | Mean, median, p95, citation grounding, token costs per mode |
+| 4 | Grid Search | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2, optimise precision under p95 ≤ 2s |
+| 5 | Sensitivity Analysis | One-at-a-time sweep of α, β, γ through [0.0, 1.0] in 0.1 steps (33 runs) |
+| 6 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
+| 7 | Drift Validation | 4 simulated degradation scenarios (normal → catastrophic) |
+| 8 | Composite Metric | 0.35×Faithfulness + 0.25×Relevancy + 0.20×Precision + 0.20×CitationGrounding |
+| 9 | Cost Projection | Monthly cost for 50/100/200 queries/day vs free-tier ceilings |
 
 ```bash
 python -m evaluation.run_eval
@@ -423,12 +428,12 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] FastAPI backend with deep `/health`, `/ask`, `/drift` endpoints
 - [x] React frontend (Vite) with source badges and mode selection
 - [x] Docker Compose (6 services: db, pgadmin, localstack, api, frontend, scheduler)
-- [x] RAGAS evaluation framework (25 queries, 3 categories, p95 latency)
+- [x] RAGAS evaluation framework (50 queries, 3 categories, 9-phase pipeline, statistical tests)
 - [x] S3 medallion data lake (raw / processed tiers)
 - [x] SQS decoupling between ingestion and embedding pipeline
 - [x] CloudWatch custom metrics + deep health checks
 - [x] 3-layer hallucination verification (prompt + RAGAS + citation grounding)
-- [x] Retrieval quality drift detection (probe queries + `/drift` API)
+- [x] Retrieval quality drift detection (probe queries + `/drift` API + 5 simulation tests)
 - [x] AWS IaC — SAM template for Free Tier (RDS db.t3.micro) + production (Aurora Serverless v2)
 - [x] GitHub Actions CI/CD — lint → test (60% coverage gate) → SAM validate → SAM deploy → S3 frontend upload
 - [x] Frontend auto-deploy to S3 via CI/CD (Vite build + S3 sync)
@@ -439,6 +444,14 @@ CI enforces a **minimum 60% coverage** threshold — the build fails if coverage
 - [x] Groq free-tier LLM backend (llama-3.1-8b-instant) — replaces Bedrock on educational AWS accounts
 - [x] Automatic LLM fallback chain (groq → bedrock → ollama → huggingface)
 - [x] Bedrock Converse API (model-agnostic) for future migration
+- [x] 200 unit tests across 15 test modules (60%+ coverage gate)
+- [x] One-at-a-time sensitivity analysis for reranking weight justification (33 runs)
+- [x] Statistical tests: Wilcoxon signed-rank, Cohen's d, bootstrap 95% CI
+- [x] Composite performance metric (faithfulness + relevancy + precision + citation grounding)
+- [x] Drift detector validation with 4 simulated degradation scenarios
+- [x] Monthly cost projection (50/100/200 queries/day vs free-tier ceilings)
+- [x] Weighted partial-relevance citation grounding (fully/partially relevant + invalid decomposition)
+- [x] NULL metadata handling in hybrid SQL (documents with missing published_at no longer dropped)
 - [ ] Migrate local data to AWS RDS after first deploy
 - [ ] RAGAS evaluation run on live AWS deployment
 - [ ] Source diversity analysis — investigate and mitigate corpus skew toward any single source (e.g. DEV.to)

@@ -15,8 +15,8 @@ System for Emerging Technology Intelligence}\\[4pt]
     \vspace{1em}
 
     \begin{tabular}{cc}
-        Aye Khin Khin Hpone (Yolanda Lim) & Dechathon Niamsa-Ard \\
-        {\small st125970} & {\small st126235}
+        Aye Khin Khin Hpone  & Dechathon Niamsa-Ard \\
+        {\small (Yolanda Lim) st125970} & {\small st126235}
     \end{tabular}
 
 \vfill
@@ -41,13 +41,11 @@ March 2026
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{ABSTRACT}
 
-The rapid expansion of emerging technologies has created a fragmented knowledge ecosystem where scholarly research coexists with fast-moving industry discussions. Large language models (LLMs) offer advanced generative capabilities but are constrained by static training corpora, producing hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by conditioning generation on externally retrieved evidence; however, baseline vector-only retrieval often suffers from contextual imprecision.
+Large language models (LLMs) offer advanced generative capabilities but are constrained by static training corpora, producing hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by conditioning generation on externally retrieved evidence; however, baseline vector-only retrieval often suffers from contextual imprecision.
 
-This report presents the implementation progress of TechPulse, a cloud-native Hybrid RAG system designed to synthesize emerging technology intelligence under operational latency and cost constraints. The system ingests data from five heterogeneous sources---ArXiv, Hacker News, DEV.to, GitHub Trending, and curated RSS/Atom feeds---with deterministic preprocessing, token-based chunking, and semantic embedding via the MiniLM sentence-transformer. Embeddings are indexed in PostgreSQL with the pgvector extension, supporting integrated relational filtering and vector similarity search.
+This report presents TechPulse, a cloud-native Hybrid RAG system that synthesizes emerging technology intelligence under latency and cost constraints. The system ingests data from five heterogeneous sources---ArXiv, Hacker News, DEV.to, GitHub Trending, and curated RSS/Atom feeds---with deterministic preprocessing, token-based chunking, and semantic embedding via the MiniLM sentence-transformer. Embeddings are indexed in PostgreSQL with the pgvector extension for integrated relational filtering and vector similarity search.
 
-The retrieval pipeline operates as a three-stage process: metadata-constrained filtering, cosine similarity search, and lightweight reranking incorporating semantic similarity, lexical overlap, and exponential recency weighting. An automatic LLM backend fallback chain ensures generation availability across deployment environments, with HuggingFace Inference API as the primary backend under AWS Academy Learner Lab constraints and Amazon Bedrock available under the AWS Free Tier setup. The system incorporates dual-criteria drift detection (Shewhart $3\sigma$ control charts and relative-drop thresholds), three-layer hallucination verification, and comprehensive health monitoring. An evaluation framework comparing baseline and hybrid retrieval has been designed and implemented using RAGAS metrics and grid search over reranking weights; full execution is planned for Phase~B (March--April 2026).
-
-This report documents the system architecture, pipeline design, implementation decisions, deviations from the original proposal, current progress, and remaining work.
+Retrieval operates as a three-stage pipeline: metadata-constrained filtering, cosine similarity search, and lightweight reranking combining semantic similarity, lexical overlap, and exponential recency decay. An automatic LLM fallback chain (Groq $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace) ensures generation availability. The system integrates dual-criteria drift detection, three-layer hallucination verification, and health monitoring. An evaluation framework comparing baseline and hybrid retrieval has been implemented using RAGAS metrics, grid search over reranking weights, and statistical testing (Wilcoxon signed-rank, Cohen's~$d$, bootstrap 95\% CI). This report documents the system architecture, pipeline design, implementation decisions, deviations from the original proposal, and remaining work.
 
 \medskip
 \noindent\textbf{Keywords:} Retrieval-Augmented Generation; Hybrid Information Retrieval; Vector Databases; Cloud-Native Architecture; MLOps; Semantic Embedding; Emerging Technology Intelligence.
@@ -60,49 +58,10 @@ This report documents the system architecture, pipeline design, implementation d
 
 The authors express sincere gratitude to Dr.\ Chantri Polprasert, the course instructor, for providing guidance on the system design and evaluation methodology throughout this project. We also thank the teaching assistants, Mr.\ Swaraj Bhanja and Mr.\ Suryansh Srivastava, for their constructive feedback during development milestones.
 
-This project was developed and deployed in two AWS environments: the AWS Academy Learner Lab provided by the Asian Institute of Technology (AIT), and a personal AWS Free Tier account. We acknowledge AWS Academy for providing cloud computing resources that enabled the deployment and evaluation of the TechPulse system across both environments.
-
 % ============================================================
 % FRONT MATTER
 % ============================================================
 \newpage\tableofcontents
-\newpage\addcontentsline{toc}{chapter}{LIST OF TABLES}\listoftables
-\newpage\addcontentsline{toc}{chapter}{LIST OF FIGURES}\listoffigures
-
-% ============================================================
-% LIST OF ABBREVIATIONS
-% ============================================================
-\newpage
-\chapter*{List of Abbreviations}
-\addcontentsline{toc}{chapter}{LIST OF ABBREVIATIONS}
-
-\begin{tabular}{@{}p{3.2cm}p{10.0cm}@{}}
-\textbf{AIT} & Asian Institute of Technology \\
-\textbf{ANN} & Approximate Nearest Neighbor \\
-\textbf{API} & Application Programming Interface \\
-\textbf{CI/CD} & Continuous Integration / Continuous Deployment \\
-\textbf{CORS} & Cross-Origin Resource Sharing \\
-\textbf{DLQ} & Dead Letter Queue \\
-\textbf{HF} & HuggingFace \\
-\textbf{HNSW} & Hierarchical Navigable Small World \\
-\textbf{IaC} & Infrastructure as Code \\
-\textbf{LCL} & Lower Control Limit \\
-\textbf{LLM} & Large Language Model \\
-\textbf{MLOps} & Machine Learning Operations \\
-\textbf{NLP} & Natural Language Processing \\
-\textbf{RAG} & Retrieval-Augmented Generation \\
-\textbf{RAGAS} & Retrieval-Augmented Generation Assessment \\
-\textbf{RDS} & Relational Database Service \\
-\textbf{RSS} & Really Simple Syndication \\
-\textbf{S3} & Simple Storage Service \\
-\textbf{SAM} & Serverless Application Model \\
-\textbf{SHA-256} & Secure Hash Algorithm (256-bit) \\
-\textbf{SNS} & Simple Notification Service \\
-\textbf{SPA} & Single-Page Application \\
-\textbf{SQL} & Structured Query Language \\
-\textbf{SQS} & Simple Queue Service \\
-\textbf{VPC} & Virtual Private Cloud \\
-\end{tabular}
 
 \newpage
 \pagenumbering{arabic}
