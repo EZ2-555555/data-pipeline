@@ -68,14 +68,19 @@
 
 | File | Description |
 |------|-------------|
-| `evaluation/results/raw_results.json` | Full per-query answers, sources, latency, citation scores |
-| `evaluation/results/eval_summary.json` | Aggregated statistics |
-| `evaluation/queries/eval_queries.json` | 25 evaluation queries with ground truth |
-| `evaluation/run_eval.py` | Evaluation runner script |
+| `evaluation/results/raw_results.json` | Full per-query answers, sources, latency, citation scores (partial Groq run — 12 queries) |
+| `evaluation/results/eval_summary.json` | Aggregated statistics (partial Groq run — 25 queries; supersedes this report) |
+| `evaluation/queries/eval_queries.json` | 50 evaluation queries with ground truth (18 research_trend, 16 tool_technology, 16 comparative) |
+| `evaluation/run_eval.py` | Evaluation runner script (9-phase pipeline) |
+
+> **Note:** This report documents the initial Ollama pilot run (25 queries, llama3.2:3b).
+> `eval_summary.json` and `raw_results.json` contain results from a subsequent partial Groq run.
+> The full 50-query evaluation with Groq llama-3.3-70b-versatile (including RAGAS scoring,
+> sensitivity analysis, and statistical tests) is pending.
 
 ## 6. Next Steps
 
-1. **Pull a larger model** (`ollama pull llama3.1:8b`) and re-run with RAGAS scoring
-2. **Expand corpus** — more domain-specific papers to improve retrieval relevance
-3. **GPU inference** — deploy on GPU instance for realistic latency measurement
-4. **A/B comparison** — run the same evaluation after tuning `RERANK_ALPHA`, `BETA`, `GAMMA`
+1. **Full 50-query evaluation** with Groq `llama-3.3-70b-versatile` as RAGAS judge
+2. **Sensitivity analysis** — one-at-a-time sweep of α, β, γ (33 runs, code ready in `run_eval.py`)
+3. **Statistical tests** — Wilcoxon signed-rank, Cohen's d, bootstrap 95% CI (code ready)
+4. **Drift quality-improvement demo** — before/after remediation comparison (Phase C)
