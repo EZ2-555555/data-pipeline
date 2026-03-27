@@ -177,16 +177,17 @@ To aggregate RAGAS LLM-judged scores with citation grounding into a single perfo
 \subsection{Drift Detector Validation}
 \label{sec:drift_validation}
 
-To demonstrate that the drift detection mechanism (Section~\ref{sec:drift}) correctly identifies retrieval quality degradation, four simulated scenarios are evaluated:
+To demonstrate that the drift detection mechanism (Section~\ref{sec:drift}) correctly identifies retrieval quality degradation, five simulated scenarios are evaluated:
 
 \begin{enumerate}[leftmargin=0.5in]
   \item \textbf{Healthy baseline} --- establishes baseline from probe query results; verifies no false alarm
   \item \textbf{18\% quality degradation} --- simulated via $0.82\times$ scaling of baseline similarities; verifies threshold detection triggers an alert
   \item \textbf{4\% normal fluctuation} --- simulated via $0.96\times$ scaling ($\pm 4\%$ dip); verifies specificity (no false alarm under minor variation)
+  \item \textbf{Shewhart breach without threshold breach} --- current similarity within the 10\% threshold but below the Shewhart $3\sigma$ lower control limit; verifies that statistical process control detects subtle degradation missed by the fixed threshold
   \item \textbf{Catastrophic failure} --- $>90\%$ quality collapse ($0.85 \to 0.05$); verifies both threshold and Shewhart detection mechanisms fire
 \end{enumerate}
 
-\noindent Scenarios 1 and 3 validate specificity (no false alarms), while scenarios 2 and 4 validate sensitivity (true positives under degradation).
+\noindent Scenarios 1, 3, and the first-run case (no prior history $\to$ baseline creation without alerting, tested in \texttt{test\_drift\_first\_run\_establishes\_baseline}) validate specificity (no false alarms), while scenarios 2, 4, and 5 validate sensitivity (true positives under degradation).
 
 \textbf{Drift-to-quality impact assessment.} To demonstrate that drift detection improves retrieval quality rather than merely generating operational alarms, the evaluation includes a before/after remediation comparison. When a drift alert fires during the evaluation phase, context precision and faithfulness are measured on the probe query set immediately before remediation (corpus audit and metadata filter re-calibration) and again after remediation is applied. The paired difference in mean context precision quantifies the retrieval quality gain attributable to drift-triggered intervention. Additionally, a counterfactual analysis compares precision trajectories with and without drift-triggered remediation across successive ingestion cycles: the drift-enabled configuration applies corrective action upon alert, while the drift-disabled baseline continues ingesting without intervention. A statistically significant precision divergence (Wilcoxon, $\alpha = 0.05$) between the two trajectories would provide evidence that the drift mechanism contributes to sustained retrieval quality, not just operational visibility.
 

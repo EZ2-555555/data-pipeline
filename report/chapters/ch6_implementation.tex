@@ -31,7 +31,7 @@ S3 Medallion Storage & Integration-tested & Raw/processed/embeddings tiers (Loca
 SQS Queue + DLQ & Integration-tested & Ingestion--embedding decoupling (LocalStack locally) \\
 Drift Detection & Unit-tested & Dual-criteria: 10\% threshold + Shewhart $3\sigma$ \\
 Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS, LLM) \\
-CloudWatch Integration & Cloud-validated & 6 custom metric namespaces \\
+CloudWatch Integration & Cloud-validated & 8 metrics in 1 namespace (\texttt{TechPulse/\{stage\}}) \\
 Evaluation Framework & Unit-tested & 50 queries, RAGAS, grid search, sensitivity analysis, statistical tests (code complete; full run pending) \\
 CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
 SAM Infrastructure & Cloud-validated & Full SAM template; stack creation in progress \\
@@ -136,7 +136,7 @@ All tests execute without external dependencies (database, AWS services) using m
 \section{Custom CloudWatch Metrics}
 \label{sec:metrics}
 
-Eight custom CloudWatch metrics have been implemented across six namespaces to provide operational visibility:
+Eight custom CloudWatch metrics have been implemented within a single \texttt{TechPulse/\{stage\}} namespace to provide operational visibility:
 
 \begin{enumerate}[leftmargin=0.5in]
   \item \texttt{IngestionCount} --- documents ingested per source per cycle

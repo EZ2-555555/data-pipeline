@@ -69,7 +69,7 @@ CloudWatch alarms ─── SNS topic ─── email (AlertEmail)
 | S3 | 5 GB storage, 20K GET, 2K PUT/month for 12 months |
 | SQS | 1M requests/month (permanent) |
 | API Gateway | 1M HTTP API calls/month for 12 months |
-| CloudWatch | 10 custom metrics, 3 alarms (permanent) |
+| CloudWatch | 8 custom metrics, 3 alarms (permanent) |
 
 > **After 12 months**, RDS, S3 and API Gateway move to paid tiers. Monitor usage in the AWS Billing console.
 

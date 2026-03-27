@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-17  
 **Model:** llama3.2:3b (Ollama, local)  
-**Queries:** 25 (9 research_trend, 8 tool_technology, 8 comparative)  
+**Queries:** 25 of 50 (9 research_trend, 8 tool_technology, 8 comparative) — pilot run; full 50-query evaluation pending  
 **Corpus:** 914 documents / 1,065 embedded chunks across 5 sources  
 
 ---

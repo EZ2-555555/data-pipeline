@@ -95,7 +95,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 **Ops & Observability**
 - Container-image Lambda (up to 10 GB via ECR)
 - CloudWatch custom metrics + 3 alarms
-- Deep health checks (DB, S3, SQS)
+- Deep health checks (DB, S3, SQS, LLM)
 - Retrieval quality drift detection (>10% drop alert)
 - Per-query token & cost tracking via tiktoken
 - API rate limiting (10 req/min per IP)
@@ -497,7 +497,7 @@ The evaluation framework implements a **9-phase pipeline** comparing **baseline 
 | 4 | Grid Search | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2, optimise precision under p95 ≤ 2s |
 | 5 | Sensitivity Analysis | One-at-a-time sweep of α, β, γ through [0.0, 1.0] in 0.1 steps (33 runs) |
 | 6 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
-| 7 | Drift Validation | 4 simulated degradation scenarios (normal → catastrophic) |
+| 7 | Drift Validation | 5 simulated scenarios (normal → Shewhart breach → catastrophic) |
 | 8 | Composite Metric | 0.35×Faithfulness + 0.25×Relevancy + 0.20×Precision + 0.20×CitationGrounding |
 | 9 | Cost Projection | Monthly cost for 50/100/200 queries/day vs free-tier ceilings |
 
