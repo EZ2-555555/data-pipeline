@@ -7,6 +7,7 @@ import pytest
 from src.retrieval.retriever import (
     _compute_keyword_overlap,
     _compute_recency_weight,
+    _get_age_days,
 )
 
 
@@ -49,3 +50,22 @@ class TestRecencyWeight:
         today = date.today()
         weight = _compute_recency_weight(today, 0.01)
         assert weight > 0.99
+
+
+class TestGetAgeDays:
+    def test_recent_date(self):
+        recent = datetime.now(timezone.utc)
+        assert _get_age_days(recent) == 0.0
+
+    def test_old_date(self):
+        from datetime import timedelta
+        old = datetime.now(timezone.utc) - timedelta(days=100)
+        assert _get_age_days(old) == pytest.approx(100, abs=1)
+
+    def test_none_returns_sentinel(self):
+        assert _get_age_days(None) == 9999
+
+    def test_date_object(self):
+        from datetime import date
+        today = date.today()
+        assert _get_age_days(today) == pytest.approx(0, abs=1)

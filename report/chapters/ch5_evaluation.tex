@@ -235,7 +235,7 @@ The following analyses summarize findings from the completed Phase~B evaluation 
 \section{Result Visualizations}
 \label{sec:visualizations}
 
-This section presents the evaluation results through four visualizations and a summary dashboard. All data were collected from a 50-query evaluation run executed on 28~March~2026 against the production database (3{,}711 indexed documents, 5{,}769 chunks).
+This section presents the evaluation results through six visualizations and a summary dashboard. All data were collected from a 50-query evaluation run executed on 28~March~2026 against the production database (3{,}711 indexed documents, 5{,}769 chunks).
 
 \subsection{Baseline vs.\ Hybrid Retrieval Comparison}
 
@@ -243,43 +243,7 @@ Figure~\ref{fig:viz_comparison} presents a grouped bar chart comparing baseline 
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    width=0.92\textwidth,
-    height=6.5cm,
-    bar width=14pt,
-    ylabel={Score},
-    ylabel style={font=\small},
-    xlabel style={font=\small},
-    symbolic x coords={Context Precision, Faithfulness, Answer Relevancy, Citation Grounding},
-    xtick=data,
-    xticklabel style={font=\scriptsize, rotate=15, anchor=east},
-    yticklabel style={font=\scriptsize},
-    ymin=0, ymax=1.05,
-    legend style={at={(0.5,1.05)}, anchor=south, legend columns=2, font=\small},
-    nodes near coords,
-    nodes near coords style={font=\tiny, color=black},
-    every node near coord/.append style={yshift=2pt},
-    grid=major,
-    grid style={gray!20},
-    area legend,
-]
-\addplot[fill=awsblue!60, draw=awsblue] coordinates {
-    (Context Precision, 0.34)
-    (Faithfulness, 0.16)
-    (Answer Relevancy, 0.94)
-    (Citation Grounding, 0.88)
-};
-\addplot[fill=awsorange!60, draw=awsorange] coordinates {
-    (Context Precision, 0.32)
-    (Faithfulness, 0.13)
-    (Answer Relevancy, 0.93)
-    (Citation Grounding, 0.92)
-};
-\legend{Baseline (Vector-Only), Hybrid (Implemented)}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=0.88\textwidth]{comparison_bar.png}
 \caption{Baseline vs.\ hybrid retrieval comparison across four evaluation dimensions.}
 \label{fig:viz_comparison}
 \end{figure}
@@ -290,49 +254,7 @@ Figure~\ref{fig:viz_pareto} presents the grid search results as a dual-axis plot
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=0.88\textwidth,
-    height=6.5cm,
-    xlabel={Similarity Weight ($\alpha$)},
-    ylabel={Mean Similarity},
-    xlabel style={font=\small},
-    ylabel style={font=\small, color=awsblue},
-    xmin=0.35, xmax=0.75,
-    ymin=0.50, ymax=0.54,
-    xtick={0.4, 0.5, 0.6, 0.7},
-    xticklabel style={font=\scriptsize},
-    yticklabel style={font=\scriptsize, color=awsblue},
-    axis y line*=left,
-    grid=major,
-    grid style={gray!20},
-    legend style={at={(0.02,0.98)}, anchor=north west, font=\small},
-]
-\addplot[color=awsblue, mark=square*, mark size=3pt, line width=1.2pt]
-    coordinates {(0.4, 0.5117) (0.5, 0.5190) (0.6, 0.5237) (0.7, 0.5259)};
-\addlegendentry{Mean Similarity}
-\end{axis}
-
-\begin{axis}[
-    width=0.88\textwidth,
-    height=6.5cm,
-    ylabel={p95 Latency (seconds)},
-    ylabel style={font=\small, color=awsorange},
-    xmin=0.35, xmax=0.75,
-    ymin=0.0, ymax=3.0,
-    xtick=\empty,
-    yticklabel style={font=\scriptsize, color=awsorange},
-    axis y line*=right,
-    axis x line=none,
-    legend style={at={(0.98,0.98)}, anchor=north east, font=\small},
-]
-\addplot[color=awsorange, mark=triangle*, mark size=3pt, line width=1.2pt, dashed]
-    coordinates {(0.4, 2.699) (0.5, 1.349) (0.6, 1.312) (0.7, 1.293)};
-\addlegendentry{p95 Latency}
-\draw[propred, thick, dashed] (axis cs:0.35, 2.0) -- (axis cs:0.75, 2.0)
-    node[pos=0.85, above, font=\scriptsize, color=propred] {Latency Target ($\leq 2.0$s)};
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=0.88\textwidth]{grid_search_pareto.png}
 \caption{Grid search: reranking weight ($\alpha$) vs.\ mean similarity and p95 latency.}
 \label{fig:viz_pareto}
 \end{figure}
@@ -343,32 +265,7 @@ Figure~\ref{fig:viz_sources} presents a stacked bar chart showing the distributi
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar stacked,
-    width=0.7\textwidth,
-    height=6.5cm,
-    bar width=30pt,
-    ylabel={Proportion of Retrieved Documents},
-    ylabel style={font=\small},
-    symbolic x coords={Baseline, Hybrid},
-    xtick=data,
-    xticklabel style={font=\small},
-    yticklabel style={font=\scriptsize},
-    ymin=0, ymax=1.05,
-    legend style={at={(1.02,0.5)}, anchor=west, font=\scriptsize, legend columns=1},
-    grid=major,
-    grid style={gray!20},
-    area legend,
-]
-\addplot[fill=awsblue!70, draw=awsblue] coordinates {(Baseline, 0.368) (Hybrid, 0.384)};
-\addplot[fill=awsgreen!60, draw=awsgreen] coordinates {(Baseline, 0.548) (Hybrid, 0.576)};
-\addplot[fill=awsorange!60, draw=awsorange] coordinates {(Baseline, 0.020) (Hybrid, 0.004)};
-\addplot[fill=awspurple!60, draw=awspurple] coordinates {(Baseline, 0.028) (Hybrid, 0.032)};
-\addplot[fill=propgray!50, draw=propgray] coordinates {(Baseline, 0.036) (Hybrid, 0.004)};
-\legend{ArXiv, DEV.to, Hacker News, GitHub, RSS}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=0.72\textwidth]{source_distribution.png}
 \caption{Per-source retrieval distribution for baseline vs.\ hybrid retrieval modes.}
 \label{fig:viz_sources}
 \end{figure}
@@ -379,32 +276,31 @@ Figure~\ref{fig:viz_latency} presents a horizontal grouped bar chart comparing m
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-    xbar,
-    width=0.85\textwidth,
-    height=6.0cm,
-    bar width=12pt,
-    xlabel={Mean Latency (seconds)},
-    xlabel style={font=\small},
-    symbolic y coords={Tool/Technology, Research Trend, Comparative},
-    ytick=data,
-    yticklabel style={font=\small},
-    xticklabel style={font=\scriptsize},
-    xmin=0, xmax=16.0,
-    legend style={at={(0.98,0.02)}, anchor=south east, font=\small},
-    nodes near coords,
-    nodes near coords style={font=\tiny},
-    grid=major,
-    grid style={gray!20},
-]
-\addplot[fill=awsblue!60, draw=awsblue] coordinates {(7.71,Comparative) (6.66,Research Trend) (10.28,Tool/Technology)};
-\addplot[fill=awsorange!60, draw=awsorange] coordinates {(11.81,Comparative) (5.78,Research Trend) (13.98,Tool/Technology)};
-\legend{Baseline, Hybrid}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=0.85\textwidth]{latency_by_category.png}
 \caption{Mean end-to-end latency by query category for baseline and hybrid retrieval.}
 \label{fig:viz_latency}
+\end{figure}
+
+\subsection{Multi-Metric Radar Comparison}
+
+Figure~\ref{fig:viz_radar} presents a radar chart overlaying baseline and hybrid retrieval across five evaluation dimensions---context precision, faithfulness, answer relevancy, citation grounding, and composite score---on a single polar plot. The near-identical silhouettes confirm that hybrid retrieval preserves baseline quality across all metrics, with citation grounding showing the only notable improvement (+0.04).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.58\textwidth]{radar_comparison.png}
+\caption{Multi-metric radar comparison of baseline and hybrid retrieval.}
+\label{fig:viz_radar}
+\end{figure}
+
+\subsection{Per-Query Latency Shift}
+
+Figure~\ref{fig:viz_paired_diff} shows the distribution of per-query latency differences (hybrid $-$ baseline). Of the 50 queries, 16 completed faster under hybrid retrieval while 34 were slower, with a mean overhead of $+2.18$\,s. The histogram reveals that most slower queries cluster in a narrow $+2$--$12$\,s band, while a small subset of queries benefit from hybrid retrieval's ability to surface higher-ranked results more efficiently.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{latency_paired_diff.png}
+\caption{Paired-difference histogram of per-query latency shift (hybrid $-$ baseline).}
+\label{fig:viz_paired_diff}
 \end{figure}
 
 \subsection{Evaluation Summary Dashboard}

@@ -66,33 +66,35 @@
 \contentsline {subsection}{\numberline {5.6.1}Baseline vs.\ Hybrid Retrieval Comparison}{35}{subsection.139}%
 \contentsline {subsection}{\numberline {5.6.2}Grid Search: Precision--Latency Pareto Frontier}{35}{subsection.141}%
 \contentsline {subsection}{\numberline {5.6.3}Per-Source Retrieval Distribution}{36}{subsection.143}%
-\contentsline {subsection}{\numberline {5.6.4}Latency by Query Category}{36}{subsection.145}%
-\contentsline {subsection}{\numberline {5.6.5}Evaluation Summary Dashboard}{37}{subsection.147}%
-\contentsline {chapter}{\numberline {6}Implementation Progress and Deviations}{39}{chapter.149}%
-\contentsline {section}{\numberline {6.1}Overall Implementation Status}{39}{section.150}%
-\contentsline {section}{\numberline {6.2}Deviations from the Original Proposal}{41}{section.152}%
-\contentsline {section}{\numberline {6.3}Expanded Data Source Coverage}{43}{section.154}%
-\contentsline {section}{\numberline {6.4}Enhanced Preprocessing Pipeline}{43}{section.155}%
-\contentsline {section}{\numberline {6.5}AWS Free Tier Deployment}{43}{section.156}%
-\contentsline {section}{\numberline {6.6}Test Coverage}{44}{section.157}%
-\contentsline {section}{\numberline {6.7}Custom CloudWatch Metrics}{46}{section.159}%
-\contentsline {section}{\numberline {6.8}Engineering Observations}{46}{section.166}%
-\contentsline {section}{\numberline {6.9}System Demonstration}{47}{section.167}%
-\contentsline {subsection}{\numberline {6.9.1}Frontend: Hybrid Retrieval Query with Citation-Grounded Response}{47}{subsection.168}%
-\contentsline {subsection}{\numberline {6.9.2}Frontend: Baseline vs.\ Hybrid Comparison}{47}{subsection.170}%
-\contentsline {subsection}{\numberline {6.9.3}Unit Test Execution}{48}{subsection.172}%
-\contentsline {subsection}{\numberline {6.9.4}Docker Compose: Running Services}{49}{subsection.174}%
-\contentsline {subsection}{\numberline {6.9.5}CI/CD Pipeline: GitHub Actions}{50}{subsection.176}%
-\contentsline {subsection}{\numberline {6.9.6}Database: Populated Corpus from Five Sources}{51}{subsection.182}%
-\contentsline {chapter}{\numberline {7}Remaining Work and Limitations}{53}{chapter.184}%
-\contentsline {section}{\numberline {7.1}Remaining Work}{53}{section.185}%
-\contentsline {subsection}{\numberline {7.1.1}Phase A: System Validation and Corpus Building (Mar W3 -- Mar W4)}{53}{subsection.187}%
-\contentsline {subsection}{\numberline {7.1.2}Phase B: Evaluation and Experimentation (Mar W4 -- Apr W1)}{54}{subsection.192}%
-\contentsline {subsection}{\numberline {7.1.3}Phase C: Analysis and Monitoring Validation (Apr W1 -- Apr W2)}{54}{subsection.199}%
-\contentsline {subsection}{\numberline {7.1.4}Phase D: Final Report and Submission (Apr W2)}{54}{subsection.203}%
-\contentsline {section}{\numberline {7.2}Known Limitations}{55}{section.207}%
-\contentsline {section}{\numberline {7.3}Project Timeline}{56}{section.217}%
-\contentsline {section}{\numberline {7.4}Future Extensions}{56}{section.219}%
-\contentsline {chapter}{REFERENCES}{58}{chapter*.220}%
-\contentsline {chapter}{\numberline {A}Source Code Availability}{61}{appendix.221}%
-\contentsline {chapter}{\numberline {B}System Demonstration Screenshots}{62}{appendix.222}%
+\contentsline {subsection}{\numberline {5.6.4}Latency by Query Category}{37}{subsection.145}%
+\contentsline {subsection}{\numberline {5.6.5}Multi-Metric Radar Comparison}{37}{subsection.147}%
+\contentsline {subsection}{\numberline {5.6.6}Per-Query Latency Shift}{38}{subsection.149}%
+\contentsline {subsection}{\numberline {5.6.7}Evaluation Summary Dashboard}{38}{subsection.151}%
+\contentsline {chapter}{\numberline {6}Implementation Progress and Deviations}{40}{chapter.153}%
+\contentsline {section}{\numberline {6.1}Overall Implementation Status}{40}{section.154}%
+\contentsline {section}{\numberline {6.2}Deviations from the Original Proposal}{42}{section.156}%
+\contentsline {section}{\numberline {6.3}Expanded Data Source Coverage}{44}{section.158}%
+\contentsline {section}{\numberline {6.4}Enhanced Preprocessing Pipeline}{44}{section.159}%
+\contentsline {section}{\numberline {6.5}AWS Free Tier Deployment}{44}{section.160}%
+\contentsline {section}{\numberline {6.6}Test Coverage}{45}{section.161}%
+\contentsline {section}{\numberline {6.7}Custom CloudWatch Metrics}{47}{section.163}%
+\contentsline {section}{\numberline {6.8}Engineering Observations}{47}{section.170}%
+\contentsline {section}{\numberline {6.9}System Demonstration}{48}{section.171}%
+\contentsline {subsection}{\numberline {6.9.1}Frontend: Hybrid Retrieval Query with Citation-Grounded Response}{48}{subsection.172}%
+\contentsline {subsection}{\numberline {6.9.2}Frontend: Baseline vs.\ Hybrid Comparison}{48}{subsection.174}%
+\contentsline {subsection}{\numberline {6.9.3}Unit Test Execution}{49}{subsection.176}%
+\contentsline {subsection}{\numberline {6.9.4}Docker Compose: Running Services}{50}{subsection.178}%
+\contentsline {subsection}{\numberline {6.9.5}CI/CD Pipeline: GitHub Actions}{51}{subsection.180}%
+\contentsline {subsection}{\numberline {6.9.6}Database: Populated Corpus from Five Sources}{52}{subsection.186}%
+\contentsline {chapter}{\numberline {7}Remaining Work and Limitations}{54}{chapter.188}%
+\contentsline {section}{\numberline {7.1}Remaining Work}{54}{section.189}%
+\contentsline {subsection}{\numberline {7.1.1}Phase A: System Validation and Corpus Building (Mar W3 -- Mar W4)}{54}{subsection.191}%
+\contentsline {subsection}{\numberline {7.1.2}Phase B: Evaluation and Experimentation (Mar W4 -- Apr W1)}{55}{subsection.196}%
+\contentsline {subsection}{\numberline {7.1.3}Phase C: Analysis and Monitoring Validation (Apr W1 -- Apr W2)}{55}{subsection.203}%
+\contentsline {subsection}{\numberline {7.1.4}Phase D: Final Report and Submission (Apr W2)}{55}{subsection.207}%
+\contentsline {section}{\numberline {7.2}Known Limitations}{56}{section.211}%
+\contentsline {section}{\numberline {7.3}Project Timeline}{57}{section.221}%
+\contentsline {section}{\numberline {7.4}Future Extensions}{57}{section.223}%
+\contentsline {chapter}{REFERENCES}{59}{chapter*.224}%
+\contentsline {chapter}{\numberline {A}Source Code Availability}{62}{appendix.225}%
+\contentsline {chapter}{\numberline {B}System Demonstration Screenshots}{63}{appendix.226}%

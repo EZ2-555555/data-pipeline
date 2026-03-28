@@ -191,7 +191,7 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
         scores = {"faithfulness": [], "answer_relevancy": [], "context_precision": []}
 
         for i, r in enumerate(results):
-            contexts = [s.get("title", "") for s in r["sources"]]
+            contexts = [s.get("chunk_text", s.get("title", "")) for s in r["sources"]]
             if not contexts:
                 contexts = ["N/A"]
             row = {
