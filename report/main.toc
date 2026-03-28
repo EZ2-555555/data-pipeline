@@ -51,22 +51,22 @@
 \contentsline {section}{\numberline {5.3}Evaluation Dataset}{30}{section.113}%
 \contentsline {section}{\numberline {5.4}Evaluation Metrics}{30}{section.114}%
 \contentsline {subsection}{\numberline {5.4.1}Context Precision}{30}{subsection.116}%
-\contentsline {subsection}{\numberline {5.4.2}Faithfulness and Hallucination Verification}{30}{subsection.117}%
+\contentsline {subsection}{\numberline {5.4.2}Faithfulness and Hallucination Verification}{31}{subsection.117}%
 \contentsline {subsection}{\numberline {5.4.3}Latency}{31}{subsection.118}%
 \contentsline {subsection}{\numberline {5.4.4}Cost Per Query}{31}{subsection.119}%
 \contentsline {subsection}{\numberline {5.4.5}Reranking Weight Optimization}{31}{subsection.120}%
 \contentsline {subsection}{\numberline {5.4.6}Sensitivity Analysis}{31}{subsection.121}%
-\contentsline {subsection}{\numberline {5.4.7}Statistical Tests for Baseline vs.\ Hybrid Comparison}{31}{subsection.122}%
+\contentsline {subsection}{\numberline {5.4.7}Statistical Tests for Baseline vs.\ Hybrid Comparison}{32}{subsection.122}%
 \contentsline {subsection}{\numberline {5.4.8}Citation Grounding with Partial Relevance}{32}{subsection.126}%
 \contentsline {subsection}{\numberline {5.4.9}Composite Performance Metric}{32}{subsection.127}%
-\contentsline {subsection}{\numberline {5.4.10}Drift Detector Validation}{32}{subsection.129}%
+\contentsline {subsection}{\numberline {5.4.10}Drift Detector Validation}{33}{subsection.129}%
 \contentsline {subsection}{\numberline {5.4.11}Monthly Cost Projection}{33}{subsection.135}%
 \contentsline {section}{\numberline {5.5}Analysis and Discussion Framework}{34}{section.137}%
-\contentsline {section}{\numberline {5.6}Planned Result Visualizations}{35}{section.138}%
+\contentsline {section}{\numberline {5.6}Result Visualizations}{35}{section.138}%
 \contentsline {subsection}{\numberline {5.6.1}Baseline vs.\ Hybrid Retrieval Comparison}{35}{subsection.139}%
 \contentsline {subsection}{\numberline {5.6.2}Grid Search: Precision--Latency Pareto Frontier}{35}{subsection.141}%
 \contentsline {subsection}{\numberline {5.6.3}Per-Source Retrieval Distribution}{36}{subsection.143}%
-\contentsline {subsection}{\numberline {5.6.4}Latency Breakdown by Pipeline Stage}{36}{subsection.145}%
+\contentsline {subsection}{\numberline {5.6.4}Latency by Query Category}{36}{subsection.145}%
 \contentsline {subsection}{\numberline {5.6.5}Evaluation Summary Dashboard}{37}{subsection.147}%
 \contentsline {chapter}{\numberline {6}Implementation Progress and Deviations}{39}{chapter.149}%
 \contentsline {section}{\numberline {6.1}Overall Implementation Status}{39}{section.150}%
