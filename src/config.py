@@ -111,15 +111,15 @@ class _Settings:
 
     @property
     def RERANK_ALPHA(self) -> float:
-        return float(os.getenv("RERANK_ALPHA", "0.6"))
+        return float(os.getenv("RERANK_ALPHA", "0.70"))
 
     @property
     def RERANK_BETA(self) -> float:
-        return float(os.getenv("RERANK_BETA", "0.2"))
+        return float(os.getenv("RERANK_BETA", "0.15"))
 
     @property
     def RERANK_GAMMA(self) -> float:
-        return float(os.getenv("RERANK_GAMMA", "0.2"))
+        return float(os.getenv("RERANK_GAMMA", "0.15"))
 
     @property
     def RECENCY_LAMBDA(self) -> float:

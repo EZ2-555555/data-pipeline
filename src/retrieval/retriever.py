@@ -105,6 +105,58 @@ def _compute_recency_weight(published_at: datetime, lam: float) -> float:
     return math.exp(-lam * max(age_days, 0))
 
 
+def _execute_retrieval_query(query_emb, recency_days, sources, candidate_limit,
+                              _max_retries=2):
+    """Execute the retrieval SQL with automatic reconnection on stale connections."""
+    import psycopg2
+    for attempt in range(_max_retries + 1):
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                base_sql = """
+                    SELECT c.id, c.chunk_text, d.title, d.source, d.url, d.published_at,
+                           1 - (c.embedding <=> %s::vector) AS similarity
+                    FROM chunks c
+                    JOIN documents d ON c.document_id = d.id
+                    WHERE d.state = 'INDEXED'
+                      AND (d.published_at IS NULL
+                           OR d.published_at >= CURRENT_DATE - %s)
+                """
+                params: list = [query_emb, timedelta(days=recency_days)]
+
+                if sources:
+                    placeholders = ",".join(["%s"] * len(sources))
+                    base_sql += f"  AND d.source IN ({placeholders})\n"
+                    params.extend(sources)
+
+                base_sql += "ORDER BY c.embedding <=> %s::vector\nLIMIT %s"
+                params.extend([query_emb, candidate_limit])
+
+                cur.execute(base_sql, params)
+                rows = cur.fetchall()
+            put_connection(conn)
+            return rows
+        except (psycopg2.InterfaceError, psycopg2.OperationalError) as exc:
+            logger.warning("DB connection error (attempt %d/%d): %s",
+                           attempt + 1, _max_retries + 1, exc)
+            # Discard the broken connection and reset the pool
+            try:
+                put_connection(conn)
+            except Exception:
+                pass
+            from src.db.connection import close_pool
+            close_pool()
+            if attempt == _max_retries:
+                raise
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            put_connection(conn)
+            raise
+
+
 def hybrid_retrieve(
     query: str,
     top_k: int | None = None,
@@ -126,36 +178,9 @@ def hybrid_retrieve(
     # Fetch more candidates than top_k for reranking
     candidate_limit = top_k * 4
 
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            # Stage 1+2: Metadata filter + vector similarity on filtered set
-            base_sql = """
-                SELECT c.id, c.chunk_text, d.title, d.source, d.url, d.published_at,
-                       1 - (c.embedding <=> %s::vector) AS similarity
-                FROM chunks c
-                JOIN documents d ON c.document_id = d.id
-                WHERE d.state = 'INDEXED'
-                  AND (d.published_at IS NULL
-                       OR d.published_at >= CURRENT_DATE - %s)
-            """
-            params: list = [query_emb, timedelta(days=recency_days)]
-
-            if sources:
-                placeholders = ",".join(["%s"] * len(sources))
-                base_sql += f"  AND d.source IN ({placeholders})\n"
-                params.extend(sources)
-
-            base_sql += "ORDER BY c.embedding <=> %s::vector\nLIMIT %s"
-            params.extend([query_emb, candidate_limit])
-
-            cur.execute(base_sql, params)
-            rows = cur.fetchall()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        put_connection(conn)
+    rows = _execute_retrieval_query(
+        query_emb, recency_days, sources, candidate_limit
+    )
 
     # Stage 3: Reranking-lite
     alpha = alpha if alpha is not None else settings.RERANK_ALPHA

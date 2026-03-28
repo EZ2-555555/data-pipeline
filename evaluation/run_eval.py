@@ -555,7 +555,7 @@ def run_grid_search(queries: list[dict]) -> dict:
         marker = "  BEST" if r == best else ""
         status = "OK" if r["within_threshold"] else "SLOW"
         print(
-            f"  α={r['alpha']:.1f} β={r['beta']:.2f} γ={r['gamma']:.2f}"
+            f"  a={r['alpha']:.1f} b={r['beta']:.2f} g={r['gamma']:.2f}"
             f"  {r['mean_similarity']:>10.4f}{r['mean_latency_s']:>10.3f}s"
             f"{r['p95_latency_s']:>10.3f}s  {status:>4}{marker}"
         )
@@ -647,7 +647,7 @@ def run_sensitivity_analysis(queries: list[dict], best_config: dict) -> dict:
     print("=" * 70)
     for param_name, entries in sweep_results.items():
         print(f"\n  Sweeping {param_name} (others redistributed proportionally):")
-        print(f"  {'Value':>6}  {'α':>6}  {'β':>6}  {'γ':>6}  {'MeanSim':>8}  {'p95Lat':>8}")
+        print(f"  {'Value':>6}  {'a':>6}  {'b':>6}  {'g':>6}  {'MeanSim':>8}  {'p95Lat':>8}")
         print("  " + "-" * 52)
         for e in entries:
             print(
@@ -995,6 +995,7 @@ def main():
         logger.info("Raw results saved to %s", raw_path)
 
     # Phase 2: RAGAS evaluation (optional — may fail with small local model)
+    ragas_path = RESULTS_DIR / "ragas_scores.json"
     skip_ragas = os.environ.get("SKIP_RAGAS", "").lower() in ("1", "true", "yes")
     if skip_ragas:
         logger.info("Phase 2: SKIPPED (SKIP_RAGAS=1)")
@@ -1004,17 +1005,33 @@ def main():
         # Combine baseline + hybrid for RAGAS (so we can compare side-by-side)
         combined = raw_results["baseline"] + raw_results["hybrid"]
         ragas_scores = run_ragas_evaluation(combined)
+        # Persist RAGAS scores so they survive crashes in later phases
+        if ragas_scores:
+            with open(ragas_path, "w", encoding="utf-8") as f:
+                json.dump(ragas_scores, f, indent=2, default=str)
+            logger.info("RAGAS scores saved to %s", ragas_path)
+
+    # If RAGAS scores are missing (crash/skip) but a cached file exists, reload
+    if ragas_scores is None and ragas_path.exists():
+        logger.info("Loading cached RAGAS scores from %s", ragas_path)
+        with open(ragas_path, encoding="utf-8") as f:
+            ragas_scores = json.load(f)
 
     # Phase 3: Compute summary
     logger.info("Phase 3: Computing summary statistics…")
     summary = compute_summary(raw_results, ragas_scores)
 
     # Phase 4: Reranking weight grid search
+    # Reset DB pool — connections may have gone stale during Phase 2
+    from src.db.connection import close_pool
+    close_pool()
     logger.info("Phase 4: Reranking weight grid search…")
     grid_results = run_grid_search(queries)
     summary["grid_search"] = grid_results
 
     # Phase 5: Sensitivity analysis around best grid-search config
+    # Reset DB pool — connections may have gone stale during Phase 4 grid search
+    close_pool()
     logger.info("Phase 5: Sensitivity analysis…")
     sensitivity = run_sensitivity_analysis(queries, grid_results["best"])
     summary["sensitivity_analysis"] = sensitivity
