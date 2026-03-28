@@ -3,29 +3,29 @@
 \section{Remaining Work}
 \label{sec:remaining}
 
-The remaining work is organized into four phases spanning approximately four weeks. Table~\ref{tab:remaining_phases} provides a phase-level overview, followed by detailed task descriptions.
+The work plan is organized into four phases. Phases~A and~B have been completed; Phases~C and~D remain. Table~\ref{tab:remaining_phases} provides a phase-level overview with current status, followed by detailed task descriptions.
 
 \begin{table}[H]
 \caption{Remaining Work: Phase Overview.}
 \label{tab:remaining_phases}
 \centering
-\begin{tabular}{p{0.8cm}p{4.2cm}p{2.5cm}p{5.0cm}}
+\begin{tabular}{p{0.8cm}p{3.5cm}p{2.5cm}p{1.8cm}p{4.0cm}}
 \toprule
-\textbf{Phase} & \textbf{Focus} & \textbf{Timeline} & \textbf{Key Deliverables} \\
+\textbf{Phase} & \textbf{Focus} & \textbf{Timeline} & \textbf{Status} & \textbf{Key Deliverables} \\
 \midrule
-A & System Validation \& Corpus Building & Mar W3--W4 & Populated corpus; local integration verified \\
-B & Evaluation \& Experimentation & Mar W4--Apr W1 & Empirical results; statistical analysis \\
-C & Analysis, Monitoring \& Dashboard & Apr W1--W3 & Drift validation; results dashboard; visualizations \\
-D & Final Report \& Submission & Apr W2--W3 & Completed report with empirical evidence \\
+A & System Validation \& Corpus Building & Mar W3--W4 & Done & 3{,}984 docs; 6{,}220 chunks; local integration verified \\
+B & Evaluation \& Experimentation & Mar W4--Apr W1 & Done & 50-query eval; statistical analysis (Ch.~5) \\
+C & Analysis, Monitoring \& Dashboard & Apr W1--W3 & In progress & Drift validation; results dashboard; visualizations \\
+D & Final Report \& Submission & Apr W2--W3 & Not started & Completed report with empirical evidence \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Phase~A} builds the evaluation corpus through sustained multi-cycle ingestion across all five sources (target: 1{,}000+ documents), verifies end-to-end pipeline operation in the local Docker Compose environment, and deploys the system to the AWS Free Tier via the SAM template.
+\textbf{Phase~A} built the evaluation corpus through sustained multi-cycle ingestion across all five sources (3{,}984 documents, 6{,}220 chunks indexed), verified end-to-end pipeline operation in the local Docker Compose environment, and initiated AWS Free Tier deployment via the SAM template.
 
-\textbf{Phase~B} executes the 50-query evaluation in both baseline and hybrid modes, applies Wilcoxon signed-rank tests with Cohen's $d$ and bootstrap 95\% CIs, and profiles per-stage latency with cost projections for 50/100/200 queries/day.
+\textbf{Phase~B} executed the 50-query evaluation in both baseline and hybrid modes, applied Wilcoxon signed-rank tests with Cohen's $d$ and bootstrap 95\% CIs, and profiled per-stage latency with cost projections for 50/100/200 queries/day. Full results are reported in Chapter~5.
 
-\textbf{Phase~C} validates the dual-criteria drift detection mechanism under simulated conditions, generates result visualizations and comparison tables, and captures system demonstration screenshots for all placeholder figures.
+\textbf{Phase~C} validates the dual-criteria drift detection mechanism under simulated conditions, generates result visualizations and comparison tables, and captures remaining system demonstration screenshots.
 
 \textbf{Phase~D} completes the evaluation and discussion chapters with empirical findings, integrates screenshots and analysis, and prepares the final submission package.
 
@@ -115,13 +115,13 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 
 % Row 7
 \node[font=\scriptsize, anchor=east] at (-0.2, {7*\rsp+0.5}) {Corpus Population};
-\fill[propblue!25] (6.0,{7*\rsp+0.5-\barh/2}) rectangle (9.0,{7*\rsp+0.5+\barh/2});
-\draw[propblue!60, thick] (6.0,{7*\rsp+0.5-\barh/2}) rectangle (9.0,{7*\rsp+0.5+\barh/2});
+\fill[awsgreen!60] (6.0,{7*\rsp+0.5-\barh/2}) rectangle (9.0,{7*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (7.5, {7*\rsp+0.5}) {\checkmark};
 
 % Row 8
 \node[font=\scriptsize, anchor=east] at (-0.2, {8*\rsp+0.5}) {Docker Integration Testing};
-\fill[propblue!25] (6.0,{8*\rsp+0.5-\barh/2}) rectangle (7.5,{8*\rsp+0.5+\barh/2});
-\draw[propblue!60, thick] (6.0,{8*\rsp+0.5-\barh/2}) rectangle (7.5,{8*\rsp+0.5+\barh/2});
+\fill[awsgreen!60] (6.0,{8*\rsp+0.5-\barh/2}) rectangle (7.5,{8*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (6.75, {8*\rsp+0.5}) {\checkmark};
 
 % Row 9  (starts same time as Docker testing, extends to end)
 \node[font=\scriptsize, anchor=east] at (-0.2, {9*\rsp+0.5}) {AWS Cloud Deploy (Lab + Free Tier)};
@@ -136,13 +136,13 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 
 % Row 10
 \node[font=\scriptsize, anchor=east] at (-0.2, {10*\rsp+0.5}) {Evaluation Run (baseline + hybrid)};
-\fill[awsorange!20] (7.5,{10*\rsp+0.5-\barh/2}) rectangle (10.5,{10*\rsp+0.5+\barh/2});
-\draw[awsorange!60, thick] (7.5,{10*\rsp+0.5-\barh/2}) rectangle (10.5,{10*\rsp+0.5+\barh/2});
+\fill[awsgreen!60] (7.5,{10*\rsp+0.5-\barh/2}) rectangle (10.5,{10*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (9.0, {10*\rsp+0.5}) {\checkmark};
 
 % Row 11
 \node[font=\scriptsize, anchor=east] at (-0.2, {11*\rsp+0.5}) {Statistical Analysis \& Latency Profiling};
-\fill[awsorange!20] (9.0,{11*\rsp+0.5-\barh/2}) rectangle (10.5,{11*\rsp+0.5+\barh/2});
-\draw[awsorange!60, thick] (9.0,{11*\rsp+0.5-\barh/2}) rectangle (10.5,{11*\rsp+0.5+\barh/2});
+\fill[awsgreen!60] (9.0,{11*\rsp+0.5-\barh/2}) rectangle (10.5,{11*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (9.75, {11*\rsp+0.5}) {\checkmark};
 
 % ================================================================
 % PHASE C — Analysis & Monitoring Validation (Apr W1 – Apr W2)
@@ -216,16 +216,11 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 Several extensions are identified for post-prototype development:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item Migration to Aurora Serverless (applicable when scaling beyond Free Tier constraints)
-  \item Full evaluation with Amazon Bedrock (Nova Micro) as the primary backend via the Free Tier deployment
-  \item Expansion of data sources (StackExchange, academic conference proceedings)
-  \item Cross-encoder reranking evaluation for precision-critical use cases
-  \item Embedding model fine-tuning or replacement based on drift analysis findings
-  \item Integration testing suite with containerized database and mocked AWS services
-  \item User feedback loop for continuous retrieval quality improvement
-  \item Token budget management: pre-prompt token count check to prevent context truncation in constrained-context-window backends
-  \item Secrets Manager / SSM Parameter Store migration for production-grade API key handling
+  \item \textbf{Scaling:} Migration to Aurora Serverless; expansion to additional data sources (StackExchange, conference proceedings)
+  \item \textbf{Retrieval quality:} Cross-encoder reranking evaluation; embedding model fine-tuning or replacement based on drift analysis
+  \item \textbf{Operational hardening:} Full Bedrock evaluation as primary backend; integration test suite with containerized database; token budget management for constrained-context-window backends; Secrets Manager migration for API key handling
+  \item \textbf{User experience:} User feedback loop for continuous retrieval quality improvement
 \end{itemize}
 
 \medskip
-\noindent This chapter summarized the four-phase completion plan, nine known limitations, and future extension directions.
+\noindent This chapter summarized the four-phase work plan (Phases~A and~B completed; C and~D remaining), nine known limitations, and future extension directions.

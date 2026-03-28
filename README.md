@@ -10,7 +10,7 @@
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16+pgvector-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![AWS SAM](https://img.shields.io/badge/AWS-SAM%20Free%20Tier-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/serverless/sam/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![Tests](https://img.shields.io/badge/Tests-200%20passed-brightgreen?logo=pytest&logoColor=white)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-204%20passed-brightgreen?logo=pytest&logoColor=white)](tests/)
 [![Coverage](https://img.shields.io/badge/Coverage-60%25+-brightgreen)](tests/)
 
 ---
@@ -76,8 +76,8 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 **Retrieval & Ranking**
 - MiniLM semantic embeddings (all-MiniLM-L6-v2, 384-dim, ONNX)
 - HNSW vector index for fast ANN search
-- 3-stage hybrid retrieval: metadata filter → cosine → reranking
-- Automated α/β/γ grid search optimisation
+- 4-stage hybrid retrieval: metadata filter → vector + BM25 → RRF fusion
+- Reciprocal Rank Fusion (RRF, K=60) — parameter-free, scale-invariant
 - Source-type filtering on `/ask`
 
 </td></tr>
@@ -96,7 +96,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - Container-image Lambda (up to 10 GB via ECR)
 - CloudWatch custom metrics + 3 alarms
 - Deep health checks (DB, S3, SQS, LLM)
-- Retrieval quality drift detection (>10% drop alert)
+- Retrieval quality drift detection (dual-criteria: 10% threshold + Shewhart 3σ)
 - Per-query token & cost tracking via tiktoken
 - API rate limiting (10 req/min per IP)
 - Connection pooling (1–25 connections)
@@ -104,13 +104,17 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 </td></tr>
 </table>
 
-### Reranking Formula
+### Retrieval Fusion (RRF)
+
+The hybrid retrieval pipeline fuses three independent ranking signals using **Reciprocal Rank Fusion** (Cormack et al., SIGIR 2009):
 
 ```
-Score_i = α × CosineSim_i + β × KeywordOverlap_i + γ × e^(−λ × age_days)
+RRF(d) = Σ  1 / (K + rank_r(d))    for r ∈ {vector, BM25, recency}
 ```
 
-> Default weights: `α = 0.6` · `β = 0.2` · `γ = 0.2` · `λ = 0.01`
+> `K = 60` (standard constant). RRF is **parameter-free** and **scale-invariant** — no weight tuning required.
+>
+> _An earlier design-phase weighted formula (α/β/γ) was superseded due to dataset-dependent weights and p95 ≈ 25 s tail latency._
 
 ---
 
@@ -144,7 +148,7 @@ Ingestion (fetch + SHA-256 dedup → DB + S3 raw tier + SQS message)
 Pipeline (normalise → chunk [RAW→PROCESSED] → MiniLM embed [→EMBEDDED] → S3 + DB [→INDEXED])
     │
     ▼
-Retrieval (metadata filter → cosine search → reranking-lite → top-k)
+Retrieval (metadata filter → vector + BM25 → RRF fusion → top-k)
     │
     ▼
 RAG Orchestrator (budget guard → build context → structured prompt → LLM [retry] → hallucination check → token cost)
@@ -377,7 +381,7 @@ data-pipeline/
 │   ├── pipeline/
 │   │   └── run_pipeline.py           # RAW → PROCESSED → EMBEDDED → INDEXED
 │   ├── retrieval/
-│   │   └── retriever.py              # Baseline (vector-only) + Hybrid (3-stage, grid search)
+│   │   └── retriever.py              # Baseline (vector-only) + Hybrid (4-stage, BM25 + RRF fusion)
 │   └── orchestrator/
 │       ├── rag.py                    # Retrieve → prompt → generate → hallucination check
 │       └── llm_backends.py           # Groq / Bedrock / HuggingFace / Ollama — fallback chain router
@@ -396,7 +400,7 @@ data-pipeline/
 │       ├── eval_queries.json         # 50 queries (3 categories)
 │       └── probe_queries.json        # 20 probe queries for drift detection
 │
-├── tests/                            # 200 tests · 15 modules · 60%+ coverage
+├── tests/                            # 204 tests · 15 modules · 60%+ coverage
 │   ├── test_api.py          test_ingestion.py      test_queue.py
 │   ├── test_db.py           test_llm_backends.py   test_rag.py
 │   ├── test_embedder.py     test_observability.py  test_retriever.py
@@ -458,10 +462,10 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `TOP_K` | `5` | Number of retrieval results |
 | `CHUNK_SIZE_TOKENS` | `500` | Tokens per chunk |
 | `CHUNK_OVERLAP_TOKENS` | `50` | Overlap between chunks |
-| `RERANK_ALPHA` | `0.6` | Cosine similarity weight |
-| `RERANK_BETA` | `0.2` | Keyword overlap weight |
-| `RERANK_GAMMA` | `0.2` | Recency decay weight |
-| `RECENCY_LAMBDA` | `0.01` | Exponential decay rate |
+| `RERANK_ALPHA` | `0.70` | _(Legacy, superseded by RRF)_ Cosine similarity weight |
+| `RERANK_BETA` | `0.15` | _(Legacy, superseded by RRF)_ Keyword overlap weight |
+| `RERANK_GAMMA` | `0.15` | _(Legacy, superseded by RRF)_ Recency decay weight |
+| `RECENCY_LAMBDA` | `0.01` | _(Legacy, superseded by RRF)_ Exponential decay rate |
 
 </details>
 
@@ -494,8 +498,8 @@ The evaluation framework implements a **9-phase pipeline** comparing **baseline 
 | 1 | RAG Query Execution | 50 queries × 2 modes (baseline + hybrid) with per-query latency |
 | 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision |
 | 3 | Summary Statistics | Mean, median, p95, citation grounding, token costs per mode |
-| 4 | Grid Search | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2, optimise precision under p95 ≤ 2s |
-| 5 | Sensitivity Analysis | One-at-a-time sweep of α, β, γ through [0.0, 1.0] in 0.1 steps (33 runs) |
+| 4 | Grid Search _(design-phase, superseded by RRF)_ | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2 — motivated the switch to RRF |
+| 5 | Sensitivity Analysis _(design-phase, superseded by RRF)_ | One-at-a-time sweep of α, β, γ — documented the fragility of weighted scoring |
 | 6 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
 | 7 | Drift Validation | 5 simulated scenarios (normal → Shewhart breach → catastrophic) |
 | 8 | Composite Metric | 0.35×Faithfulness + 0.25×Relevancy + 0.20×Precision + 0.20×CitationGrounding |
@@ -526,7 +530,7 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 
 - [x] 5-source data ingestion pipeline (ArXiv, HN, DEV.to, GitHub, RSS) with SHA-256 deduplication
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
-- [x] Hybrid retrieval with 3-stage reranking + grid search optimisation
+- [x] Hybrid retrieval with 4-stage BM25+RRF fusion (parameter-free)
 - [x] Multi-backend LLM fallback chain (Groq → Bedrock → Ollama → HuggingFace)
 - [x] FastAPI backend (`/health`, `/ask`, `/drift`) + React frontend (Vite)
 - [x] Docker Compose (6 services) + container-image Lambda deployment via ECR
@@ -536,7 +540,7 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 - [x] RAGAS evaluation framework (50 queries, 9-phase pipeline, statistical tests)
 - [x] AWS IaC via SAM (Free Tier + production templates)
 - [x] GitHub Actions CI/CD — lint → test → SAM validate → deploy → S3 frontend upload
-- [x] 200 unit tests across 15 modules (60%+ coverage gate)
+- [x] 204 unit tests across 15 modules (60%+ coverage gate)
 
 ### Remaining
 

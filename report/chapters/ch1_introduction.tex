@@ -25,13 +25,13 @@ This project is motivated by three converging factors. First, technology profess
 To address the central problem, this study investigates the following research questions:
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Data Engineering.} How can a cloud-native pipeline be designed to reliably ingest and preprocess heterogeneous scholarly and near-real-time industry data in a deterministic and idempotent manner?
+  \item \textbf{Data Engineering.} How can a cloud-native pipeline reliably ingest heterogeneous scholarly and industry data in a deterministic, idempotent manner?
 
-  \item \textbf{Retrieval Optimization.} Does hybrid retrieval---combining metadata filtering, parallel vector and BM25 search, and Reciprocal Rank Fusion---improve retrieval precision and grounding faithfulness compared with baseline vector-only retrieval?
+  \item \textbf{Retrieval Optimization.} Does hybrid retrieval (metadata filtering, BM25, and Reciprocal Rank Fusion) improve precision and faithfulness over baseline vector-only retrieval?
 
-  \item \textbf{Operational Trade-offs.} What trade-offs arise between retrieval precision, p95 latency, and cost per query under realistic workload conditions?
+  \item \textbf{Operational Trade-offs.} What trade-offs arise between retrieval precision, p95 latency, and cost per query?
 
-  \item \textbf{MLOps Integration.} How can deployment, monitoring, version control, and cost governance be integrated to ensure the reliability and maintainability of a production-grade RAG system?
+  \item \textbf{MLOps Integration.} How can deployment automation, monitoring, and cost governance ensure the reliability of a production-grade RAG system?
 \end{enumerate}
 
 \section{Objectives of the Study}

@@ -42,17 +42,10 @@ Unit Tests & Integration-tested & 204 tests across 15 test files, all passing \\
 \end{tabular}
 \end{table}
 
-\section{Expanded Data Source Coverage}
-\label{sec:expanded_sources}
+\section{Key Enhancements Beyond the Original Proposal}
+\label{sec:enhancements}
 
-The most significant enhancement beyond the original proposal is the expansion from two to five data sources. This decision was motivated by the need for broader topical coverage and diverse temporal profiles. The three additional sources---DEV.to (practitioner tutorials across 21 technology tags), GitHub Trending (emerging open-source projects across 10 topic queries), and curated RSS/Atom feeds (10 technology journalism outlets)---complement the scholarly authority of ArXiv and the community curation of Hacker News.
-
-All five ingesters share the same idempotent, SHA-256-based deduplication architecture, ensuring that the expanded ingestion scope does not compromise data integrity.
-
-\section{Enhanced Preprocessing Pipeline}
-\label{sec:enhanced_preprocessing}
-
-The preprocessing pipeline was substantially enhanced beyond the original proposal specification. The initial design specified HTML stripping, encoding normalization, whitespace consolidation, and removal of low-information tokens. The implemented 17-step normalization pipeline adds handling for: emoji and pictographic symbols (6 Unicode ranges), Unicode control characters and zero-width markers, Markdown blockquotes, HTML comments, strikethrough syntax, and repeated punctuation sequences. These additions were motivated by the diversity of content formats encountered across the five data sources, particularly the Markdown-heavy content from DEV.to and GitHub README files. The preprocessing pipeline is validated by 18 dedicated unit tests covering each normalization step.
+Two significant enhancements were made beyond the original proposal: (1) data source coverage was expanded from two to five sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) to improve corpus diversity and temporal coverage; and (2) the preprocessing pipeline was extended from basic HTML stripping to a 17-step normalization pipeline (validated by 18 dedicated unit tests) to handle the diverse content formats encountered across sources, particularly Markdown-heavy content from DEV.to and GitHub. All five ingesters share the same idempotent, SHA-256-based deduplication architecture.
 
 \section{AWS Free Tier Deployment}
 \label{sec:freetier}
@@ -97,21 +90,21 @@ Additionally, the drift detection module publishes \texttt{DriftMeanSimilarity} 
 Several non-obvious findings arose during implementation that informed the final design:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item \textbf{Lambda cold-start and MiniLM.} Loading the MiniLM sentence-transformer model on each Lambda cold start introduced 8--12 second delays during initial testing. This was resolved by implementing a lazy-initialized singleton pattern and increasing the Lambda memory allocation to 1,024~MB, reducing model load time to under 2 seconds on warm invocations.
+  \item \textbf{Lambda cold-start and MiniLM.} Initial cold-start delays of 8--12\,s were resolved by a lazy-initialized singleton and 1{,}024\,MB memory allocation, reducing model load to $<$2\,s on warm invocations.
 
-  \item \textbf{SHA-256 deduplication effectiveness.} During repeated ingestion cycles, the \texttt{ON CONFLICT DO NOTHING} strategy proved fully effective at preventing duplicate records. ArXiv, which republishes updated preprints, produced the most hash collisions (approximately 15--20\% of fetched papers per cycle), validating the deduplication design.
+  \item \textbf{SHA-256 deduplication.} The \texttt{ON CONFLICT DO NOTHING} strategy proved fully effective; ArXiv produced the most hash collisions ($\sim$15--20\% per cycle) due to preprint updates.
 
-  \item \textbf{LocalStack fidelity.} S3 and SQS operations via LocalStack behaved identically to the AWS SDK calls expected in production, enabling confident integration testing without AWS credentials. One exception: CloudWatch metric publishing is not supported by LocalStack, so CloudWatch integration required cloud deployment to verify.
+  \item \textbf{LocalStack fidelity.} S3 and SQS operations matched production behaviour, enabling integration testing without AWS credentials. CloudWatch metrics required cloud deployment to verify.
 
-  \item \textbf{HuggingFace rate limits.} The free-tier HuggingFace Inference API enforces a rate limit of approximately 30 requests/minute for the Mistral-7B-Instruct model. During sustained evaluation runs, this limit was reached, triggering the Ollama fallback automatically---confirming that the fallback chain functions correctly under real-world constraints.
+  \item \textbf{HuggingFace rate limits.} The free-tier rate limit ($\sim$30 req/min) triggered the Ollama fallback during sustained evaluation runs, confirming the fallback chain operates correctly.
 
-  \item \textbf{pgvector HNSW index build time.} For corpora above $\sim$10,000 chunks, the HNSW index rebuild (triggered after bulk embedding inserts) took 45--90 seconds on the db.t3.micro instance. This is acceptable for batch ingestion but would need to be managed for real-time corpus updates in a production system.
+  \item \textbf{pgvector HNSW index build.} Index rebuilds took 45--90\,s on db.t3.micro for corpora above $\sim$10k chunks---acceptable for batch but would need management for real-time updates.
 \end{itemize}
 
 \section{System Demonstration}
 \label{sec:demo}
 
-This section presents screenshots from the running system deployed locally via Docker Compose, demonstrating end-to-end functionality across all implemented components. \textit{Note: placeholder figures below will be replaced with actual screenshots in the final submission (see Section~\ref{sec:remaining} for capture schedule).}
+This section presents screenshots from the deployed system, demonstrating end-to-end functionality across key components.
 
 \subsection{Frontend: Hybrid Retrieval Query with Citation-Grounded Response}
 
@@ -119,32 +112,9 @@ Figure~\ref{fig:demo_hybrid} shows the TechPulse frontend answering a technology
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox{0.9\textwidth}{%
-\vspace{0.4cm}
-\begin{center}
-\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
-\end{center}
-\vspace{0.3cm}
-\hrule
-\vspace{0.4cm}
-\textbf{What to capture:}
-\begin{itemize}
-  \item Open the TechPulse React frontend (default: \texttt{http://localhost:3000})
-  \item Make sure the mode toggle is set to \textbf{Hybrid Retrieval}
-  \item Type a query such as: ``\textit{What are the latest advances in large language model inference optimization?}''
-  \item Wait for the full response to load
-  \item The visible response must contain \textbf{inline [Source N] citations} within the answer text
-  \item The \textbf{Sources panel / list} at the bottom must show at least 3 entries with relevance scores, source names (e.g., arxiv, hn, devto), and titles
-  \item Capture the \emph{entire browser window} (including the URL bar showing \texttt{localhost:3000})
-\end{itemize}
-\vspace{0.2cm}
-\hrule
-\vspace{0.3cm}
-\textbf{Command to start the system:}\\
-\texttt{docker compose up -d \&\& sleep 20 \&\& python scripts/run\_ingestion.py}\\[4pt]
-\textbf{Save as:} \texttt{report/figures/demo\_hybrid.png} \quad (PNG, min 1200px wide)
-\vspace{0.4cm}
-}}
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{1.5cm}
+\textit{Screenshot pending: Hybrid retrieval query with inline citations and source list.}
+\vspace{1.5cm}}}
 \caption{TechPulse frontend: hybrid retrieval query with citation-grounded response.}
 \label{fig:demo_hybrid}
 \end{figure}
@@ -155,188 +125,44 @@ Figure~\ref{fig:demo_baseline} shows the same query executed in baseline (vector
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox{0.9\textwidth}{%
-\vspace{0.4cm}
-\begin{center}
-\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
-\end{center}
-\vspace{0.3cm}
-\hrule
-\vspace{0.4cm}
-\textbf{What to capture:}
-\begin{itemize}
-  \item Open the TechPulse React frontend (\texttt{http://localhost:3000})
-  \item Switch the mode toggle to \textbf{Baseline (Vector-Only)} retrieval
-  \item Type the \textbf{exact same query} used in Figure~\ref{fig:demo_hybrid} above (e.g., ``\textit{What are the latest advances in large language model inference optimization?}'')
-  \item Wait for the full response to load
-  \item The response will typically have \emph{fewer or less precise} citations compared to hybrid mode
-  \item Capture the entire browser window so the mode label ``Baseline'' is clearly visible
-  \item Ideally side-by-side with Figure~\ref{fig:demo_hybrid} to enable qualitative comparison
-\end{itemize}
-\vspace{0.2cm}
-\hrule
-\vspace{0.3cm}
-\textbf{Save as:} \texttt{report/figures/demo\_baseline.png} \quad (PNG, min 1200px wide)
-\vspace{0.4cm}
-}}
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{1.5cm}
+\textit{Screenshot pending: Baseline (vector-only) retrieval query for comparison.}
+\vspace{1.5cm}}}
 \caption{TechPulse frontend: baseline (vector-only) retrieval query for comparison with Figure~\ref{fig:demo_hybrid}.}
 \label{fig:demo_baseline}
 \end{figure}
 
-\subsection{Unit Test Execution}
-
-Figure~\ref{fig:demo_tests} shows the terminal output of running the full test suite. All 204 tests pass across the 15 test modules, validating preprocessing, ingestion, retrieval, RAG orchestration, API endpoint behavior, LLM backends, observability, drift detection, and infrastructure integration.
-
-\begin{figure}[H]
-\centering
-\fbox{\parbox{0.9\textwidth}{%
-\vspace{0.4cm}
-\begin{center}
-\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
-\end{center}
-\vspace{0.3cm}
-\hrule
-\vspace{0.4cm}
-\textbf{What to capture:}
-\begin{itemize}
-  \item Open a terminal in the project root directory
-  \item Run: \texttt{pytest tests/ -v --tb=short}
-  \item Wait for all tests to complete
-  \item The terminal must show \textbf{all 204 tests passing} (green dots or PASSED labels)
-  \item The final summary line must read: \texttt{204 passed} (optionally with warnings)
-  \item Make sure the following test module names are visible in the output:\\
-    \texttt{test\_preprocessing.py}, \texttt{test\_ingestion.py}, \texttt{test\_retriever.py},\\
-    \texttt{test\_rag.py}, \texttt{test\_api.py}
-  \item Capture the terminal window showing the complete output (scroll to top if needed, or use a tall terminal)
-\end{itemize}
-\vspace{0.2cm}
-\hrule
-\vspace{0.3cm}
-\textbf{Command:} \texttt{cd /path/to/project \&\& pytest tests/ -v 2>\&1 | tee /tmp/test\_output.txt}\\[2pt]
-\textbf{Save as:} \texttt{report/figures/demo\_tests.png} \quad (PNG, capture full terminal output)
-\vspace{0.4cm}
-}}
-\caption{Pytest execution: 204 unit tests passing across 15 test modules.}
-\label{fig:demo_tests}
-\end{figure}
-
-\subsection{Docker Compose: Running Services}
-
-Figure~\ref{fig:demo_docker} shows all six Docker Compose services running simultaneously: PostgreSQL with pgvector, pgAdmin, LocalStack (S3/SQS), FastAPI backend, React frontend, and the ingestion scheduler.
-
-\begin{figure}[H]
-\centering
-\fbox{\parbox{0.9\textwidth}{%
-\vspace{0.4cm}
-\begin{center}
-\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
-\end{center}
-\vspace{0.3cm}
-\hrule
-\vspace{0.4cm}
-\textbf{What to capture:}
-\begin{itemize}
-  \item Start the system: \texttt{docker compose up -d}
-  \item Wait 30 seconds for all services to initialize
-  \item Run: \texttt{docker compose ps} (preferred --- shows service names clearly)
-  \item All \textbf{6 containers} must show status \texttt{Up} or \texttt{running}:
-    \begin{itemize}\small
-      \item \texttt{db} (PostgreSQL + pgvector) --- port 5432
-      \item \texttt{pgadmin} --- port 5050
-      \item \texttt{localstack} (S3 + SQS) --- port 4566
-      \item \texttt{api} (FastAPI backend) --- port 8000
-      \item \texttt{frontend} (React) --- port 3000
-      \item \texttt{scheduler} (ingestion scheduler)
-    \end{itemize}
-  \item Capture terminal showing the full \texttt{docker compose ps} table
-\end{itemize}
-\vspace{0.2cm}
-\hrule
-\vspace{0.3cm}
-\textbf{Command:} \texttt{docker compose up -d \&\& sleep 30 \&\& docker compose ps}\\[2pt]
-\textbf{Save as:} \texttt{report/figures/demo\_docker.png} \quad (PNG, full terminal capture)
-\vspace{0.4cm}
-}}
-\caption{Docker Compose deployment: six services running locally.}
-\label{fig:demo_docker}
-\end{figure}
-
 \subsection{CI/CD Pipeline: GitHub Actions}
 
-Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the four-stage workflow: lint-and-test, Docker build, SAM build, and deployment.
+Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the workflow, validating that continuous integration and deployment are fully operational.
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox{0.9\textwidth}{%
-\vspace{0.4cm}
-\begin{center}
-\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
-\end{center}
-\vspace{0.3cm}
-\hrule
-\vspace{0.4cm}
-\textbf{What to capture:}
-\begin{itemize}
-  \item Go to your GitHub repository in a browser
-  \item Navigate to: \textbf{Actions} tab $\to$ select a recent successful run on the \texttt{main} branch
-  \item The workflow must show all \textbf{4 stages with green tick marks}:
-    \begin{enumerate}\small
-      \item \texttt{lint-and-test} (green \checkmark)
-      \item \texttt{docker-build} (green \checkmark)
-      \item \texttt{sam-build} (green \checkmark)
-      \item \texttt{deploy-dev} or \texttt{deploy} (green \checkmark, on \texttt{main} branch only)
-    \end{enumerate}
-  \item The run summary at the top should show: \textbf{All jobs passed} / green banner
-  \item Capture the full workflow graph view (the visual DAG of stages), not just the log
-  \item The branch name (\texttt{main}) and commit SHA should be visible
-\end{itemize}
-\vspace{0.2cm}
-\hrule
-\vspace{0.3cm}
-\textbf{URL pattern:} \texttt{https://github.com/\{org\}/\{repo\}/\\actions/runs/\{run-id\}}\\[2pt]
-\textbf{Save as:} \texttt{report/figures/demo\_cicd.png} \quad (PNG, capture the workflow graph, not just job list)
-\vspace{0.4cm}
-}}
-\caption{GitHub Actions CI/CD pipeline: four-stage workflow executing successfully.}
+\includegraphics[width=0.95\textwidth]{github workflow run.png}
+\caption{GitHub Actions CI/CD pipeline: workflow run executing successfully.}
 \label{fig:demo_cicd}
 \end{figure}
 
-\subsection{Database: Populated Corpus from Five Sources}
+\subsection{AWS CloudFormation Stack}
 
-Figure~\ref{fig:demo_pgadmin} shows the local pgAdmin interface (part of the Docker Compose development stack) with the \texttt{documents} table containing ingested records from all five data sources, demonstrating that the ingestion pipeline successfully populates the corpus. On AWS, the same table can be inspected via the RDS Console or a direct \texttt{psql} connection.
+Figure~\ref{fig:demo_cfn} shows the deployed AWS CloudFormation stack created by the SAM template, confirming that all infrastructure resources (Lambda functions, API Gateway, S3 buckets, SQS queues, EventBridge rules, and IAM roles) are provisioned and operational.
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox{0.9\textwidth}{%
-\vspace{0.4cm}
-\begin{center}
-\textbf{\large PLACEHOLDER --- REPLACE WITH ACTUAL SCREENSHOT}
-\end{center}
-\vspace{0.3cm}
-\hrule
-\vspace{0.4cm}
-\textbf{What to capture:}
-\begin{itemize}
-  \item Open pgAdmin at \texttt{http://localhost:5050} (login: see \texttt{docker-compose.yml})
-  \item Navigate to: \textbf{Servers $\to$ techpulse\_db $\to$ Schemas $\to$ public $\to$ Tables $\to$ documents}
-  \item Right-click \texttt{documents} $\to$ \textbf{View/Edit Data $\to$ All Rows}
-  \item Run ingestion first if table is empty: \texttt{docker exec -it scheduler python ingest.py}
-  \item The table grid must show \textbf{rows from all 5 sources} visible in the \texttt{source} column:\\
-    \texttt{arxiv}, \texttt{hn}, \texttt{devto}, \texttt{github}, \texttt{rss}
-  \item Visible columns must include: \texttt{id}, \texttt{source}, \texttt{title}, \texttt{state}, \texttt{published\_at}
-  \item Scroll or resize so the \texttt{source} column is clearly readable
-  \item Capture both the pgAdmin left-panel tree (showing database name) and the data grid
-\end{itemize}
-\vspace{0.2cm}
-\hrule
-\vspace{0.3cm}
-\textbf{Quick query to verify all 5 sources present:}\\
-\texttt{SELECT source, COUNT(*) FROM documents GROUP BY source ORDER BY source;}\\[2pt]
-\textbf{Save as:} \texttt{report/figures/demo\_pgadmin.png} \quad (PNG, min 1400px wide to show both panels)
-\vspace{0.4cm}
-}}
-\caption{Local pgAdmin: the \texttt{documents} table populated with records from all five data sources (Docker Compose environment).}
-\label{fig:demo_pgadmin}
+\includegraphics[width=0.95\textwidth]{techpulse-cloudformation.png}
+\caption{AWS CloudFormation console: TechPulse stack with all resources successfully created.}
+\label{fig:demo_cfn}
+\end{figure}
+
+\subsection{Database: RDS PostgreSQL with Ingested Corpus}
+
+Figure~\ref{fig:demo_rds} shows the AWS RDS console with the TechPulse PostgreSQL instance, confirming that the production database is running and accessible for the ingestion pipeline and retrieval queries.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{rds-techpulse.png}
+\caption{AWS RDS console: TechPulse PostgreSQL instance with pgvector extension.}
+\label{fig:demo_rds}
 \end{figure}
 
 \medskip

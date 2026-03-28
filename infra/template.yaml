@@ -68,9 +68,9 @@ Globals:
         OLLAMA_MODEL: !Ref OllamaModel
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         TOP_K: "5"
-        RERANK_ALPHA: "0.6"
-        RERANK_BETA: "0.2"
-        RERANK_GAMMA: "0.2"
+        RERANK_ALPHA: "0.70"
+        RERANK_BETA: "0.15"
+        RERANK_GAMMA: "0.15"
         RECENCY_LAMBDA: "0.01"
         S3_ENABLED: "true"
         SQS_ENABLED: "true"

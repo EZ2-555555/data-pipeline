@@ -69,7 +69,7 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 
 \end{tikzpicture}%
 }
-\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path.}
+\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path. Layer~4 originally used weighted $\alpha$/$\beta$/$\gamma$ reranking; this was replaced by parameter-free BM25+RRF fusion after design-phase analysis (Section~\ref{sec:sensitivity}).}
 \label{fig:six_layers}
 \end{figure}
 
@@ -86,7 +86,7 @@ The TechPulse architecture is designed in explicit alignment with the AWS Well-A
 \toprule
 \textbf{Pillar} & \textbf{TechPulse Implementation} \\
 \midrule
-\textbf{Operational Excellence} & Automated ingestion via EventBridge (6-hour cycle); CI/CD pipeline using GitHub Actions and SAM; CloudWatch logging, custom metrics, and health-check Lambda (5-minute interval) \\[4pt]
+\textbf{Operational Excellence} & Automated ingestion via EventBridge (6-hour cloud cycle; per-source intervals in Table~\ref{tab:data_sources}); CI/CD pipeline using GitHub Actions and SAM; CloudWatch logging, custom metrics, and health-check Lambda (5-minute interval) \\[4pt]
 \textbf{Security} & Controlled API access via Amazon API Gateway with CORS; rate limiting via slowapi; all services managed within AWS default VPC; no direct model invocation from the frontend \\[4pt]
 \textbf{Reliability} & Decoupled ingestion and embedding pipelines via SQS; Dead Letter Queue for failure recovery and replay with 14-day retention; bounded retry logic with exponential backoff for LLM invocations; automatic LLM backend fallback chain \\[4pt]
 \textbf{Performance Efficiency} & Serverless Lambda scaling; lightweight MiniLM embedding model (384-dim); metadata pre-filtering reduces vector search scope; HNSW index for approximate nearest-neighbor search \\[4pt]
@@ -136,9 +136,9 @@ The pipeline has been implemented around four design principles: determinism (id
 % ---- Sources ----
 \node[compnode=awsblue] (arxiv) {ArXiv API\\(12 h)};
 \node[compnode=awsblue, below=0.25cm of arxiv] (hn) {Hacker News\\(30 min)};
-\node[compnode=awsblue, below=0.25cm of hn] (devto) {DEV.to\\(6 h)};
-\node[compnode=awsblue, below=0.25cm of devto] (github) {GitHub\\(6 h)};
-\node[compnode=awsblue, below=0.25cm of github] (rss) {RSS Feeds\\(6 h)};
+\node[compnode=awsblue, below=0.25cm of hn] (devto) {DEV.to\\(30 min)};
+\node[compnode=awsblue, below=0.25cm of devto] (github) {GitHub\\(30 min)};
+\node[compnode=awsblue, below=0.25cm of github] (rss) {RSS Feeds\\(30 min)};
 
 % ---- EventBridge ----
 \node[compnode=awsorange, right=0.8cm of hn, yshift=-0.55cm] (eb) {EventBridge\\Scheduler};
@@ -285,7 +285,7 @@ Figure~\ref{fig:state_machine} illustrates the document state machine, showing t
 \label{fig:state_machine}
 \end{figure}
 
-To guarantee idempotency, canonicalized content fields are hashed using SHA-256 before processing. The hash covers source-specific canonical fields: for ArXiv, title, abstract, and publication date; for Hacker News, title, URL, and timestamp; for DEV.to, article title, URL, and tags; for GitHub, repository full name, description, and stars; for RSS, entry title, link, and published date. Duplicate hashes are skipped at ingestion via PostgreSQL \texttt{ON CONFLICT} clauses, ensuring consistent corpus integrity across experimental runs.
+To guarantee idempotency, canonicalized content fields are hashed using SHA-256 before processing. The hash covers source-specific canonical fields: for ArXiv, title, abstract, and publication date; for Hacker News, title, URL, and timestamp; for DEV.to, article title, body, and publication date; for GitHub, repository full name, description, and creation date; for RSS, entry title, summary, and link. Duplicate hashes are skipped at ingestion via PostgreSQL \texttt{ON CONFLICT} clauses, ensuring consistent corpus integrity across experimental runs.
 
 \subsection{Preprocessing and Chunking}
 

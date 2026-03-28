@@ -47,22 +47,7 @@ Critically, existing hybrid RAG systems either address a subset of these concern
 \subsection{Closest Prior Systems}
 \label{sec:closest_prior}
 
-Several open-source RAG frameworks warrant direct comparison.
-
-\paragraph{Haystack (deepset, 2023)} provides a modular pipeline framework supporting hybrid retrieval with Elasticsearch BM25 and dense retrievers, but delegates MLOps, drift detection, and cost governance to external tooling.
-
-\paragraph{LlamaIndex (Liu, 2022)} offers composable retrieval abstractions including metadata filtering and reranking; however, it is a library rather than a deployed system and does not prescribe ingestion scheduling, monitoring infrastructure, or budget enforcement.
-
-\paragraph{Verba (Weaviate, 2023)} implements a RAG frontend with Weaviate vector search but uses single-source ingestion and omits reranking, drift monitoring, and hallucination verification.
-
-\paragraph{STORM (Shao et al., 2024)} automates long-form article generation with multi-source retrieval but targets offline synthesis rather than interactive query answering and does not address operational constraints.
-
-\paragraph{LangChain (LangChain, 2023)} provides composable chain abstractions with optional hybrid retrieval and agent tooling, but treats MLOps, cost governance, and drift detection as external concerns.
-
-\paragraph{Production Systems (Perplexity AI, Bing Copilot)} incorporate real-time retrieval and reranking at scale but do not expose their evaluation methodology, reranking designs, or cost governance strategies, making direct dimensional comparison infeasible.
-
-\medskip
-\noindent Each of these systems addresses a different subset of the six dimensions; to our knowledge, none integrates all six---hybrid retrieval with full-corpus BM25 and parameter-free RRF fusion, real-time multi-source ingestion, cost governance, MLOps monitoring, drift detection, and explicit hallucination verification---within a single cost-governed, continuously monitored, cloud-native architecture. TechPulse's contribution is best understood as a \emph{systems integration} effort: the individual techniques are established, but their combination within a student-deployable, budget-constrained prototype addresses a practical gap not covered by existing frameworks or research prototypes.
+Several open-source RAG frameworks and production systems warrant direct comparison: Haystack (deepset, 2023), LlamaIndex (Liu, 2022), Verba (Weaviate, 2023), STORM (Shao et al., 2024), LangChain (LangChain, 2023), and commercial systems such as Perplexity AI and Bing Copilot. Each addresses a different subset of the six key dimensions---hybrid retrieval, real-time multi-source ingestion, cost governance, MLOps monitoring, drift detection, and hallucination verification---but to our knowledge none integrates all six within a single cost-governed, student-deployable cloud-native architecture. TechPulse's contribution is a \emph{systems integration} effort that combines established techniques within a budget-constrained prototype, addressing a practical gap not covered by existing frameworks.
 
 Table~\ref{tab:related_work} summarizes representative related work and positions TechPulse relative to prior systems.
 

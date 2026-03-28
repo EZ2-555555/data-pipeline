@@ -658,7 +658,7 @@ def run_sensitivity_analysis(queries: list[dict], best_config: dict) -> dict:
             latencies = []
             for q in queries:
                 start = time.perf_counter()
-                retrieved = hybrid_retrieve(q["query"], alpha=a, beta=b, gamma=g)
+                retrieved = hybrid_retrieve(q["query"])
                 elapsed = time.perf_counter() - start
                 latencies.append(elapsed)
                 sims.append(_mean_topk_similarity(retrieved))

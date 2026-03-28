@@ -16,87 +16,77 @@
 \contentsline {section}{\numberline {2.7}MLOps and Production Machine Learning Systems}{7}{section.25}%
 \contentsline {section}{\numberline {2.8}Research Gap}{7}{section.26}%
 \contentsline {subsection}{\numberline {2.8.1}Closest Prior Systems}{7}{subsection.27}%
-\contentsline {paragraph}{Haystack (deepset, 2023)}{8}{paragraph*.28}%
-\contentsline {paragraph}{LlamaIndex (Liu, 2022)}{8}{paragraph*.29}%
-\contentsline {paragraph}{Verba (Weaviate, 2023)}{8}{paragraph*.30}%
-\contentsline {paragraph}{STORM (Shao et al., 2024)}{8}{paragraph*.31}%
-\contentsline {paragraph}{LangChain (LangChain, 2023)}{8}{paragraph*.32}%
-\contentsline {paragraph}{Production Systems (Perplexity AI, Bing Copilot)}{8}{paragraph*.33}%
-\contentsline {chapter}{\numberline {3}Methodology}{10}{chapter.35}%
-\contentsline {section}{\numberline {3.1}Overview of Technical Approach}{10}{section.36}%
-\contentsline {section}{\numberline {3.2}Why This Approach is Suitable}{10}{section.37}%
-\contentsline {section}{\numberline {3.3}Technical Contributions and Design Decisions}{11}{section.38}%
-\contentsline {section}{\numberline {3.4}Baseline Retrieval Configuration}{11}{section.39}%
-\contentsline {section}{\numberline {3.5}Implemented Hybrid Retrieval Configuration}{12}{section.41}%
-\contentsline {section}{\numberline {3.6}Hallucination Verification Strategy}{14}{section.45}%
-\contentsline {section}{\numberline {3.7}Optimization Objective}{15}{section.49}%
-\contentsline {section}{\numberline {3.8}Tool Selection and Implementation Stack}{15}{section.51}%
-\contentsline {section}{\numberline {3.9}System Context Overview}{16}{section.53}%
-\contentsline {chapter}{\numberline {4}System Architecture and Pipeline Design}{18}{chapter.55}%
-\contentsline {section}{\numberline {4.1}Architectural Overview}{18}{section.56}%
-\contentsline {section}{\numberline {4.2}Alignment with the AWS Well-Architected Framework}{18}{section.58}%
-\contentsline {section}{\numberline {4.3}Data Sources}{19}{section.60}%
-\contentsline {section}{\numberline {4.4}Data Engineering Pipeline}{20}{section.62}%
-\contentsline {subsection}{\numberline {4.4.1}Ingestion and Decoupling}{21}{subsection.64}%
-\contentsline {subsection}{\numberline {4.4.2}Document State Lifecycle}{21}{subsection.65}%
-\contentsline {subsection}{\numberline {4.4.3}Preprocessing and Chunking}{22}{subsection.68}%
-\contentsline {section}{\numberline {4.5}Embedding and Indexing}{22}{section.70}%
-\contentsline {section}{\numberline {4.6}Storage Architecture (Medallion Layout)}{23}{section.71}%
-\contentsline {section}{\numberline {4.7}Database Schema}{23}{section.73}%
-\contentsline {section}{\numberline {4.8}Prompt Construction and Grounded Generation}{24}{section.75}%
-\contentsline {section}{\numberline {4.9}LLM Backend Fallback Chain}{25}{section.95}%
-\contentsline {section}{\numberline {4.10}Deployment, Monitoring, and MLOps}{25}{section.97}%
-\contentsline {subsection}{\numberline {4.10.1}LLM Generation Configuration}{26}{subsection.99}%
-\contentsline {subsection}{\numberline {4.10.2}Drift Detection and Remediation}{27}{subsection.101}%
-\contentsline {subsection}{\numberline {4.10.3}Health Monitoring}{28}{subsection.103}%
-\contentsline {subsection}{\numberline {4.10.4}CI/CD and Deployment Automation}{28}{subsection.108}%
-\contentsline {section}{\numberline {4.11}AWS Cloud Deployment Architecture}{29}{section.113}%
-\contentsline {section}{\numberline {4.12}User Interface}{29}{section.115}%
-\contentsline {chapter}{\numberline {5}Experimental Plan and Evaluation Metrics}{30}{chapter.116}%
-\contentsline {section}{\numberline {5.1}Evaluation Objective}{30}{section.117}%
-\contentsline {section}{\numberline {5.2}Experimental Configurations}{30}{section.118}%
-\contentsline {section}{\numberline {5.3}Evaluation Dataset}{31}{section.120}%
-\contentsline {section}{\numberline {5.4}Evaluation Metrics}{31}{section.121}%
-\contentsline {subsection}{\numberline {5.4.1}Context Precision}{32}{subsection.123}%
-\contentsline {subsection}{\numberline {5.4.2}Faithfulness and Hallucination Verification}{32}{subsection.124}%
-\contentsline {subsection}{\numberline {5.4.3}Latency}{32}{subsection.125}%
-\contentsline {subsection}{\numberline {5.4.4}Cost Per Query}{32}{subsection.126}%
-\contentsline {subsection}{\numberline {5.4.5}Retrieval Method Ablation}{33}{subsection.127}%
-\contentsline {subsection}{\numberline {5.4.6}Sensitivity Analysis (Design-Phase, Superseded)}{33}{subsection.128}%
-\contentsline {subsection}{\numberline {5.4.7}Statistical Tests for Baseline vs.\ Hybrid Comparison}{33}{subsection.129}%
-\contentsline {subsection}{\numberline {5.4.8}Citation Grounding with Partial Relevance}{33}{subsection.133}%
-\contentsline {subsection}{\numberline {5.4.9}Composite Performance Metric}{34}{subsection.134}%
-\contentsline {subsection}{\numberline {5.4.10}Drift Detector Validation}{34}{subsection.136}%
-\contentsline {subsection}{\numberline {5.4.11}Monthly Cost Projection}{35}{subsection.141}%
-\contentsline {section}{\numberline {5.5}Analysis and Discussion Framework}{35}{section.143}%
-\contentsline {section}{\numberline {5.6}Result Visualizations}{37}{section.144}%
-\contentsline {subsection}{\numberline {5.6.1}Baseline vs.\ Hybrid Retrieval Comparison}{37}{subsection.145}%
-\contentsline {subsection}{\numberline {5.6.2}Design-Phase Grid Search (Superseded by RRF)}{37}{subsection.147}%
-\contentsline {subsection}{\numberline {5.6.3}Per-Source Retrieval Distribution}{38}{subsection.149}%
-\contentsline {subsection}{\numberline {5.6.4}Latency by Query Category}{39}{subsection.151}%
-\contentsline {subsection}{\numberline {5.6.5}Multi-Metric Radar Comparison}{39}{subsection.153}%
-\contentsline {subsection}{\numberline {5.6.6}Per-Query Latency Shift}{40}{subsection.155}%
-\contentsline {subsection}{\numberline {5.6.7}Evaluation Summary Dashboard}{41}{subsection.157}%
-\contentsline {chapter}{\numberline {6}Implementation Progress}{42}{chapter.159}%
-\contentsline {section}{\numberline {6.1}Overall Implementation Status}{42}{section.160}%
-\contentsline {section}{\numberline {6.2}Expanded Data Source Coverage}{44}{section.162}%
-\contentsline {section}{\numberline {6.3}Enhanced Preprocessing Pipeline}{44}{section.163}%
-\contentsline {section}{\numberline {6.4}AWS Free Tier Deployment}{44}{section.164}%
-\contentsline {section}{\numberline {6.5}Test Coverage}{45}{section.165}%
-\contentsline {section}{\numberline {6.6}Custom CloudWatch Metrics}{45}{section.166}%
-\contentsline {section}{\numberline {6.7}Engineering Observations}{45}{section.173}%
-\contentsline {section}{\numberline {6.8}System Demonstration}{46}{section.174}%
-\contentsline {subsection}{\numberline {6.8.1}Frontend: Hybrid Retrieval Query with Citation-Grounded Response}{46}{subsection.175}%
-\contentsline {subsection}{\numberline {6.8.2}Frontend: Baseline vs.\ Hybrid Comparison}{47}{subsection.177}%
-\contentsline {subsection}{\numberline {6.8.3}Unit Test Execution}{48}{subsection.179}%
-\contentsline {subsection}{\numberline {6.8.4}Docker Compose: Running Services}{49}{subsection.181}%
-\contentsline {subsection}{\numberline {6.8.5}CI/CD Pipeline: GitHub Actions}{50}{subsection.183}%
-\contentsline {subsection}{\numberline {6.8.6}Database: Populated Corpus from Five Sources}{51}{subsection.189}%
-\contentsline {chapter}{\numberline {7}Remaining Work and Limitations}{53}{chapter.191}%
-\contentsline {section}{\numberline {7.1}Remaining Work}{53}{section.192}%
-\contentsline {section}{\numberline {7.2}Known Limitations}{53}{section.194}%
-\contentsline {section}{\numberline {7.3}Project Timeline}{54}{section.204}%
-\contentsline {section}{\numberline {7.4}Future Extensions}{55}{section.206}%
-\contentsline {chapter}{REFERENCES}{57}{chapter*.207}%
-\contentsline {chapter}{\numberline {A}Source Code Availability}{60}{appendix.208}%
-\contentsline {chapter}{\numberline {B}System Demonstration Screenshots}{61}{appendix.209}%
+\contentsline {chapter}{\numberline {3}Methodology}{10}{chapter.29}%
+\contentsline {section}{\numberline {3.1}Overview of Technical Approach}{10}{section.30}%
+\contentsline {section}{\numberline {3.2}Why This Approach is Suitable}{10}{section.31}%
+\contentsline {section}{\numberline {3.3}Technical Contributions and Design Decisions}{11}{section.32}%
+\contentsline {section}{\numberline {3.4}Baseline Retrieval Configuration}{12}{section.33}%
+\contentsline {section}{\numberline {3.5}Implemented Hybrid Retrieval Configuration}{12}{section.35}%
+\contentsline {section}{\numberline {3.6}Hallucination Verification Strategy}{14}{section.39}%
+\contentsline {section}{\numberline {3.7}Optimization Objective}{14}{section.43}%
+\contentsline {section}{\numberline {3.8}Tool Selection and Implementation Stack}{15}{section.45}%
+\contentsline {section}{\numberline {3.9}System Context Overview}{16}{section.47}%
+\contentsline {chapter}{\numberline {4}System Architecture and Pipeline Design}{18}{chapter.49}%
+\contentsline {section}{\numberline {4.1}Architectural Overview}{18}{section.50}%
+\contentsline {section}{\numberline {4.2}Alignment with the AWS Well-Architected Framework}{18}{section.52}%
+\contentsline {section}{\numberline {4.3}Data Sources}{19}{section.54}%
+\contentsline {section}{\numberline {4.4}Data Engineering Pipeline}{20}{section.56}%
+\contentsline {subsection}{\numberline {4.4.1}Ingestion and Decoupling}{21}{subsection.58}%
+\contentsline {subsection}{\numberline {4.4.2}Document State Lifecycle}{21}{subsection.59}%
+\contentsline {subsection}{\numberline {4.4.3}Preprocessing and Chunking}{22}{subsection.62}%
+\contentsline {section}{\numberline {4.5}Embedding and Indexing}{22}{section.64}%
+\contentsline {section}{\numberline {4.6}Storage Architecture (Medallion Layout)}{23}{section.65}%
+\contentsline {section}{\numberline {4.7}Database Schema}{23}{section.67}%
+\contentsline {section}{\numberline {4.8}Prompt Construction and Grounded Generation}{24}{section.69}%
+\contentsline {section}{\numberline {4.9}LLM Backend Fallback Chain}{25}{section.89}%
+\contentsline {section}{\numberline {4.10}Deployment, Monitoring, and MLOps}{25}{section.91}%
+\contentsline {subsection}{\numberline {4.10.1}LLM Generation Configuration}{26}{subsection.93}%
+\contentsline {subsection}{\numberline {4.10.2}Drift Detection and Remediation}{27}{subsection.95}%
+\contentsline {subsection}{\numberline {4.10.3}Health Monitoring}{28}{subsection.97}%
+\contentsline {subsection}{\numberline {4.10.4}CI/CD and Deployment Automation}{28}{subsection.102}%
+\contentsline {section}{\numberline {4.11}AWS Cloud Deployment Architecture}{29}{section.107}%
+\contentsline {section}{\numberline {4.12}User Interface}{29}{section.109}%
+\contentsline {chapter}{\numberline {5}Experimental Plan and Evaluation Metrics}{30}{chapter.110}%
+\contentsline {section}{\numberline {5.1}Evaluation Objective}{30}{section.111}%
+\contentsline {section}{\numberline {5.2}Experimental Configurations}{30}{section.112}%
+\contentsline {section}{\numberline {5.3}Evaluation Dataset}{31}{section.114}%
+\contentsline {section}{\numberline {5.4}Evaluation Metrics}{32}{section.115}%
+\contentsline {subsection}{\numberline {5.4.1}Context Precision}{32}{subsection.117}%
+\contentsline {subsection}{\numberline {5.4.2}Faithfulness and Hallucination Verification}{32}{subsection.118}%
+\contentsline {subsection}{\numberline {5.4.3}Latency}{33}{subsection.119}%
+\contentsline {subsection}{\numberline {5.4.4}Cost Per Query}{33}{subsection.120}%
+\contentsline {subsection}{\numberline {5.4.5}Sensitivity Analysis (Design-Phase, Superseded)}{33}{subsection.121}%
+\contentsline {subsection}{\numberline {5.4.6}Statistical Tests for Baseline vs.\ Hybrid Comparison}{34}{subsection.122}%
+\contentsline {subsection}{\numberline {5.4.7}Citation Grounding with Partial Relevance}{34}{subsection.126}%
+\contentsline {subsection}{\numberline {5.4.8}Composite Performance Metric}{34}{subsection.127}%
+\contentsline {subsection}{\numberline {5.4.9}Drift Detector Validation}{35}{subsection.129}%
+\contentsline {subsection}{\numberline {5.4.10}Monthly Cost Projection}{36}{subsection.134}%
+\contentsline {section}{\numberline {5.5}Analysis and Discussion Framework}{36}{section.136}%
+\contentsline {section}{\numberline {5.6}Result Visualizations}{38}{section.140}%
+\contentsline {subsection}{\numberline {5.6.1}Baseline vs.\ Hybrid Retrieval Comparison}{38}{subsection.141}%
+\contentsline {subsection}{\numberline {5.6.2}Design-Phase Grid Search (Superseded by RRF)}{39}{subsection.143}%
+\contentsline {subsection}{\numberline {5.6.3}Per-Source Retrieval Distribution}{39}{subsection.145}%
+\contentsline {subsection}{\numberline {5.6.4}Latency by Query Category}{40}{subsection.147}%
+\contentsline {subsection}{\numberline {5.6.5}Multi-Metric Radar Comparison}{40}{subsection.149}%
+\contentsline {subsection}{\numberline {5.6.6}Per-Query Latency Shift}{41}{subsection.151}%
+\contentsline {subsection}{\numberline {5.6.7}Evaluation Summary Dashboard}{42}{subsection.153}%
+\contentsline {chapter}{\numberline {6}Implementation Progress}{43}{chapter.155}%
+\contentsline {section}{\numberline {6.1}Overall Implementation Status}{43}{section.156}%
+\contentsline {section}{\numberline {6.2}Key Enhancements Beyond the Original Proposal}{45}{section.158}%
+\contentsline {section}{\numberline {6.3}AWS Free Tier Deployment}{45}{section.159}%
+\contentsline {section}{\numberline {6.4}Test Coverage}{45}{section.160}%
+\contentsline {section}{\numberline {6.5}Custom CloudWatch Metrics}{46}{section.161}%
+\contentsline {section}{\numberline {6.6}Engineering Observations}{46}{section.168}%
+\contentsline {section}{\numberline {6.7}System Demonstration}{46}{section.169}%
+\contentsline {subsection}{\numberline {6.7.1}Frontend: Hybrid Retrieval Query with Citation-Grounded Response}{47}{subsection.170}%
+\contentsline {subsection}{\numberline {6.7.2}Frontend: Baseline vs.\ Hybrid Comparison}{47}{subsection.172}%
+\contentsline {subsection}{\numberline {6.7.3}CI/CD Pipeline: GitHub Actions}{47}{subsection.174}%
+\contentsline {subsection}{\numberline {6.7.4}AWS CloudFormation Stack}{48}{subsection.176}%
+\contentsline {subsection}{\numberline {6.7.5}Database: RDS PostgreSQL with Ingested Corpus}{48}{subsection.178}%
+\contentsline {chapter}{\numberline {7}Remaining Work and Limitations}{50}{chapter.180}%
+\contentsline {section}{\numberline {7.1}Remaining Work}{50}{section.181}%
+\contentsline {section}{\numberline {7.2}Known Limitations}{50}{section.183}%
+\contentsline {section}{\numberline {7.3}Project Timeline}{51}{section.193}%
+\contentsline {section}{\numberline {7.4}Future Extensions}{52}{section.195}%
+\contentsline {chapter}{REFERENCES}{54}{chapter*.196}%
+\contentsline {chapter}{\numberline {A}Source Code Availability}{57}{appendix.197}%

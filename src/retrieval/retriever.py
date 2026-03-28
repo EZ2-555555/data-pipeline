@@ -239,9 +239,6 @@ def hybrid_retrieve(
     query: str,
     top_k: int | None = None,
     recency_days: int = 180,
-    alpha: float | None = None,
-    beta: float | None = None,
-    gamma: float | None = None,
     sources: list[str] | None = None,
 ) -> list[dict]:
     """Hybrid retrieval: parallel vector + full-corpus BM25 search, fused via RRF.

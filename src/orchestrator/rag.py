@@ -11,6 +11,7 @@ Implements a three-layer hallucination verification strategy:
 
 import logging
 import re
+import time
 
 import tiktoken
 
@@ -202,10 +203,13 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
         If citation grounding fails, the answer is replaced with an
         abstention message and 'hallucination_check.flagged' is True.
     """
+    retrieval_start = time.perf_counter()
     if mode == "baseline":
         results = baseline_retrieve(query)
     else:
         results = hybrid_retrieve(query, sources=sources)
+    retrieval_s = time.perf_counter() - retrieval_start
+    logger.info("Retrieval completed in %.3fs (mode=%s)", retrieval_s, mode)
 
     if not results:
         return {

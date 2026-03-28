@@ -12,7 +12,7 @@ The core hypotheses under evaluation are stated formally as:
   \item \textbf{H\textsubscript{1}}: Hybrid retrieval achieves statistically higher mean context precision than baseline retrieval (one-sided Wilcoxon signed-rank test, $\alpha = 0.05$).
 \end{itemize}
 
-A secondary performance hypothesis requires that the precision improvement does not exceed the p95 latency bound ($\tau = 2.0$~seconds for the retrieval stage) or the monthly cost ceiling (USD~15 at an assumed workload of 1,500 queries/month, i.e., USD~0.01 per query). These hypotheses are tested through a controlled experiment comparing both configurations under identical corpus and embedding conditions, with full results reported in the final submission.
+A secondary performance hypothesis requires that the hybrid retrieval pipeline does not exceed the p95 latency bound ($\tau = 2.0$~seconds for the retrieval stage) or the monthly cost ceiling (USD~15 at an assumed workload of 1,500 queries/month, i.e., USD~0.01 per query). The evaluation is designed to be informative regardless of outcome: if H\textsubscript{0} cannot be rejected, the study characterises the conditions under which hybrid and baseline converge---an empirically valuable finding given the widespread adoption of hybrid retrieval in production RAG systems without controlled comparative evidence. These hypotheses are tested through a controlled experiment comparing both configurations under identical corpus and embedding conditions.
 
 \section{Why This Approach is Suitable}
 \label{sec:method_rationale}
@@ -30,7 +30,7 @@ Three considerations motivate the hybrid RAG approach for this specific problem 
 
 The engineering contribution of TechPulse lies not in any single component but in their integration into a coherent, cost-governed MLOps system. Specifically, four design decisions represent well-motivated engineering choices that distinguish this system from typical RAG prototypes.
 
-\textbf{True parallel hybrid retrieval with parameter-free fusion:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with Reciprocal Rank Fusion (RRF; Cormack et al., 2009). A third recency signal, computed as document age in days, is integrated as an additional RRF ranking. Because RRF operates on ordinal ranks rather than raw scores, it is parameter-free and scale-invariant: no weight tuning ($\alpha$/$\beta$/$\gamma$) is required, eliminating a common source of overfitting in hybrid retrieval systems. The BM25 index is built over the full corpus so that IDF statistics are globally accurate, and refreshed via a 30-minute TTL cache to capture newly ingested documents without rebuilding on every query.
+\textbf{True parallel hybrid retrieval with parameter-free fusion:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with Reciprocal Rank Fusion (RRF; Cormack et al., 2009). A third recency signal, computed as document age in days, is integrated as an additional RRF ranking. Because RRF operates on ordinal ranks rather than raw scores, it is parameter-free and scale-invariant: no weight tuning ($\alpha$/$\beta$/$\gamma$) is required, eliminating a common source of overfitting in hybrid retrieval systems. This parameter-free approach replaced an earlier design-phase weighted reranking formula ($\alpha$/$\beta$/$\gamma$) that proved sensitive to corpus composition and incurred prohibitive tail latency (p95~=~25\,s); the empirical evidence motivating this transition is documented in Section~\ref{sec:sensitivity}. The BM25 index is built over the full corpus so that IDF statistics are globally accurate, and refreshed via a 30-minute TTL cache to capture newly ingested documents without rebuilding on every query.
 
 \textbf{Unified vector--relational retrieval without dedicated infrastructure:} By extending PostgreSQL with pgvector, TechPulse achieves hybrid retrieval (structured SQL metadata filtering + cosine vector search) within a single managed database, eliminating the operational complexity of running a separate vector store. This design choice reduces architectural surface area, simplifies deployment automation, and enables cost-governed scaling through standard RDS instances.
 
@@ -57,7 +57,7 @@ The hybrid configuration introduces four refinement stages applied before genera
 
 \textbf{Stage 1 --- Metadata Filtering:} Structured SQL constraints reduce the candidate space based on document recency (a 180-day sliding window), source type, and document state. Only documents in the \texttt{INDEXED} state are considered. The 180-day window was chosen to balance corpus recency with sufficient document volume: at the expected ingestion rates across five sources, the window is projected to yield 500--2,000 indexed chunks, providing a meaningful retrieval pool while excluding content more than six months old, which is considered stale for fast-moving AI/ML topics. This pre-filtering stage reduces retrieval noise prior to semantic ranking.
 
-\textit{Robustness to missing and noisy metadata.} Because the five ingestion sources vary in metadata completeness, the filter is designed to degrade gracefully. The recency filter uses an inclusive \texttt{OR} clause (\texttt{published\_at IS NULL OR published\_at >= threshold}), so documents with missing publication dates are retained rather than silently dropped---this is particularly relevant for Hacker News ``Ask HN'' and ``Show HN'' self-posts, which occasionally lack external URLs or have approximate timestamps. During ingestion, each source adapter normalizes metadata before insertion: titles and content are whitespace-normalized; empty URLs default to the source platform's item permalink; and missing timestamps are coerced from the API's Unix epoch field or, for RSS feeds, from the \texttt{<pubDate>} element with a fallback to ingestion time. The RRF fusion stage further mitigates noisy metadata: documents with \texttt{NULL} publication dates receive age $= 9{,}999$ days in the recency ranking, meaning they can still be retrieved via semantic or BM25 relevance but are deprioritized by the temporal signal. This design ensures that incomplete metadata degrades relevance ranking gracefully rather than causing silent retrieval failures.
+\textit{Robustness to missing and noisy metadata.} The filter degrades gracefully when metadata is incomplete. The recency filter uses an inclusive \texttt{OR} clause (\texttt{published\_at IS NULL OR published\_at >= threshold}), retaining documents with missing dates rather than silently dropping them. Each source adapter normalizes metadata at ingestion (whitespace normalization, URL defaults, timestamp coercion from API-specific fields). In the RRF fusion stage, documents with \texttt{NULL} dates receive age $= 9{,}999$ days, deprioritizing them by recency while preserving their semantic and BM25 retrieval paths.
 
 \textbf{Stage 2 --- Vector Similarity Search:} Cosine similarity (Equation~\ref{eq:cosine}) is applied over the filtered candidate subset using the pgvector \texttt{<=>} operator. To provide sufficient candidates for RRF fusion, $4 \times \text{top\_k}$ results are retrieved at this stage. The 4$\times$ multiplier ensures that the vector candidate list is large enough to overlap meaningfully with BM25 results during fusion, improving the diversity of the final merged ranking without inflating retrieval latency.
 
@@ -83,18 +83,19 @@ The same source-type and recency filters applied in Stage~1 are enforced on BM25
 
 RRF has two key advantages over weighted linear scoring: (1)~it is \emph{parameter-free}---no $\alpha$/$\beta$/$\gamma$ weights require tuning, eliminating a common source of overfitting; and (2)~it is \emph{scale-invariant}---because it operates on ordinal ranks, it handles the incomparable score distributions of cosine similarity ($[0,1]$) and BM25 ($[0, \infty)$) without normalisation.
 
-Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference between the baseline and hybrid retrieval pathways.
+Figure~\ref{fig:retrieval_comparison} illustrates the design evolution across three retrieval strategies: the baseline vector-only pipeline (left), the original weighted hybrid that was superseded due to p95~=~25\,s tail latency and dataset-dependent weights (centre, faded), and the final BM25+RRF hybrid pipeline adopted in the production system (right).
 
-% ---- TikZ: Baseline vs Hybrid comparison diagram ----
+% ---- TikZ: Three-way retrieval comparison diagram ----
 \begin{figure}[H]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[node distance=0.45cm and 1.4cm]
 
 % ---- LEFT: BASELINE ----
-\node[pbox=awsgray, minimum width=2.6cm] (bq) {User Query};
-\node[pbox=awsblue, below=of bq, minimum width=2.6cm] (bvs) {Vector Similarity\\Search (Full Corpus)};
-\node[pbox=awsgreen, below=of bvs, minimum width=2.6cm] (btopk) {Top-$k$ Selection};
-\node[pbox=awsorange, below=of btopk, minimum width=2.6cm] (bgen) {LLM\\Generation};
+\node[pbox=awsgray, minimum width=2.4cm] (bq) {User Query};
+\node[pbox=awsblue, below=of bq, minimum width=2.4cm] (bvs) {Vector Similarity\\Search (Full Corpus)};
+\node[pbox=awsgreen, below=of bvs, minimum width=2.4cm] (btopk) {Top-$k$ Selection};
+\node[pbox=awsorange, below=of btopk, minimum width=2.4cm] (bgen) {LLM\\Generation};
 
 \draw[parrow] (bq) -- (bvs);
 \draw[parrow] (bvs) -- (btopk);
@@ -106,13 +107,39 @@ Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference betw
 \node[boundbox=awsgray, fit=(bq)(bvs)(btopk)(bgen), inner sep=8pt] {};
 \end{scope}
 
-% ---- RIGHT: HYBRID ----
-\node[pbox=awsgray, minimum width=2.6cm, right=3.6cm of bq] (hq) {User Query};
-\node[pbox=propred, below=of hq, minimum width=2.6cm] (hmf) {Metadata Filter\\(recency + source)};
-\node[pbox=awsblue, below=of hmf, minimum width=2.6cm] (hvs) {Vector Similarity\\Search (Filtered)};
-\node[pbox=awspurple, below=of hvs, minimum width=2.6cm] (hrr) {BM25 + RRF\\Fusion};
-\node[pbox=awsgreen, below=of hrr, minimum width=2.6cm] (htopk) {Top-$k$ Selection};
-\node[pbox=awsorange, below=of htopk, minimum width=2.6cm] (hgen) {LLM\\Generation};
+% ---- CENTER: ORIGINAL HYBRID (Superseded) ----
+\node[pbox=propgray, minimum width=2.4cm, right=4.0cm of bq] (oq) {User Query};
+\node[pbox=propgray, below=of oq, minimum width=2.4cm] (omf) {Metadata Filter\\(recency + source)};
+\node[pbox=propgray, below=of omf, minimum width=2.4cm] (ovs) {Vector Similarity\\Search (Filtered)};
+\node[pbox=propred, below=of ovs, minimum width=2.4cm] (orr) {Weighted\\$\alpha$/$\beta$/$\gamma$ Reranking};
+\node[pbox=propgray, below=of orr, minimum width=2.4cm] (otopk) {Top-$k$ Selection};
+\node[pbox=propgray, below=of otopk, minimum width=2.4cm] (ogen) {LLM\\Generation};
+
+\draw[parrow, color=propgray!60] (oq) -- (omf);
+\draw[parrow, color=propgray!60] (omf) -- (ovs);
+\draw[parrow, color=propgray!60] (ovs) -- (orr);
+\draw[parrow, color=propgray!60] (orr) -- (otopk);
+\draw[parrow, color=propgray!60] (otopk) -- (ogen);
+
+\node[layerlabel=propred, above=0.3cm of oq, font=\small\bfseries] {\textbf{Original Hybrid (Superseded)}};
+
+\begin{scope}[on background layer]
+\node[boundbox=propgray, fit=(oq)(omf)(ovs)(orr)(otopk)(ogen), inner sep=8pt] {};
+\end{scope}
+
+% annotation for original hybrid
+\draw[-{Stealth}, dashed, color=propred!70, thick]
+  ([xshift=0.3cm]orr.east) -- ++(0.4,0)
+  node[right, font=\scriptsize, color=propred, text width=1.8cm]
+  {p95 = 25\,s\\weights dataset-\\dependent};
+
+% ---- RIGHT: FINAL HYBRID (BM25+RRF) ----
+\node[pbox=awsgray, minimum width=2.4cm, right=4.0cm of oq] (hq) {User Query};
+\node[pbox=propred, below=of hq, minimum width=2.4cm] (hmf) {Metadata Filter\\(recency + source)};
+\node[pbox=awsblue, below=of hmf, minimum width=2.4cm] (hvs) {Vector Similarity\\Search (Filtered)};
+\node[pbox=awspurple, below=of hvs, minimum width=2.4cm] (hrr) {BM25 + RRF\\Fusion};
+\node[pbox=awsgreen, below=of hrr, minimum width=2.4cm] (htopk) {Top-$k$ Selection};
+\node[pbox=awsorange, below=of htopk, minimum width=2.4cm] (hgen) {LLM\\Generation};
 
 \draw[parrow] (hq) -- (hmf);
 \draw[parrow] (hmf) -- (hvs);
@@ -120,25 +147,21 @@ Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference betw
 \draw[parrow] (hrr) -- (htopk);
 \draw[parrow] (htopk) -- (hgen);
 
-\node[layerlabel=propblue, above=0.3cm of hq, font=\small\bfseries] {\textbf{Implemented Hybrid}};
+\node[layerlabel=propblue, above=0.3cm of hq, font=\small\bfseries] {\textbf{Final Hybrid (BM25+RRF)}};
 
 \begin{scope}[on background layer]
 \node[boundbox=propblue, fit=(hq)(hmf)(hvs)(hrr)(htopk)(hgen), inner sep=8pt] {};
 \end{scope}
 
-% annotation arrows
-\draw[-{Stealth}, dashed, color=propred!70, thick]
-  ([xshift=0.3cm]hmf.east) -- ++(0.4,0)
-  node[right, font=\scriptsize, color=propred, text width=1.8cm]
-  {Reduces candidate\\pool};
-
+% annotation for final hybrid
 \draw[-{Stealth}, dashed, color=awspurple!70, thick]
   ([xshift=0.3cm]hrr.east) -- ++(0.4,0)
   node[right, font=\scriptsize, color=awspurple, text width=1.8cm]
-  {RRF fusion\\(parameter-free)};
+  {p95 = 3.36\,s\\parameter-free};
 
-\end{tikzpicture}
-\caption{Baseline vector-only retrieval (left) vs.\ implemented hybrid retrieval pipeline (right).}
+\end{tikzpicture}%
+}
+\caption{Design evolution of retrieval strategies: baseline vector-only (left), original weighted hybrid with $\alpha$/$\beta$/$\gamma$ reranking (centre, superseded due to p95~=~25\,s tail latency), and final BM25+RRF hybrid pipeline (right).}
 \label{fig:retrieval_comparison}
 \end{figure}
 
