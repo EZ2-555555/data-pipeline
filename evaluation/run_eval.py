@@ -16,6 +16,7 @@ import os
 import statistics
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # Ensure project root is on sys.path
@@ -43,6 +44,38 @@ logger = logging.getLogger(__name__)
 QUERIES_PATH = PROJECT_ROOT / "evaluation" / "queries" / "eval_queries.json"
 RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
 
+# Retry configuration for rate-limited API calls
+RETRY_MAX_ATTEMPTS = int(os.environ.get("RETRY_MAX_ATTEMPTS", "5"))
+RETRY_BASE_DELAY_S = float(os.environ.get("RETRY_BASE_DELAY_S", "5.0"))
+
+
+def _call_with_retry(fn, *args, label: str = "API call", **kwargs):
+    """Call *fn* with exponential-backoff retry on rate-limit (429) errors."""
+    for attempt in range(1, RETRY_MAX_ATTEMPTS + 1):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            exc_str = str(exc).lower()
+            status = getattr(exc, "status_code", None) or getattr(
+                getattr(exc, "response", None), "status_code", None
+            )
+            is_rate_limit = (
+                status == 429
+                or "429" in exc_str
+                or "rate" in exc_str
+                or "too many" in exc_str
+                or "resource_exhausted" in exc_str
+            )
+            if is_rate_limit and attempt < RETRY_MAX_ATTEMPTS:
+                wait = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                logger.warning(
+                    "%s rate-limited (attempt %d/%d) — retrying in %.0fs",
+                    label, attempt, RETRY_MAX_ATTEMPTS, wait,
+                )
+                time.sleep(wait)
+            else:
+                raise
+
 
 def load_queries() -> list[dict]:
     with open(QUERIES_PATH, encoding="utf-8") as f:
@@ -50,9 +83,9 @@ def load_queries() -> list[dict]:
 
 
 def run_single_query(query: str, mode: str) -> dict:
-    """Run RAG pipeline for one query and measure latency."""
+    """Run RAG pipeline for one query and measure latency (with retry)."""
     start = time.perf_counter()
-    result = ask(query, mode=mode)
+    result = _call_with_retry(ask, query, mode=mode, label=f"ask({mode})")
     elapsed = time.perf_counter() - start
     result["latency_s"] = round(elapsed, 3)
     return result
@@ -130,11 +163,12 @@ def compute_citation_grounding_weighted(
     }
 
 
-# Delay between queries to avoid Groq free-tier rate limits (tokens-per-minute)
-# Delay between queries to avoid Groq free-tier rate limits (tokens-per-minute)
-INTER_QUERY_DELAY_S = float(os.environ.get("INTER_QUERY_DELAY_S", "15.0"))
+# Delay between queries — lowered for on-demand tier; retry handles 429s
+INTER_QUERY_DELAY_S = float(os.environ.get("INTER_QUERY_DELAY_S", "2.0"))
 # Delay between individual RAGAS metric score() calls within one sample
-INTER_METRIC_DELAY_S = float(os.environ.get("INTER_METRIC_DELAY_S", "10.0"))
+INTER_METRIC_DELAY_S = float(os.environ.get("INTER_METRIC_DELAY_S", "1.0"))
+# Max parallel RAGAS metric workers (3 metrics scored concurrently per sample)
+RAGAS_WORKERS = int(os.environ.get("RAGAS_WORKERS", "3"))
 
 
 def run_evaluation(queries: list[dict]) -> dict:
@@ -190,6 +224,16 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
 
         scores = {"faithfulness": [], "answer_relevancy": [], "context_precision": []}
 
+        def _score_metric(metric, row, name, idx):
+            """Score a single RAGAS metric with retry."""
+            try:
+                return name, _call_with_retry(
+                    metric.score, row, label=f"RAGAS-{name}[{idx}]"
+                )
+            except Exception:
+                logger.warning("%s scoring failed for sample %d", name, idx, exc_info=True)
+                return name, float("nan")
+
         for i, r in enumerate(results):
             contexts = [s.get("chunk_text", s.get("title", "")) for s in r["sources"]]
             if not contexts:
@@ -201,30 +245,24 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
                 "ground_truth": r.get("ground_truth", ""),
             }
             logger.info("RAGAS scoring sample %d/%d…", i + 1, len(results))
-            try:
-                score = faith_metric.score(row)
-                scores["faithfulness"].append(score)
-            except Exception:
-                logger.warning("Faithfulness scoring failed for sample %d", i + 1, exc_info=True)
-                scores["faithfulness"].append(float("nan"))
-            time.sleep(INTER_METRIC_DELAY_S)
 
-            try:
-                score = relevancy_metric.score(row)
-                scores["answer_relevancy"].append(score)
-            except Exception:
-                logger.warning("AnswerRelevancy scoring failed for sample %d", i + 1, exc_info=True)
-                scores["answer_relevancy"].append(float("nan"))
-            time.sleep(INTER_METRIC_DELAY_S)
+            # Score all 3 metrics in parallel
+            sample_scores: dict[str, float] = {}
+            with ThreadPoolExecutor(max_workers=RAGAS_WORKERS) as pool:
+                futures = {
+                    pool.submit(_score_metric, faith_metric, row, "faithfulness", i + 1),
+                    pool.submit(_score_metric, relevancy_metric, row, "answer_relevancy", i + 1),
+                    pool.submit(_score_metric, precision_metric, row, "context_precision", i + 1),
+                }
+                for fut in as_completed(futures):
+                    name, val = fut.result()
+                    sample_scores[name] = val
 
-            try:
-                score = precision_metric.score(row)
-                scores["context_precision"].append(score)
-            except Exception:
-                logger.warning("ContextPrecision scoring failed for sample %d", i + 1, exc_info=True)
-                scores["context_precision"].append(float("nan"))
+            scores["faithfulness"].append(sample_scores["faithfulness"])
+            scores["answer_relevancy"].append(sample_scores["answer_relevancy"])
+            scores["context_precision"].append(sample_scores["context_precision"])
 
-            # Rate-limit delay between samples
+            # Brief pause between samples
             time.sleep(INTER_QUERY_DELAY_S)
 
         return scores
@@ -695,8 +733,8 @@ def compute_statistical_tests(raw_results: dict, ragas_scores: dict | None = Non
         result["latency_wilcoxon"] = {
             "statistic": round(float(stat), 4),
             "p_value": round(float(p_value), 6),
-            "significant_at_005": p_value < 0.05,
-            "significant_at_001": p_value < 0.01,
+            "significant_at_005": bool(p_value < 0.05),
+            "significant_at_001": bool(p_value < 0.01),
             "mean_diff_s": round(statistics.mean(diffs_lat), 3),
             "median_diff_s": round(statistics.median(diffs_lat), 3),
         }
@@ -726,7 +764,7 @@ def compute_statistical_tests(raw_results: dict, ragas_scores: dict | None = Non
         result["citation_wilcoxon"] = {
             "statistic": round(float(stat_c), 4),
             "p_value": round(float(p_c), 6),
-            "significant_at_005": p_c < 0.05,
+            "significant_at_005": bool(p_c < 0.05),
         }
     else:
         result["citation_wilcoxon"] = {"note": "no_significant_difference_in_pairs"}
@@ -748,7 +786,7 @@ def compute_statistical_tests(raw_results: dict, ragas_scores: dict | None = Non
                 result["precision_wilcoxon"] = {
                     "statistic": round(float(stat_p), 4),
                     "p_value": round(float(p_p), 6),
-                    "significant_at_005": p_p < 0.05,
+                    "significant_at_005": bool(p_p < 0.05),
                     "mean_diff": round(statistics.mean(diffs_prec), 4),
                 }
             else:
@@ -1021,20 +1059,13 @@ def main():
     logger.info("Phase 3: Computing summary statistics…")
     summary = compute_summary(raw_results, ragas_scores)
 
-    # Phase 4: Reranking weight grid search
-    # Reset DB pool — connections may have gone stale during Phase 2
+    # Phase 4 & 5: Grid search and sensitivity analysis are SKIPPED.
+    # The hybrid retriever now uses parameter-free RRF (K=60) instead of
+    # weighted linear combination, so α/β/γ sweeps are not applicable.
+    # These phases will be replaced by the 3-config ablation study.
     from src.db.connection import close_pool
     close_pool()
-    logger.info("Phase 4: Reranking weight grid search…")
-    grid_results = run_grid_search(queries)
-    summary["grid_search"] = grid_results
-
-    # Phase 5: Sensitivity analysis around best grid-search config
-    # Reset DB pool — connections may have gone stale during Phase 4 grid search
-    close_pool()
-    logger.info("Phase 5: Sensitivity analysis…")
-    sensitivity = run_sensitivity_analysis(queries, grid_results["best"])
-    summary["sensitivity_analysis"] = sensitivity
+    logger.info("Phase 4-5: SKIPPED — RRF is parameter-free (no α/β/γ to tune)")
 
     # Phase 6: Statistical significance tests (paired baseline vs hybrid)
     logger.info("Phase 6: Statistical significance tests…")

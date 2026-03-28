@@ -236,7 +236,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
         logger.error("LLM generation failed (%s), falling back to retrieval-only", exc)
         return {
             "answer": LLM_FALLBACK_MESSAGE,
-            "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", ""), "score": r["score"]} for r in results],
+            "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", ""), "score": r["score"], "chunk_text": r["chunk_text"]} for r in results],
             "mode": mode,
             "llm_fallback": True,
             "llm_error": str(exc),
@@ -272,7 +272,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
     return {
         "answer": answer,
         "sources": [
-            {"title": r["title"], "source": r["source"], "url": r["url"], "score": r["score"]}
+            {"title": r["title"], "source": r["source"], "url": r["url"], "score": r["score"], "chunk_text": r["chunk_text"]}
             for r in results
         ],
         "mode": mode,

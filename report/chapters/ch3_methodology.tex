@@ -19,24 +19,24 @@ A secondary performance hypothesis requires that the precision improvement does 
 
 Three considerations motivate the hybrid RAG approach for this specific problem domain.
 
-\textbf{Domain characteristics.} Emerging technology knowledge is temporally dynamic and distributed across heterogeneous sources. Vector-only retrieval treats all documents equally regardless of recency or source authority; hybrid retrieval with recency-aware reranking explicitly addresses temporal drift, which is critical in rapidly evolving AI/ML domains where a paper from 18 months ago may already be superseded.
+\textbf{Domain characteristics:} Emerging technology knowledge is temporally dynamic and distributed across heterogeneous sources. Vector-only retrieval treats all documents equally regardless of recency or source authority; hybrid retrieval with BM25 keyword search and RRF fusion explicitly addresses temporal drift, which is critical in rapidly evolving AI/ML domains where a paper from 18 months ago may already be superseded.
 
-\textbf{Operational constraints.} The system must operate within cost and latency bounds suitable for a research prototype deployed on the AWS Free Tier. The lightweight linear reranking function (Equation~\ref{eq:reranking}) adds $O(k)$ computation over the top-$N$ filtered candidates---negligible compared to the $O(Nd)$ baseline search---and avoids the latency penalties of cross-encoder rerankers, which typically require a forward pass through a BERT-class model per candidate.
+\textbf{Operational constraints:} The system must operate within cost and latency bounds suitable for a research prototype deployed on the AWS Free Tier. Full-corpus BM25 scoring adds $O(N)$ computation (one pass over $N$ pre-tokenized chunks) but is executed in-process against a cached index, avoiding network round-trips. Reciprocal Rank Fusion merges three ranked lists in $O(k)$, where $k$ is the candidate pool size (typically $4 \times \text{top\_k} = 20$). The combined overhead is negligible compared to the $O(Nd)$ baseline vector search and avoids the latency penalties of cross-encoder rerankers, which require a forward pass through a BERT-class model per candidate.
 
-\textbf{Production feasibility.} The architecture uses AWS-managed services---Lambda, RDS PostgreSQL, API Gateway, EventBridge---eliminating the need to manage dedicated compute clusters or self-hosted vector databases. This enables a student team to deploy, iterate, and monitor a production-grade system within the course timeline and a prototype budget envelope.
+\textbf{Production feasibility:} The architecture uses AWS-managed services---Lambda, RDS PostgreSQL, API Gateway, EventBridge---eliminating the need to manage dedicated compute clusters or self-hosted vector databases. This enables a student team to deploy, iterate, and monitor a production-grade system within the course timeline and a prototype budget envelope.
 
 \section{Technical Contributions and Design Decisions}
 \label{sec:innovation}
 
 The engineering contribution of TechPulse lies not in any single component but in their integration into a coherent, cost-governed MLOps system. Specifically, four design decisions represent well-motivated engineering choices that distinguish this system from typical RAG prototypes.
 
-\textbf{Recency-aware hybrid reranking for dynamic knowledge domains.} The weighted linear reranking function (Equation~\ref{eq:reranking}) fuses semantic similarity, lexical keyword overlap, and exponential temporal decay into a single interpretable score. Unlike cross-encoder rerankers that are domain-agnostic and computationally expensive, this formulation is specifically designed for domains where content freshness is a first-class retrieval signal. The exponential decay parameter $\lambda$ provides a principled, tunable mechanism for controlling how rapidly older documents lose retrieval priority.
+\textbf{True parallel hybrid retrieval with parameter-free fusion:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with Reciprocal Rank Fusion (RRF; Cormack et al., 2009). A third recency signal, computed as document age in days, is integrated as an additional RRF ranking. Because RRF operates on ordinal ranks rather than raw scores, it is parameter-free and scale-invariant: no weight tuning ($\alpha$/$\beta$/$\gamma$) is required, eliminating a common source of overfitting in hybrid retrieval systems. The BM25 index is built over the full corpus so that IDF statistics are globally accurate, and refreshed via a 30-minute TTL cache to capture newly ingested documents without rebuilding on every query.
 
-\textbf{Unified vector--relational retrieval without dedicated infrastructure.} By extending PostgreSQL with pgvector, TechPulse achieves hybrid retrieval (structured SQL metadata filtering + cosine vector search) within a single managed database, eliminating the operational complexity of running a separate vector store. This design choice reduces architectural surface area, simplifies deployment automation, and enables cost-governed scaling through standard RDS instances.
+\textbf{Unified vector--relational retrieval without dedicated infrastructure:} By extending PostgreSQL with pgvector, TechPulse achieves hybrid retrieval (structured SQL metadata filtering + cosine vector search) within a single managed database, eliminating the operational complexity of running a separate vector store. This design choice reduces architectural surface area, simplifies deployment automation, and enables cost-governed scaling through standard RDS instances.
 
-\textbf{Idempotent ingestion pipeline with SHA-256 content-addressed deduplication.} The SHA-256 hashing strategy applied to canonicalized document fields ensures that the pipeline can be re-run safely at any time without creating duplicate records. This often-overlooked but practically important engineering practice enables safe experiment replay, crash recovery, and corpus versioning without requiring a separate deduplication service.
+\textbf{Idempotent ingestion pipeline with SHA-256 content-addressed deduplication:} The SHA-256 hashing strategy applied to canonicalized document fields ensures that the pipeline can be re-run safely at any time without creating duplicate records. This often-overlooked but practically important engineering practice enables safe experiment replay, crash recovery, and corpus versioning without requiring a separate deduplication service.
 
-\textbf{Budget-aware inference with programmatic halt.} The integration of AWS Cost Explorer queries into the inference path---where invocations are halted programmatically when monthly cost thresholds are approached---represents an operational optimization strategy not typically addressed in RAG research prototypes. This transforms cost from a passive monitoring concern into an active constraint enforced at runtime, consistent with production-grade MLOps principles.
+\textbf{Budget-aware inference with programmatic halt:} The integration of AWS Cost Explorer queries into the inference path---where invocations are halted programmatically when monthly cost thresholds are approached---represents an operational optimization strategy not typically addressed in RAG research prototypes. This transforms cost from a passive monitoring concern into an active constraint enforced at runtime, consistent with production-grade MLOps principles.
 
 \section{Baseline Retrieval Configuration}
 \label{sec:baseline}
@@ -48,36 +48,40 @@ The baseline configuration performs dense cosine similarity search across the fu
   \label{eq:cosine}
 \end{equation}
 
-Top-$N$ documents are selected purely on similarity ranking with a minimum similarity threshold of 0.15 to filter retrieval noise. This low threshold is intentionally permissive in the baseline to avoid artificially handicapping it; borderline documents that would be excluded by a stricter threshold are instead ranked low by the subsequent reranking stage in the hybrid configuration. Under exact search, computational complexity scales as $O(Nd)$, where $N$ is the number of indexed chunks and $d = 384$ (the MiniLM embedding dimension). This configuration serves as the experimental control for retrieval performance comparison.
+Top-$N$ documents are selected purely on similarity ranking with a minimum similarity threshold of 0.15 to filter retrieval noise. This low threshold is intentionally permissive in the baseline to avoid artificially handicapping it; borderline documents that would be excluded by a stricter threshold are instead ranked low by subsequent RRF fusion in the hybrid configuration. Under exact search, computational complexity scales as $O(Nd)$, where $N$ is the number of indexed chunks and $d = 384$ (the MiniLM embedding dimension). This configuration serves as the experimental control for retrieval performance comparison.
 
 \section{Implemented Hybrid Retrieval Configuration}
 \label{sec:hybrid}
 
-The hybrid configuration introduces three sequential refinement stages applied before generation.
+The hybrid configuration introduces four refinement stages applied before generation.
 
-\textbf{Stage 1 --- Metadata Filtering.} Structured SQL constraints reduce the candidate space based on document recency (a 180-day sliding window), source type, and document state. Only documents in the \texttt{INDEXED} state are considered. The 180-day window was chosen to balance corpus recency with sufficient document volume: at the expected ingestion rates across five sources, the window is projected to yield 500--2,000 indexed chunks, providing a meaningful retrieval pool while excluding content more than six months old, which is considered stale for fast-moving AI/ML topics. This pre-filtering stage reduces retrieval noise prior to semantic ranking.
+\textbf{Stage 1 --- Metadata Filtering:} Structured SQL constraints reduce the candidate space based on document recency (a 180-day sliding window), source type, and document state. Only documents in the \texttt{INDEXED} state are considered. The 180-day window was chosen to balance corpus recency with sufficient document volume: at the expected ingestion rates across five sources, the window is projected to yield 500--2,000 indexed chunks, providing a meaningful retrieval pool while excluding content more than six months old, which is considered stale for fast-moving AI/ML topics. This pre-filtering stage reduces retrieval noise prior to semantic ranking.
 
-\textit{Robustness to missing and noisy metadata.} Because the five ingestion sources vary in metadata completeness, the filter is designed to degrade gracefully. The recency filter uses an inclusive \texttt{OR} clause (\texttt{published\_at IS NULL OR published\_at >= threshold}), so documents with missing publication dates are retained rather than silently dropped---this is particularly relevant for Hacker News ``Ask HN'' and ``Show HN'' self-posts, which occasionally lack external URLs or have approximate timestamps. During ingestion, each source adapter normalizes metadata before insertion: titles and content are whitespace-normalized; empty URLs default to the source platform's item permalink; and missing timestamps are coerced from the API's Unix epoch field or, for RSS feeds, from the \texttt{<pubDate>} element with a fallback to ingestion time. The reranking stage further mitigates noisy metadata: documents with \texttt{NULL} publication dates receive a recency weight of~0 (Equation~\ref{eq:recency}), meaning they can still be retrieved via semantic similarity but are deprioritized by the temporal signal. This design ensures that incomplete metadata degrades relevance ranking gracefully rather than causing silent retrieval failures.
+\textit{Robustness to missing and noisy metadata.} Because the five ingestion sources vary in metadata completeness, the filter is designed to degrade gracefully. The recency filter uses an inclusive \texttt{OR} clause (\texttt{published\_at IS NULL OR published\_at >= threshold}), so documents with missing publication dates are retained rather than silently dropped---this is particularly relevant for Hacker News ``Ask HN'' and ``Show HN'' self-posts, which occasionally lack external URLs or have approximate timestamps. During ingestion, each source adapter normalizes metadata before insertion: titles and content are whitespace-normalized; empty URLs default to the source platform's item permalink; and missing timestamps are coerced from the API's Unix epoch field or, for RSS feeds, from the \texttt{<pubDate>} element with a fallback to ingestion time. The RRF fusion stage further mitigates noisy metadata: documents with \texttt{NULL} publication dates receive age $= 9{,}999$ days in the recency ranking, meaning they can still be retrieved via semantic or BM25 relevance but are deprioritized by the temporal signal. This design ensures that incomplete metadata degrades relevance ranking gracefully rather than causing silent retrieval failures.
 
-\textbf{Stage 2 --- Vector Similarity Search.} Cosine similarity (Equation~\ref{eq:cosine}) is applied over the filtered candidate subset using the pgvector \texttt{<=>} operator. To provide sufficient candidates for reranking, $4 \times \text{top\_k}$ results are retrieved at this stage. The 4$\times$ multiplier follows the oversampling convention used in cross-encoder reranking pipelines (Nogueira \& Cho, 2019), giving the reranker enough diversity to meaningfully reorder results without expanding the candidate pool to the point where reranking overhead dominates latency.
+\textbf{Stage 2 --- Vector Similarity Search:} Cosine similarity (Equation~\ref{eq:cosine}) is applied over the filtered candidate subset using the pgvector \texttt{<=>} operator. To provide sufficient candidates for RRF fusion, $4 \times \text{top\_k}$ results are retrieved at this stage. The 4$\times$ multiplier ensures that the vector candidate list is large enough to overlap meaningfully with BM25 results during fusion, improving the diversity of the final merged ranking without inflating retrieval latency.
 
-\textbf{Stage 3 --- Reranking-Lite.} A lightweight weighted scoring function refines candidate ordering:
-
-\begin{equation}
-  \text{Score}_i = \alpha \cdot \text{Sim}_i + \beta \cdot \text{KeywordOverlap}_i + \gamma \cdot \text{RecencyWeight}_i
-  \label{eq:reranking}
-\end{equation}
-
-where $\alpha + \beta + \gamma = 1$. The implemented default weights are $\alpha = 0.6$, $\beta = 0.2$, $\gamma = 0.2$, configurable via environment variables (\texttt{RERANK\_ALPHA}, \texttt{RERANK\_BETA}, \texttt{RERANK\_GAMMA}) to support grid search during evaluation.
-
-Recency is modeled using exponential decay:
+\textbf{Stage 3 --- Parallel BM25 Retrieval:} Concurrently with vector search, a full-corpus BM25 keyword search is executed using the BM25Okapi algorithm (Robertson \& Walker, 1994). Given a query $Q$ containing terms $q_1, q_2, \ldots, q_n$, the BM25 score for document $D$ is:
 
 \begin{equation}
-  \text{RecencyWeight}_i = e^{-\lambda \Delta t_i}
-  \label{eq:recency}
+  \text{BM25}(D, Q) = \sum_{i=1}^{n} \text{IDF}(q_i) \cdot \frac{f(q_i, D) \cdot (k_1 + 1)}{f(q_i, D) + k_1 \cdot \bigl(1 - b + b \cdot \frac{|D|}{\text{avgdl}}\bigr)}
+  \label{eq:bm25}
 \end{equation}
 
-where $\Delta t_i$ is document age in days and $\lambda = 0.01$ (configurable via \texttt{RECENCY\_LAMBDA}). At this decay rate, a document published 69 days ago retains $e^{-0.69} \approx 0.50$ of its recency weight (the ``half-life'' of relevance $\approx$ 69 days, or approximately 2.3 months), and a document at the 180-day filter boundary retains $e^{-1.8} \approx 0.17$. This profile reflects the observation that AI/ML content has a practical relevance half-life of approximately 2--3 months; $\lambda$ is configurable to enable sensitivity analysis during evaluation.
+\noindent where $f(q_i, D)$ is the term frequency of $q_i$ in $D$, $|D|$ is the document length, $\text{avgdl}$ is the average document length across the corpus, and $k_1 = 1.5$, $b = 0.75$ are the BM25Okapi defaults. Crucially, IDF is computed over the \emph{full} indexed corpus ($N = 6{,}220$ chunks at evaluation time), not over the filtered candidate set---computing IDF over a small candidate pool would produce up to $6\times$ error in term weighting (observed empirically during development). The BM25 index is built once and cached at the module level with a 30-minute TTL, refreshed automatically to capture newly ingested documents.
+
+The same source-type and recency filters applied in Stage~1 are enforced on BM25 candidates in Python, ensuring both retrieval signals operate over an identical filtered corpus.
+
+\textbf{Stage 4 --- Reciprocal Rank Fusion (RRF):} The union of vector and BM25 candidate sets is fused using Reciprocal Rank Fusion (Cormack, Clarke, \& Butt, 2009):
+
+\begin{equation}
+  \text{RRF}(d) = \sum_{r \in \mathcal{R}} \frac{1}{K + \text{rank}_r(d)}
+  \label{eq:rrf}
+\end{equation}
+
+\noindent where $\mathcal{R} = \{\text{vector}, \text{BM25}, \text{recency}\}$ represents three independent rankings, $\text{rank}_r(d)$ is the 1-indexed rank of document $d$ in ranking $r$, and $K = 60$ is the standard RRF constant from the original paper. Recency is incorporated as a third ranking signal by sorting candidates by document age in days (ascending; documents with unknown publication dates receive age $= 9{,}999$ and sort last).
+
+RRF has two key advantages over weighted linear scoring: (1)~it is \emph{parameter-free}---no $\alpha$/$\beta$/$\gamma$ weights require tuning, eliminating a common source of overfitting; and (2)~it is \emph{scale-invariant}---because it operates on ordinal ranks, it handles the incomparable score distributions of cosine similarity ($[0,1]$) and BM25 ($[0, \infty)$) without normalisation.
 
 Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference between the baseline and hybrid retrieval pathways.
 
@@ -106,7 +110,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference betw
 \node[pbox=awsgray, minimum width=2.6cm, right=3.6cm of bq] (hq) {User Query};
 \node[pbox=propred, below=of hq, minimum width=2.6cm] (hmf) {Metadata Filter\\(recency + source)};
 \node[pbox=awsblue, below=of hmf, minimum width=2.6cm] (hvs) {Vector Similarity\\Search (Filtered)};
-\node[pbox=awspurple, below=of hvs, minimum width=2.6cm] (hrr) {Reranking-Lite\\($\alpha$\textperiodcentered Sim + $\beta$\textperiodcentered Kw + $\gamma$\textperiodcentered Rec)};
+\node[pbox=awspurple, below=of hvs, minimum width=2.6cm] (hrr) {BM25 + RRF\\Fusion};
 \node[pbox=awsgreen, below=of hrr, minimum width=2.6cm] (htopk) {Top-$k$ Selection};
 \node[pbox=awsorange, below=of htopk, minimum width=2.6cm] (hgen) {LLM\\Generation};
 
@@ -131,7 +135,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference betw
 \draw[-{Stealth}, dashed, color=awspurple!70, thick]
   ([xshift=0.3cm]hrr.east) -- ++(0.4,0)
   node[right, font=\scriptsize, color=awspurple, text width=1.8cm]
-  {Multi-factor\\scoring};
+  {RRF fusion\\(parameter-free)};
 
 \end{tikzpicture}
 \caption{Baseline vector-only retrieval (left) vs.\ implemented hybrid retrieval pipeline (right).}
@@ -144,11 +148,11 @@ Figure~\ref{fig:retrieval_comparison} illustrates the conceptual difference betw
 TechPulse applies a three-layer verification approach to detect and flag potentially hallucinated outputs. The prompt construction and template details are presented in Section~\ref{sec:prompt_ch4}.
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Prompt layer.} The system instruction enforces strict evidence grounding and abstention on insufficient context.
+  \item \textbf{Prompt layer:} The system instruction enforces strict evidence grounding and abstention on insufficient context.
 
-  \item \textbf{Evaluation layer.} RAGAS faithfulness scoring decomposes each generated response into atomic claims and verifies whether each claim is supported by at least one retrieved document.
+  \item \textbf{Evaluation layer:} RAGAS faithfulness scoring decomposes each generated response into atomic claims and verifies whether each claim is supported by at least one retrieved document.
 
-  \item \textbf{Output layer --- Citation traceability.} At runtime, automated citation grounding verification analyzes each response sentence-by-sentence to compute a citation ratio---the fraction of sentences containing valid \texttt{[Source N]} references. Responses falling below the configurable citation grounding threshold are flagged as potentially hallucinated and replaced with an abstention message, with the original response preserved in metadata for review.
+  \item \textbf{Output layer --- Citation traceability:} At runtime, automated citation grounding verification analyzes each response sentence-by-sentence to compute a citation ratio---the fraction of sentences containing valid \texttt{[Source N]} references. Responses falling below the configurable citation grounding threshold are flagged as potentially hallucinated and replaced with an abstention message, with the original response preserved in metadata for review.
 \end{enumerate}
 
 \section{Optimization Objective}
@@ -161,7 +165,7 @@ The retrieval task is framed as a constrained optimization problem:
   \label{eq:opt}
 \end{equation}
 
-where $\tau$ is the p95 latency target of 2 seconds. This formulation makes the precision--latency trade-off explicit and provides a principled basis for tuning reranking depth and metadata filter selectivity.
+where $\tau$ is the p95 latency target of 2 seconds. This formulation makes the precision--latency trade-off explicit and provides a principled basis for tuning retrieval depth and metadata filter selectivity.
 
 \section{Tool Selection and Implementation Stack}
 \label{sec:tools}
@@ -186,7 +190,7 @@ Frontend & React (S3 static hosting) & Lightweight, decoupled from backend \\
 API routing & Amazon API Gateway (HTTP) & Managed, HTTPS, CORS support \\
 CI/CD & GitHub Actions + SAM & Reproducible IaC deployments, automated testing \\
 Monitoring & CloudWatch + SNS alarms & Observability, error alerts, health checks \\
-Evaluation & RAGAS + grid search & Standardized RAG quality metrics + weight optimization \\
+Evaluation & RAGAS + statistical testing & Standardized RAG quality metrics + paired comparison \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -214,15 +218,15 @@ Figure~\ref{fig:system_context} presents a high-level context view of TechPulse,
       text width=2.8cm, align=center, minimum height=0.65cm, font=\scriptsize]
   (arxiv) at (-6.2, 1.6) {ArXiv / Hacker News / DEV.to / GitHub / RSS};
 
-% Technology professionals (right top) — pushed further out
+% User (right top) — pushed further out
 \node[rectangle, draw=awsorange!70, fill=awsorange!15, rounded corners=4pt,
       text width=2.6cm, align=center, minimum height=0.65cm, font=\scriptsize]
-  (user) at (6.2, 1.0) {Technology Professional (User)};
+  (user) at (6.2, 1.0) {User};
 
 % Evaluation system (right bottom) — pushed further out
 \node[rectangle, draw=awspurple!70, fill=awspurple!15, rounded corners=4pt,
       text width=2.6cm, align=center, minimum height=0.65cm, font=\scriptsize]
-  (eval) at (6.2, -1.0) {Evaluation (RAGAS + Grid Search)};
+  (eval) at (6.2, -1.0) {Evaluation (RAGAS + Stats)};
 
 % Cloud / ops (bottom) — pushed further down
 \node[rectangle, draw=propgray!70, fill=propgray!15, rounded corners=4pt,
@@ -250,4 +254,4 @@ Figure~\ref{fig:system_context} presents a high-level context view of TechPulse,
 \end{figure}
 
 \medskip
-\noindent The remainder of this report translates these methodological decisions into a concrete system architecture (Chapter~4), evaluation framework (Chapter~5), implementation status (Chapter~6), and remaining work (Chapter~7).
+\noindent The following chapters translate these methodological decisions into a concrete system architecture (Chapter~4), evaluation framework (Chapter~5), implementation status (Chapter~6), and remaining work (Chapter~7).

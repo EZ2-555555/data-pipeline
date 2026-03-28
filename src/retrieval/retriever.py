@@ -302,6 +302,10 @@ def hybrid_retrieve(
 
     # --- Merge: union of both candidate sets ---
     all_ids = list(set(vector_candidates) | set(bm25_candidates))
+    logger.info(
+        "BM25 candidates: %d, Vector candidates: %d, Union: %d",
+        len(bm25_candidates), len(vector_candidates), len(all_ids),
+    )
     if not all_ids:
         return []
 

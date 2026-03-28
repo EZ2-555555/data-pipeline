@@ -27,7 +27,7 @@ To address the central problem, this study investigates the following research q
 \begin{enumerate}[leftmargin=0.5in]
   \item \textbf{Data Engineering.} How can a cloud-native pipeline be designed to reliably ingest and preprocess heterogeneous scholarly and near-real-time industry data in a deterministic and idempotent manner?
 
-  \item \textbf{Retrieval Optimization.} Does hybrid retrieval---combining metadata filtering, vector similarity search, and lightweight reranking---improve retrieval precision and grounding faithfulness compared with baseline vector-only retrieval?
+  \item \textbf{Retrieval Optimization.} Does hybrid retrieval---combining metadata filtering, parallel vector and BM25 search, and Reciprocal Rank Fusion---improve retrieval precision and grounding faithfulness compared with baseline vector-only retrieval?
 
   \item \textbf{Operational Trade-offs.} What trade-offs arise between retrieval precision, p95 latency, and cost per query under realistic workload conditions?
 
@@ -41,7 +41,7 @@ The primary objective is to design, implement, and evaluate a hybrid Retrieval-A
 
 \begin{enumerate}[leftmargin=0.5in]
   \item To construct a cloud-native data engineering pipeline for batch and near-real-time ingestion from five heterogeneous data sources.
-  \item To implement and compare baseline vector-only retrieval against hybrid retrieval with metadata filtering and reranking-lite optimization.
+  \item To implement and compare baseline vector-only retrieval against hybrid retrieval with metadata filtering, full-corpus BM25, and Reciprocal Rank Fusion (RRF).
   \item To evaluate system performance across context precision, faithfulness, p95 latency, and cost per query.
   \item To deploy and monitor the system using serverless AWS infrastructure consistent with MLOps best practices (Sculley et al., 2015; Breck et al., 2017).
 \end{enumerate}
@@ -66,11 +66,11 @@ Table~\ref{tab:rq_map} provides an explicit mapping from each research question 
 \midrule
 1 & Cloud-native deterministic ingestion & Pipeline idempotency; SHA-256 deduplication pass rate & Unit tests (24 ingestion tests); repeated pipeline runs \\[4pt]
 2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness $\geq 0.80$; citation grounding $> 0.80$ & Paired comparison over 50 queries; Wilcoxon signed-rank test; Cohen's $d$; bootstrap 95\% CI \\[4pt]
-3 & Latency and cost trade-offs & p95 latency $< 2$s; cost $<$ USD~15/month & Per-query timing; token usage profiling; grid search Pareto frontier \\[4pt]
+3 & Latency and cost trade-offs & p95 latency $< 2$s; cost $<$ USD~15/month & Per-query timing; token usage profiling; cost projection \\[4pt]
 4 & MLOps integration & Drift detection coverage; CI/CD pass rate; health-check uptime & Drift simulation runs; CloudWatch alarm verification \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \medskip
-\noindent The remainder of this report is organized as follows: Chapter~2 reviews the relevant literature; Chapter~3 presents the methodology and hypotheses; Chapter~4 describes the system architecture; Chapter~5 defines the evaluation framework; Chapter~6 documents implementation status and deviations; and Chapter~7 outlines remaining work and limitations. The following chapter reviews the technical foundations underpinning these design decisions.
+\noindent The study is structured as follows: Chapter~2 reviews the relevant literature; Chapter~3 presents the methodology and hypotheses; Chapter~4 describes the system architecture; Chapter~5 defines the evaluation framework; Chapter~6 documents implementation progress; and Chapter~7 outlines remaining work and limitations. The following chapter reviews the technical foundations underpinning these design decisions.

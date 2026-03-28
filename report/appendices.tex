@@ -20,7 +20,7 @@ The repository includes the following implemented components:
 
 \item Semantic embedding pipeline using the \texttt{all-MiniLM-L6-v2} sentence-transformer model (384-dimensional embeddings)
 
-\item Hybrid retrieval implementation including metadata filtering, cosine similarity search via pgvector, and reranking-lite scoring with configurable weights
+\item Hybrid retrieval implementation including metadata filtering, cosine similarity search via pgvector, full-corpus BM25 keyword search, and Reciprocal Rank Fusion (RRF)
 
 \item RAG orchestration with three-layer hallucination verification (prompt grounding, RAGAS faithfulness, citation traceability)
 
@@ -32,11 +32,11 @@ The repository includes the following implemented components:
 
 \item React-based frontend interface for query submission and citation-grounded response display
 
-\item Evaluation framework with 50 curated queries (3 categories), 9-phase evaluation pipeline including RAGAS metrics, grid search, sensitivity analysis, statistical tests, drift validation, composite metric, and cost projection
+\item Evaluation framework with 50 curated queries (3 categories), 9-phase evaluation pipeline including RAGAS metrics, statistical tests, drift validation, composite metric, and cost projection
 
 \item Four-stage CI/CD pipeline using GitHub Actions (lint, test, build, deploy)
 
-\item 200 unit tests across 15 test modules with full pass status
+\item 204 unit tests across 15 test modules with full pass status
 
 \item Docker Compose configuration for local development with 6 services
 

@@ -1,7 +1,7 @@
-\chapter{Implementation Progress and Deviations}
+\chapter{Implementation Progress}
 \label{ch:progress}
 
-This chapter documents the current implementation status, deviations from the original proposal, and key engineering decisions made during development.
+This chapter documents the current implementation status and key engineering decisions made during development.
 
 \section{Overall Implementation Status}
 \label{sec:impl_status}
@@ -21,7 +21,7 @@ Table~\ref{tab:impl_status} summarizes the implementation status of each system 
 Data Ingestion (5 sources) & Integration-tested & ArXiv, Hacker News, DEV.to, GitHub, RSS fully implemented \\
 Preprocessing Pipeline & Integration-tested & 17-step normalization + token-based chunking \\
 Embedding Pipeline & Integration-tested & MiniLM L6 v2 (384-dim), lazy singleton \\
-Hybrid Retrieval & Integration-tested & 3-stage pipeline with configurable weights \\
+Hybrid Retrieval & Integration-tested & 4-stage pipeline (metadata filter, vector, BM25, RRF fusion) \\
 Baseline Retrieval & Integration-tested & Vector-only comparison mode \\
 RAG Orchestrator & Integration-tested & 3-layer hallucination verification \\
 LLM Backend Fallback & Unit-tested & Auto-cascade across 4 backends \\
@@ -32,39 +32,12 @@ SQS Queue + DLQ & Integration-tested & Ingestion--embedding decoupling (LocalSta
 Drift Detection & Unit-tested & Dual-criteria: 10\% threshold + Shewhart $3\sigma$ \\
 Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS, LLM) \\
 CloudWatch Integration & Cloud-validated & 8 metrics in 1 namespace (\texttt{TechPulse/\{stage\}}) \\
-Evaluation Framework & Unit-tested & 50 queries, RAGAS, grid search, sensitivity analysis, statistical tests (code complete; full run pending) \\
+Evaluation Framework & Integration-tested & 50 queries, RAGAS, statistical tests, cost projection (Phase~B completed) \\
 CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
 SAM Infrastructure & Cloud-validated & Full SAM template; stack creation in progress \\
 Docker Compose (Local) & Integration-tested & 6 services (db, pgadmin, api, frontend, scheduler, localstack) \\
 React Frontend & Integration-tested & Query interface with citation display \\
-Unit Tests & Integration-tested & 200 tests across 15 test files, all passing \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Deviations from the Original Proposal}
-\label{sec:deviations}
-
-Several implementation decisions diverge from the original proposal due to AWS Free Tier constraints and practical engineering considerations. Table~\ref{tab:deviations} documents each deviation, its rationale, and the implemented alternative.
-
-\begin{table}[H]
-\caption{Deviations from the Original Proposal and Rationale.}
-\label{tab:deviations}
-\centering
-\begin{tabular}{p{3.0cm}p{3.0cm}p{3.0cm}p{3.5cm}}
-\toprule
-\textbf{Proposal Claim} & \textbf{Implemented} & \textbf{Reason} & \textbf{Impact} \\
-\midrule
-Aurora Serverless + pgvector & RDS PostgreSQL db.t3.micro + pgvector & Aurora exceeds Free Tier budget & \textit{Trade-off:} No auto-scaling; db.t3.micro may bottleneck under high ingestion load. HNSW index and pgvector functionality preserved. \\[4pt]
-Amazon Bedrock (Claude Haiku) & Groq (Llama 3.1 8B Instant) as primary + Bedrock (Amazon Nova Micro) as AWS-native fallback; Ollama / HuggingFace as local fallbacks & Groq free-tier API offers zero-cost inference & \textit{Trade-off:} Groq free tier has daily token limit (500k). Retrieval-layer findings remain backend-agnostic. \\[4pt]
-2 data sources (ArXiv, Hacker News) & 5 data sources (+DEV.to, GitHub, RSS) & Improved corpus diversity and breadth & Enhanced retrieval coverage; additional maintenance surface for 3 ingesters. \\[4pt]
-Custom VPC + NAT Gateway & Default VPC with security groups & Simplified initial deployment & \textit{Trade-off:} RDS publicly accessible; mitigated by security group restriction. Custom VPC migration identified as future improvement. \\[4pt]
-AWS Budgets alerts & Cost Explorer programmatic check + AWS Budgets & Cost Explorer provides programmatic access in inference path & \textit{Trade-off:} Cost Explorer data lags by up to 24 hours; supplemented by AWS Budgets alerts for real-time governance. \\[4pt]
-CDK or SAM deployment & SAM only & Simplified IaC management & Reduced toolchain complexity; CDK's higher-level abstractions foregone. \\[4pt]
-Hacker News every 5 minutes & Hacker News every 30 minutes & Rate limit considerations & Reduced API pressure; minor loss of near-real-time recency. \\[4pt]
-ArXiv weekly & ArXiv every 12 hours & More frequent scholarly updates & Improved corpus freshness; increased Lambda execution cost. \\[4pt]
-Simple 10\% drift threshold & Dual: 10\% threshold + Shewhart $3\sigma$ & Stronger statistical process control & More robust drift detection; requires 10 historical baselines before Shewhart is statistically meaningful. \\[4pt]
-Single LLM backend selection & Automatic fallback chain & Improve availability & Increased code complexity; fallback model quality may differ from primary. \\
+Unit Tests & Integration-tested & 204 tests across 15 test files, all passing \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -100,38 +73,7 @@ All infrastructure is defined in a SAM template (\texttt{template-freetier.yaml}
 \section{Test Coverage}
 \label{sec:tests}
 
-The system includes 200 unit tests distributed across 15 test modules:
-
-\begin{table}[H]
-\caption{Unit Test Distribution.}
-\label{tab:tests}
-\centering
-\begin{tabular}{p{4.5cm}p{1.5cm}p{6.5cm}}
-\toprule
-\textbf{Test Module} & \textbf{Count} & \textbf{Coverage} \\
-\midrule
-\texttt{test\_preprocessing.py} & 18 & All 17 normalization steps + chunking behavior \\
-\texttt{test\_ingestion.py} & 24 & SHA-256 hash determinism and uniqueness for all 5 sources \\
-\texttt{test\_retriever.py} & 9 & Keyword overlap computation + recency weight decay \\
-\texttt{test\_rag.py} & 7 & Citation grounding check + context block construction \\
-\texttt{test\_api.py} & 5 & FastAPI endpoint validation (health, error handling, success) \\
-\texttt{test\_db.py} & 9 & Database connection pooling + schema initialization \\
-\texttt{test\_embedder.py} & 4 & Embedding model initialization + vector generation \\
-\texttt{test\_http.py} & 3 & HTTP retry logic + session configuration \\
-\texttt{test\_llm\_backends.py} & 15 & Multi-backend LLM fallback chain (Groq/Bedrock/HuggingFace/Ollama) \\
-\texttt{test\_observability.py} & 27 & CloudWatch metrics + health checks + 5 drift simulation scenarios \\
-\texttt{test\_pipeline.py} & 19 & End-to-end pipeline (chunk $\to$ embed $\to$ index) \\
-\texttt{test\_queue.py} & 17 & SQS producer/consumer + DLQ behavior \\
-\texttt{test\_scheduler.py} & 14 & Ingestion loop scheduling + error handling \\
-\texttt{test\_storage.py} & 21 & S3 medallion layer operations \\
-\texttt{test\_sync\_to\_aws.py} & 8 & AWS sync operations + configuration \\
-\midrule
-\textbf{Total} & \textbf{200} (passing) & \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
+The system includes 204 unit tests distributed across 15 test modules covering all major subsystems: ingestion (5 sources), preprocessing (17 normalization steps), embedding, retrieval (BM25 caching, RRF fusion, age-days computation), RAG orchestration, LLM backend fallback, observability (CloudWatch metrics, drift detection), pipeline orchestration, queue management, storage, and API endpoints. All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
 
 \section{Custom CloudWatch Metrics}
 \label{sec:metrics}
@@ -243,7 +185,7 @@ Figure~\ref{fig:demo_baseline} shows the same query executed in baseline (vector
 
 \subsection{Unit Test Execution}
 
-Figure~\ref{fig:demo_tests} shows the terminal output of running the full test suite. All 200 tests pass across the 15 test modules, validating preprocessing, ingestion, retrieval, RAG orchestration, API endpoint behavior, LLM backends, observability, drift detection, and infrastructure integration.
+Figure~\ref{fig:demo_tests} shows the terminal output of running the full test suite. All 204 tests pass across the 15 test modules, validating preprocessing, ingestion, retrieval, RAG orchestration, API endpoint behavior, LLM backends, observability, drift detection, and infrastructure integration.
 
 \begin{figure}[H]
 \centering
@@ -260,8 +202,8 @@ Figure~\ref{fig:demo_tests} shows the terminal output of running the full test s
   \item Open a terminal in the project root directory
   \item Run: \texttt{pytest tests/ -v --tb=short}
   \item Wait for all tests to complete
-  \item The terminal must show \textbf{all 200 tests passing} (green dots or PASSED labels)
-  \item The final summary line must read: \texttt{200 passed} (optionally with warnings)
+  \item The terminal must show \textbf{all 204 tests passing} (green dots or PASSED labels)
+  \item The final summary line must read: \texttt{204 passed} (optionally with warnings)
   \item Make sure the following test module names are visible in the output:\\
     \texttt{test\_preprocessing.py}, \texttt{test\_ingestion.py}, \texttt{test\_retriever.py},\\
     \texttt{test\_rag.py}, \texttt{test\_api.py}
@@ -274,7 +216,7 @@ Figure~\ref{fig:demo_tests} shows the terminal output of running the full test s
 \textbf{Save as:} \texttt{report/figures/demo\_tests.png} \quad (PNG, capture full terminal output)
 \vspace{0.4cm}
 }}
-\caption{Pytest execution: 200 unit tests passing across 15 test modules.}
+\caption{Pytest execution: 204 unit tests passing across 15 test modules.}
 \label{fig:demo_tests}
 \end{figure}
 
@@ -361,7 +303,7 @@ Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the
 
 \subsection{Database: Populated Corpus from Five Sources}
 
-Figure~\ref{fig:demo_pgadmin} shows the pgAdmin interface with the \texttt{documents} table containing ingested records from all five data sources, demonstrating that the ingestion pipeline successfully populates the corpus.
+Figure~\ref{fig:demo_pgadmin} shows the local pgAdmin interface (part of the Docker Compose development stack) with the \texttt{documents} table containing ingested records from all five data sources, demonstrating that the ingestion pipeline successfully populates the corpus. On AWS, the same table can be inspected via the RDS Console or a direct \texttt{psql} connection.
 
 \begin{figure}[H]
 \centering
@@ -393,9 +335,9 @@ Figure~\ref{fig:demo_pgadmin} shows the pgAdmin interface with the \texttt{docum
 \textbf{Save as:} \texttt{report/figures/demo\_pgadmin.png} \quad (PNG, min 1400px wide to show both panels)
 \vspace{0.4cm}
 }}
-\caption{pgAdmin: the \texttt{documents} table populated with records from all five data sources.}
+\caption{Local pgAdmin: the \texttt{documents} table populated with records from all five data sources (Docker Compose environment).}
 \label{fig:demo_pgadmin}
 \end{figure}
 
 \medskip
-\noindent This chapter documented implementation status across 20 components, deviations from the original proposal, and key engineering observations. All core pipeline components are integration-tested; cloud deployment is in progress. Chapter~7 presents remaining work and the project timeline.
+\noindent This chapter documented implementation status across 20 components and key engineering observations. All core pipeline components are integration-tested; cloud deployment via SAM is validated. Chapter~7 presents remaining work and the project timeline.

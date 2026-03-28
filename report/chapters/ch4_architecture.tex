@@ -28,7 +28,7 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 \node[rectangle, draw=awsgray!50, fill=awslightpurple, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l5]
-  (l4) {Layer 4 --- Hybrid Retrieval \& Reranking \quad \textcolor{awsgray}{\scriptsize filter $\to$ similarity $\to$ rerank}};
+  (l4) {Layer 4 --- Hybrid Retrieval \& RRF Fusion \quad \textcolor{awsgray}{\scriptsize filter $\to$ vector + BM25 $\to$ RRF}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightgreen, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
@@ -476,7 +476,7 @@ Figure~\ref{fig:mlops_loop} presents the implemented MLOps lifecycle loop.
 \node[pbox=awspurple, right=2.0cm of process] (index) {Index\\(pgvector)};
 \node[pbox=awsorange, below=1.8cm of index] (serve) {Serve\\(LLM + RAG)};
 \node[pbox=propblue, below=1.8cm of ingest] (monitor) {Monitor\\(CloudWatch)};
-\node[pbox=propgreen, below=1.8cm of process] (evaluate) {Evaluate\\(RAGAS + Grid)};
+\node[pbox=propgreen, below=1.8cm of process] (evaluate) {Evaluate\\(RAGAS + Stats)};
 
 % Cycle arrows
 \draw[parrow, thick] (ingest) -- (process);
@@ -533,11 +533,11 @@ If all LLM backends fail after exhausting retries and fallback chains, the syste
 
 TechPulse implements a dual-criteria drift detection mechanism to identify degradation in retrieval quality over time:
 
-\textbf{Probe query baseline.} At each drift detection cycle, 20 fixed canonical probe queries (stored in \texttt{probe\_queries.json}) are executed through the hybrid retrieval pipeline. The mean and standard deviation of cosine similarity scores across all probes are computed and persisted in the \texttt{drift\_baselines} database table.
+\textbf{Probe query baseline:} At each drift detection cycle, 20 fixed canonical probe queries (stored in \texttt{probe\_queries.json}) are executed through the hybrid retrieval pipeline. The mean and standard deviation of cosine similarity scores across all probes are computed and persisted in the \texttt{drift\_baselines} database table.
 
-\textbf{Detection criterion 1 --- Relative drop threshold.} The current mean similarity is compared against the most recent non-alert baseline. A drift alert is triggered if the relative drop exceeds 10\%.
+\textbf{Detection criterion 1 --- Relative drop threshold:} The current mean similarity is compared against the most recent non-alert baseline. A drift alert is triggered if the relative drop exceeds 10\%.
 
-\textbf{Detection criterion 2 --- Shewhart $3\sigma$ control chart.} The system retrieves the last 10 non-alert baselines via \texttt{\_get\_baseline\_history(n=10)} and computes the historical mean ($\mu$) and standard deviation ($\sigma$). The lower control limit is defined as:
+\textbf{Detection criterion 2 --- Shewhart $3\sigma$ control chart:} The system retrieves the last 10 non-alert baselines via \texttt{\_get\_baseline\_history(n=10)} and computes the historical mean ($\mu$) and standard deviation ($\sigma$). The lower control limit is defined as:
 
 \begin{equation}
   \text{LCL} = \mu_{\text{hist}} - 3\sigma_{\text{hist}}
@@ -548,7 +548,7 @@ A drift alert is triggered if the current mean similarity falls below LCL. This 
 
 Both criteria are evaluated independently, and either triggering constitutes a drift alert. A human-readable explanation (e.g., ``relative drop 15.2\%; Shewhart $3\sigma$ breach (LCL=0.4321, value=0.3890)'') is included in the returned result, logged to CloudWatch, and routed to SNS notification.
 
-\textbf{Remediation protocol.} The ordered response upon drift alert includes: (1) corpus audit to identify localized drift by source or topic cluster; (2) metadata filter re-calibration if off-topic documents enter the corpus; (3) re-indexing affected corpus segments with updated preprocessing; and (4) embedding model refresh (deferred to post-prototype phase).
+\textbf{Remediation protocol:} The ordered response upon drift alert includes: (1) corpus audit to identify localized drift by source or topic cluster; (2) metadata filter re-calibration if off-topic documents enter the corpus; (3) re-indexing affected corpus segments with updated preprocessing; and (4) embedding model refresh (deferred to post-prototype phase).
 
 \subsection{Health Monitoring}
 

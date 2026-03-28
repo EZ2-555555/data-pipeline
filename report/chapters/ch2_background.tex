@@ -44,7 +44,25 @@ The reviewed literature establishes six key insights: (1) RAG improves factual g
 
 Critically, existing hybrid RAG systems either address a subset of these concerns or are evaluated in static, single-source corpora that do not reflect the temporal dynamics of multi-source technology intelligence. Atlas (Izacard et al., 2022) and RETRO (Borgeaud et al., 2022) operate at scale but require pretraining pipelines and do not address operational cost governance or retrieval-quality drift. Production systems such as Perplexity AI and Bing Copilot incorporate real-time retrieval but do not expose evaluation methodology or reranking designs. Academic RAG prototypes frequently omit monitoring, idempotent ingestion, and budget constraints that are essential for sustained deployment.
 
-\textbf{Closest prior systems.} Several open-source RAG frameworks warrant direct comparison. Haystack (deepset, 2023) provides a modular pipeline framework supporting hybrid retrieval with Elasticsearch BM25 and dense retrievers, but delegates MLOps, drift detection, and cost governance to external tooling. LlamaIndex (Liu, 2022) offers composable retrieval abstractions including metadata filtering and reranking; however, it is a library rather than a deployed system and does not prescribe ingestion scheduling, monitoring infrastructure, or budget enforcement. Verba (Weaviate, 2023) implements a RAG frontend with Weaviate vector search but uses single-source ingestion and omits reranking, drift monitoring, and hallucination verification. STORM (Shao et al., 2024) automates long-form article generation with multi-source retrieval but targets offline synthesis rather than interactive query answering and does not address operational constraints. LangChain (LangChain, 2023) provides composable chain abstractions with optional hybrid retrieval and agent tooling, but treats MLOps, cost governance, and drift detection as external concerns. Production systems such as Perplexity AI and Bing Copilot incorporate real-time retrieval and reranking at scale but do not expose their evaluation methodology, reranking designs, or cost governance strategies, making direct dimensional comparison infeasible. Each of these systems addresses a different subset of the six dimensions; to our knowledge, none integrates all six---hybrid retrieval with lightweight reranking, real-time multi-source ingestion, cost governance, MLOps monitoring, and explicit hallucination verification---within a single cost-governed, continuously monitored, cloud-native architecture. TechPulse's contribution is best understood as a \emph{systems integration} effort: the individual techniques are established, but their combination within a student-deployable, budget-constrained prototype addresses a practical gap not covered by existing frameworks or research prototypes.
+\subsection{Closest Prior Systems}
+\label{sec:closest_prior}
+
+Several open-source RAG frameworks warrant direct comparison.
+
+\paragraph{Haystack (deepset, 2023)} provides a modular pipeline framework supporting hybrid retrieval with Elasticsearch BM25 and dense retrievers, but delegates MLOps, drift detection, and cost governance to external tooling.
+
+\paragraph{LlamaIndex (Liu, 2022)} offers composable retrieval abstractions including metadata filtering and reranking; however, it is a library rather than a deployed system and does not prescribe ingestion scheduling, monitoring infrastructure, or budget enforcement.
+
+\paragraph{Verba (Weaviate, 2023)} implements a RAG frontend with Weaviate vector search but uses single-source ingestion and omits reranking, drift monitoring, and hallucination verification.
+
+\paragraph{STORM (Shao et al., 2024)} automates long-form article generation with multi-source retrieval but targets offline synthesis rather than interactive query answering and does not address operational constraints.
+
+\paragraph{LangChain (LangChain, 2023)} provides composable chain abstractions with optional hybrid retrieval and agent tooling, but treats MLOps, cost governance, and drift detection as external concerns.
+
+\paragraph{Production Systems (Perplexity AI, Bing Copilot)} incorporate real-time retrieval and reranking at scale but do not expose their evaluation methodology, reranking designs, or cost governance strategies, making direct dimensional comparison infeasible.
+
+\medskip
+\noindent Each of these systems addresses a different subset of the six dimensions; to our knowledge, none integrates all six---hybrid retrieval with full-corpus BM25 and parameter-free RRF fusion, real-time multi-source ingestion, cost governance, MLOps monitoring, drift detection, and explicit hallucination verification---within a single cost-governed, continuously monitored, cloud-native architecture. TechPulse's contribution is best understood as a \emph{systems integration} effort: the individual techniques are established, but their combination within a student-deployable, budget-constrained prototype addresses a practical gap not covered by existing frameworks or research prototypes.
 
 Table~\ref{tab:related_work} summarizes representative related work and positions TechPulse relative to prior systems.
 
@@ -72,7 +90,7 @@ Typical RAG Prototype & Dense & Optional & Rare & No & Minimal & Rare & Rare \\
 }
 \end{table}
 
-\noindent\small{$^{\dagger}$Full MLOps is implemented and under cloud validation; evaluation results are pending Phase~B execution.}
+\noindent\small{$^{\dagger}$Full MLOps is implemented and cloud-validated; Phase~B evaluation results are reported in Chapter~5.}
 
 \medskip
-\noindent In summary, the literature confirms that hybrid retrieval with lightweight reranking and production-grade MLOps integration remains underexplored for dynamic technology intelligence. While individual techniques are well established, to our knowledge no reviewed system combines all six identified dimensions within a single cost-governed, student-deployable cloud-native prototype. TechPulse addresses this integration gap. The remainder of this chapter's findings inform the methodology and technical design decisions presented in Chapter~3.
+\noindent In summary, the literature confirms that hybrid retrieval with BM25+RRF fusion and production-grade MLOps integration remains underexplored for dynamic technology intelligence. While individual techniques are well established, to our knowledge no reviewed system combines all six identified dimensions within a single cost-governed, student-deployable cloud-native prototype. TechPulse addresses this integration gap. These findings inform the methodology and technical design decisions presented in Chapter~3.

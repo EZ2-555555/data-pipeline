@@ -14,82 +14,42 @@ The remaining work is organized into four phases spanning approximately four wee
 \textbf{Phase} & \textbf{Focus} & \textbf{Timeline} & \textbf{Key Deliverables} \\
 \midrule
 A & System Validation \& Corpus Building & Mar W3--W4 & Populated corpus; local integration verified \\
-B & Evaluation \& Experimentation & Mar W4--Apr W1 & Empirical results; grid search output \\
+B & Evaluation \& Experimentation & Mar W4--Apr W1 & Empirical results; statistical analysis \\
 C & Analysis, Monitoring \& Dashboard & Apr W1--W3 & Drift validation; results dashboard; visualizations \\
 D & Final Report \& Submission & Apr W2--W3 & Completed report with empirical evidence \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Phase A: System Validation and Corpus Building (Mar W3 -- Mar W4)}
+\textbf{Phase~A} builds the evaluation corpus through sustained multi-cycle ingestion across all five sources (target: 1{,}000+ documents), verifies end-to-end pipeline operation in the local Docker Compose environment, and deploys the system to the AWS Free Tier via the SAM template.
 
-\begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Corpus population via multi-cycle ingestion.} Execute scheduled ingestion cycles across all five data sources over a sustained period to build a sufficiently large and diverse corpus. Target: 1,000+ indexed documents with balanced source representation across ArXiv, Hacker News, DEV.to, GitHub Trending, and RSS feeds.
+\textbf{Phase~B} executes the 50-query evaluation in both baseline and hybrid modes, applies Wilcoxon signed-rank tests with Cohen's $d$ and bootstrap 95\% CIs, and profiles per-stage latency with cost projections for 50/100/200 queries/day.
 
-  \item \textbf{Local Docker Compose integration testing.} Verify end-to-end pipeline functionality in the local Docker Compose environment: ingestion $\to$ preprocessing $\to$ embedding $\to$ indexing $\to$ retrieval $\to$ generation. Confirm all six services (db, pgadmin, localstack, api, frontend, scheduler) operate correctly together.
+\textbf{Phase~C} validates the dual-criteria drift detection mechanism under simulated conditions, generates result visualizations and comparison tables, and captures system demonstration screenshots for all placeholder figures.
 
-  \item \textbf{Frontend integration verification.} Test the React frontend against the live API to verify citation-grounded response rendering, baseline/hybrid mode toggling, abstention message handling, source badge display, and retrieval metadata transparency.
-
-  \item \textbf{Cloud deployment (in progress).} Deploy the full system to the AWS Free Tier. The deployment uses \texttt{template-freetier.yaml} and \texttt{samconfig-freetier.toml}. The SAM template has been prepared and validated, and initial stack creation is underway. Remaining: verify Lambda function execution, RDS connectivity, S3 storage operations, SQS message flow, and API Gateway routing under cloud conditions.
-\end{enumerate}
-
-\subsection{Phase B: Evaluation and Experimentation (Mar W4 -- Apr W1)}
-
-\begin{enumerate}[leftmargin=0.5in, resume]
-  \item \textbf{Full baseline evaluation run.} Execute 50 evaluation queries in vector-only (baseline) mode against the populated corpus. Record context precision, faithfulness, citation grounding ratio, and per-query latency for each query.
-
-  \item \textbf{Full hybrid evaluation run.} Execute the same 50 evaluation queries in hybrid mode using the default reranking weights ($\alpha = 0.6$, $\beta = 0.2$, $\gamma = 0.2$). Record all metrics under identical corpus and embedding conditions to enable paired comparison.
-
-  \item \textbf{Grid search weight optimization.} Run the reranking weight grid search across $\alpha \in \{0.4, 0.5, 0.6, 0.7\}$ with the latency constraint (p95 $\leq 2.0$s). Identify the optimal weight configuration that maximizes mean context precision.
-
-  \item \textbf{Sensitivity analysis.} Execute one-at-a-time parameter sweep across $\alpha$, $\beta$, and $\gamma$ through $[0.0, 1.0]$ in 0.1 steps (33 runs) to quantify the marginal influence of each parameter and justify weight selection beyond grid search.
-
-  \item \textbf{Statistical testing.} Apply Wilcoxon signed-rank test, Cohen's $d$ effect size, and bootstrap 95\% confidence intervals to quantify significance and practical impact of baseline-vs-hybrid differences.
-
-  \item \textbf{Latency profiling and cost projection.} Decompose end-to-end latency by stage (metadata filtering, vector search, reranking, LLM generation). Project monthly costs for 50/100/200 queries/day scenarios against free-tier ceilings.
-\end{enumerate}
-
-\subsection{Phase C: Analysis and Monitoring Validation (Apr W1 -- Apr W2)}
-
-\begin{enumerate}[leftmargin=0.5in, resume]
-  \item \textbf{Drift detection validation.} Execute multiple drift detection cycles against the populated corpus to validate the dual-criteria mechanism (10\% relative threshold + Shewhart $3\sigma$). Confirm that alerts trigger correctly under simulated drift conditions and that baseline history accumulates as expected.
-
-  \item \textbf{Results analysis and visualization.} Produce comparison tables and visualizations: baseline vs.\ hybrid precision paired differences, grid search Pareto frontier (precision vs.\ latency), per-source retrieval distribution, and latency breakdown charts.
-
-  \item \textbf{System demonstration screenshots.} Capture screenshots for all placeholder figures in the report (Figures~\ref{fig:demo_hybrid}--\ref{fig:demo_pgadmin} and Appendix~\ref{app:screenshots}), replacing placeholder boxes with actual system output from Docker Compose and the AWS Free Tier environment.
-\end{enumerate}
-
-\subsection{Phase D: Final Report and Submission (Apr W2)}
-
-\begin{enumerate}[leftmargin=0.5in, resume]
-  \item \textbf{Evaluation chapter completion.} Write the complete evaluation results chapter with empirical findings, statistical comparison of baseline vs.\ hybrid retrieval, discussion of grid search outcomes, and analysis against the four evaluation targets (precision $> 0.75$, high faithfulness, p95 $< 2$s, cost $<$ USD~15/month).
-
-  \item \textbf{Discussion and conclusions.} Complete the discussion of results including the five planned analyses (Section~\ref{sec:discussion}): precision vs.\ overhead, retrieval strictness vs.\ recall, cost--performance balance, weight sensitivity, and production suitability assessment.
-
-  \item \textbf{Final report revision and submission.} Integrate all empirical content, screenshots, and analysis into the final report. Conduct internal peer review, address formatting and consistency, and prepare the submission package including source code archive.
-\end{enumerate}
+\textbf{Phase~D} completes the evaluation and discussion chapters with empirical findings, integrates screenshots and analysis, and prepares the final submission package.
 
 \section{Known Limitations}
 \label{sec:limitations}
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item The evaluation corpus is limited to five technology-focused data sources; generalizability to other domains or larger corpora requires further study.
+  \item The evaluation corpus is limited to five technology-focused sources; generalizability to other domains requires further study.
 
-  \item The evaluation query set of 50 curated queries across three balanced categories (research\_trend, tool\_technology, comparative) provides sufficient statistical power for the paired Wilcoxon test. However, a larger and more diverse query set would further strengthen external validity.
+  \item The 50-query evaluation set provides sufficient power for the paired Wilcoxon test but a larger set would strengthen external validity.
 
-  \item Amazon Bedrock is available on the Free Tier but has not yet been evaluated as the primary backend. The primary backend (Groq Llama 3.1 8B Instant) is used for all evaluations. Since the prompt template, evaluation methodology, and RAGAS metrics are backend-agnostic, the comparative findings between baseline and hybrid retrieval remain valid and transferable across backends.
+  \item Amazon Bedrock has not been evaluated as the primary backend; however, the evaluation methodology is backend-agnostic, so comparative findings remain transferable.
 
-  \item The \texttt{db.t3.micro} RDS instance provides limited compute and memory compared to Aurora Serverless. Under high ingestion volumes, database performance may become a bottleneck.
+  \item The \texttt{db.t3.micro} RDS instance may become a bottleneck under high ingestion volumes compared to Aurora Serverless.
 
-  \item Cross-encoder reranking and ANN-optimized indexing strategies are out of scope for this project but identified as future research directions.
+  \item Cross-encoder reranking and ANN-optimized indexing are out of scope but identified as future directions.
 
-  \item Budget governance via Cost Explorer has higher latency than the originally proposed AWS Budgets integration, as Cost Explorer data may lag by up to 24 hours.
+  \item Budget governance via Cost Explorer lags by up to 24 hours; real-time enforcement is not feasible on the Learner Lab.
 
-  \item The current unit test suite (200 tests across 15 modules) covers core logic but lacks integration tests that exercise the full pipeline end-to-end with a live database and AWS services.
+  \item The test suite (204 tests, 15 modules) covers core logic but lacks end-to-end integration tests with a live database.
 
-  \item \textbf{Context window management.} The current implementation retrieves top-$k = 5$ chunks at 500 tokens each, consuming approximately 2,600 prompt tokens. While this fits comfortably in Groq's 128k-token context window and Bedrock Nova Micro's 128k-token window, for Ollama-hosted Llama 3.2 3B (configured with 4,096-token context window), context may be truncated silently. A token budget check before prompt construction is identified as a near-term improvement.
+  \item The top-$k = 5$ retrieval at 500 tokens/chunk fits Groq and Bedrock context windows but may be silently truncated by Ollama's 4{,}096-token Llama~3.2~3B; a pre-prompt token budget check is identified as a near-term improvement.
 
-  \item \textbf{Secrets management.} API keys (Groq token, HuggingFace token, GitHub token) are currently stored as environment variables in Lambda configurations. For production hardening, migration to AWS Secrets Manager or SSM Parameter Store is recommended to avoid key exposure in infrastructure-as-code templates.
+  \item API keys are stored as Lambda environment variables; migration to AWS Secrets Manager is recommended for production hardening.
 \end{enumerate}
 
 \section{Project Timeline}
@@ -180,7 +140,7 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 \draw[awsorange!60, thick] (7.5,{10*\rsp+0.5-\barh/2}) rectangle (10.5,{10*\rsp+0.5+\barh/2});
 
 % Row 11
-\node[font=\scriptsize, anchor=east] at (-0.2, {11*\rsp+0.5}) {Grid Search \& Latency Profiling};
+\node[font=\scriptsize, anchor=east] at (-0.2, {11*\rsp+0.5}) {Statistical Analysis \& Latency Profiling};
 \fill[awsorange!20] (9.0,{11*\rsp+0.5-\barh/2}) rectangle (10.5,{11*\rsp+0.5+\barh/2});
 \draw[awsorange!60, thick] (9.0,{11*\rsp+0.5-\barh/2}) rectangle (10.5,{11*\rsp+0.5+\barh/2});
 
@@ -268,4 +228,4 @@ Several extensions are identified for post-prototype development:
 \end{itemize}
 
 \medskip
-\noindent This chapter presented the four-phase completion plan, nine known limitations, and future extension directions. The primary remaining risks---cloud deployment verification and the full evaluation run---are mitigated by the dual-environment setup and the pre-built evaluation codebase.
+\noindent This chapter summarized the four-phase completion plan, nine known limitations, and future extension directions.

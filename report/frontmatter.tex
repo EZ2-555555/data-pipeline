@@ -43,8 +43,7 @@ March 2026
 
 The authors express sincere gratitude to Dr.\ Chantri Polprasert, the course instructor, for providing guidance on the system design and evaluation methodology throughout this project. We also thank the teaching assistants, Mr.\ Swaraj Bhanja and Mr.\ Suryansh Srivastava, for their constructive feedback during development milestones.
 
-\medskip
-\noindent\textbf{Team Contributions.} Aye Khin Khin Hpone led data ingestion, preprocessing, embedding, and the React frontend. Dechathon Niamsa-Ard led the RAG orchestrator, LLM fallback chain, AWS infrastructure (SAM templates), CI/CD pipeline, and evaluation framework. Both members contributed to the system architecture design, unit testing, and report writing.
+
 
 % ============================================================
 % ABSTRACT
@@ -52,11 +51,9 @@ The authors express sincere gratitude to Dr.\ Chantri Polprasert, the course ins
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{ABSTRACT}
 
-Large language models (LLMs) offer advanced generative capabilities but are constrained by static training corpora, producing hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by conditioning generation on externally retrieved evidence; however, baseline vector-only retrieval often suffers from contextual imprecision.
+Large language models produce hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by conditioning generation on retrieved evidence, but baseline vector-only retrieval often suffers from contextual imprecision.
 
-This report presents TechPulse, a cloud-native Hybrid RAG system that synthesizes emerging technology intelligence under latency and cost constraints. The system ingests data from five heterogeneous sources---ArXiv, Hacker News, DEV.to, GitHub Trending, and curated RSS/Atom feeds---with deterministic preprocessing, token-based chunking, and semantic embedding via the MiniLM sentence-transformer. Embeddings are indexed in PostgreSQL with the pgvector extension for integrated relational filtering and vector similarity search.
-
-Retrieval operates as a three-stage pipeline: metadata-constrained filtering, cosine similarity search, and lightweight reranking combining semantic similarity, lexical overlap, and exponential recency decay. An automatic LLM fallback chain (Groq $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace) ensures generation availability. The system integrates dual-criteria drift detection, three-layer hallucination verification, and health monitoring. An evaluation framework comparing baseline and hybrid retrieval has been implemented using RAGAS metrics, grid search over reranking weights, and statistical testing (Wilcoxon signed-rank, Cohen's~$d$, bootstrap 95\% CI). This report documents the system architecture, pipeline design, implementation decisions, deviations from the original proposal, and remaining work.
+This study presents TechPulse, a cloud-native Hybrid RAG system for emerging technology intelligence under strict latency and cost constraints. The system ingests data from five heterogeneous sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with deterministic preprocessing, token-based chunking, and MiniLM semantic embedding, indexed in PostgreSQL with pgvector. Retrieval combines metadata filtering, cosine vector similarity, full-corpus BM25 keyword search, and Reciprocal Rank Fusion (RRF) of semantic, lexical, and recency rankings without weight tuning. An automatic LLM fallback chain (Groq $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace) ensures generation availability. The system integrates dual-criteria drift detection, three-layer hallucination verification, and health monitoring. Evaluation compares baseline and hybrid retrieval using RAGAS metrics and statistical testing (Wilcoxon signed-rank, Cohen's~$d$, bootstrap 95\% CI).
 
 \medskip
 \noindent\textbf{Keywords:} Retrieval-Augmented Generation; Hybrid Information Retrieval; Vector Databases; Cloud-Native Architecture; MLOps; Semantic Embedding; Emerging Technology Intelligence.
