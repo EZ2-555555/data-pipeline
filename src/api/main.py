@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_schema()
+    try:
+        init_schema()
+    except Exception:
+        logger.exception("init_schema failed — DB may be unreachable")
     yield
     close_pool()
 

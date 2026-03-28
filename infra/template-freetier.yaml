@@ -422,16 +422,7 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: !Ref Stage
-      CorsConfiguration:
-        AllowOrigins:
-          - "*"
-        AllowMethods:
-          - GET
-          - POST
-          - OPTIONS
-        AllowHeaders:
-          - Content-Type
-          - Authorization
+      # CORS handled by FastAPI CORSMiddleware — no API Gateway CORS needed
       Description: TechPulse HTTP API
 
   # ============================
