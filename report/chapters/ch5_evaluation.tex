@@ -136,6 +136,8 @@ The configuration yielding the highest mean precision without violating the late
 
 To justify reranking weight selection beyond grid search, a one-at-a-time (OAT) sensitivity analysis sweeps each parameter ($\alpha$, $\beta$, $\gamma$) independently through $[0.0, 0.1, 0.2, \ldots, 1.0]$ in 11 steps while redistributing the remaining weight proportionally between the other two parameters. This produces 33 evaluation runs and reveals the marginal influence of each parameter on mean similarity and p95 latency, providing empirical evidence for weight selection rather than relying solely on grid search or intuition.
 
+\textit{Note: The sensitivity analysis above applies to the original weighted reranking formula ($\alpha$/$\beta$/$\gamma$). The final system uses Reciprocal Rank Fusion (RRF), which is parameter-free; this analysis is retained to document the design evolution.}
+
 \subsection{Statistical Tests for Baseline vs.\ Hybrid Comparison}
 \label{sec:stat_tests}
 
@@ -172,7 +174,7 @@ To aggregate RAGAS LLM-judged scores with citation grounding into a single perfo
 
 \noindent where $F$ = Faithfulness, $R$ = AnswerRelevancy, $P$ = ContextPrecision, and $C$ = CitationGrounding.
 
-\noindent The weight allocation reflects the primacy of factual correctness (faithfulness, 0.35), followed by answer quality (relevancy, 0.25), and equal contributions from retrieval performance (precision, 0.20) and the system's citation value-add (grounding, 0.20). This composite metric enables direct comparison between baseline and hybrid configurations on a single interpretable scale.
+\noindent The weight allocation reflects the primacy of factual correctness (faithfulness, 0.35), followed by answer quality (relevancy, 0.25), and equal contributions from retrieval performance (precision, 0.20) and the system's citation value-add (grounding, 0.20). Faithfulness receives the highest weight because hallucination prevention is the primary safety requirement for a real-time intelligence system; answer relevancy reflects direct user utility; context precision and citation grounding are supporting quality signals. This composite metric enables direct comparison between baseline and hybrid configurations on a single interpretable scale.
 
 \subsection{Drift Detector Validation}
 \label{sec:drift_validation}

@@ -6,6 +6,7 @@ Hybrid: parallel vector + full-corpus BM25 search, fused via RRF.
 
 import logging
 import math
+import time
 from datetime import datetime, timedelta, timezone
 
 from rank_bm25 import BM25Okapi
@@ -27,12 +28,14 @@ _bm25_index: "BM25Okapi | None" = None
 _bm25_chunk_ids: list = []
 _bm25_chunk_data: list[dict] = []
 _bm25_id_to_index: dict[int, int] = {}
+_bm25_built_at: float = 0.0
 
 
 def _get_bm25_index():
-    """Build BM25 index over the full indexed corpus (cached after first call)."""
-    global _bm25_index, _bm25_chunk_ids, _bm25_chunk_data, _bm25_id_to_index
-    if _bm25_index is not None:
+    """Build BM25 index over the full indexed corpus (cached, refreshed every 30 min)."""
+    global _bm25_index, _bm25_chunk_ids, _bm25_chunk_data, _bm25_id_to_index, _bm25_built_at
+    # Rebuild every 30 minutes to capture newly ingested documents
+    if _bm25_index is not None and (time.time() - _bm25_built_at) < 1800:
         return _bm25_index, _bm25_chunk_ids, _bm25_chunk_data
 
     conn = get_connection()
@@ -66,17 +69,19 @@ def _get_bm25_index():
     _bm25_index = BM25Okapi(tokenized)
     _bm25_chunk_ids = [d["chunk_id"] for d in _bm25_chunk_data]
     _bm25_id_to_index = {d["chunk_id"]: i for i, d in enumerate(_bm25_chunk_data)}
+    _bm25_built_at = time.time()
     logger.info("BM25 index built over %d chunks", len(_bm25_chunk_data))
     return _bm25_index, _bm25_chunk_ids, _bm25_chunk_data
 
 
 def invalidate_bm25_cache():
     """Clear the cached BM25 index (call after ingesting new documents)."""
-    global _bm25_index, _bm25_chunk_ids, _bm25_chunk_data, _bm25_id_to_index
+    global _bm25_index, _bm25_chunk_ids, _bm25_chunk_data, _bm25_id_to_index, _bm25_built_at
     _bm25_index = None
     _bm25_chunk_ids = []
     _bm25_chunk_data = []
     _bm25_id_to_index = {}
+    _bm25_built_at = 0.0
 
 
 def _deduplicate_by_url(results: list[dict]) -> list[dict]:
