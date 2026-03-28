@@ -21,3 +21,6 @@ pgvector>=0.2.4
 fastapi>=0.109.0
 mangum>=0.17.0
 slowapi>=0.1.9
+
+# Retrieval
+rank-bm25>=0.2.2
