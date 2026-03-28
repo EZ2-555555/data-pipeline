@@ -28,16 +28,35 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Quick Start (Local)](#quick-start-local)
-- [AWS Deployment](#aws-deployment-free-tier)
-- [Local Development (without Docker)](#local-development-without-docker)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Evaluation](#evaluation)
-- [Tests & CI](#tests--ci)
-- [Roadmap](#roadmap)
+- [TechPulse](#techpulse)
+    - [A Real-Time Hybrid RAG System for Emerging Technology Intelligence](#a-real-time-hybrid-rag-system-for-emerging-technology-intelligence)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [Data Sources](#data-sources)
+    - [Key Features](#key-features)
+    - [Retrieval Fusion (RRF)](#retrieval-fusion-rrf)
+  - [Screenshots](#screenshots)
+  - [Architecture](#architecture)
+    - [Local (Docker Compose)](#local-docker-compose)
+    - [Pipeline Flow](#pipeline-flow)
+    - [AWS Architecture (Free Tier)](#aws-architecture-free-tier)
+  - [Quick Start (Local)](#quick-start-local)
+    - [Prerequisites](#prerequisites)
+    - [1. Start all services](#1-start-all-services)
+    - [2. Use the app](#2-use-the-app)
+    - [3. Query via API](#3-query-via-api)
+  - [AWS Deployment (Free Tier)](#aws-deployment-free-tier)
+    - [Required GitHub Secrets](#required-github-secrets)
+    - [CI/CD Pipeline](#cicd-pipeline)
+    - [After Deploy](#after-deploy)
+  - [Local Development (without Docker)](#local-development-without-docker)
+  - [Project Structure](#project-structure)
+  - [Configuration](#configuration)
+  - [Evaluation](#evaluation)
+  - [Tests \& CI](#tests--ci)
+  - [Roadmap](#roadmap)
+    - [Completed](#completed)
+    - [Remaining](#remaining)
 
 ---
 
@@ -115,6 +134,25 @@ RRF(d) = Σ  1 / (K + rank_r(d))    for r ∈ {vector, BM25, recency}
 > `K = 60` (standard constant). RRF is **parameter-free** and **scale-invariant** — no weight tuning required.
 >
 > _An earlier design-phase weighted formula (α/β/γ) was superseded due to dataset-dependent weights and p95 ≈ 25 s tail latency._
+
+---
+
+## Screenshots
+
+<div align="center">
+
+**Overview Page**
+
+<img src="report/chapters/img/techpulse-overviewpage.png" width="600" alt="TechPulse Overview">
+
+**Hybrid Retrieval** (left) vs **Baseline Retrieval** (right)
+
+<p>
+<img src="report/chapters/img/techpulse-frontend-hybrid.png" width="400" alt="Hybrid Retrieval">
+<img src="report/chapters/img/techpulse-frontend-baseline.png" width="400" alt="Baseline Retrieval">
+</p>
+
+</div>
 
 ---
 
@@ -501,7 +539,7 @@ The evaluation framework implements a **9-phase pipeline** comparing **baseline 
 | 4 | Grid Search _(design-phase, superseded by RRF)_ | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2 — motivated the switch to RRF |
 | 5 | Sensitivity Analysis _(design-phase, superseded by RRF)_ | One-at-a-time sweep of α, β, γ — documented the fragility of weighted scoring |
 | 6 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
-| 7 | Drift Validation | 5 simulated scenarios (normal → Shewhart breach → catastrophic) |
+| 7 | Drift Validation | 4 simulated scenarios (normal → Shewhart breach → catastrophic) |
 | 8 | Composite Metric | 0.35×Faithfulness + 0.25×Relevancy + 0.20×Precision + 0.20×CitationGrounding |
 | 9 | Cost Projection | Monthly cost for 50/100/200 queries/day vs free-tier ceilings |
 

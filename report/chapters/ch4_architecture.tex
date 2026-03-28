@@ -1,6 +1,15 @@
 \chapter{System Architecture and Pipeline Design}
 \label{ch:arch}
 
+Figure~\ref{fig:aws_diagram} presents the AWS service-level architecture diagram, illustrating the deployed topology including EventBridge scheduling, Lambda compute, SQS decoupling, S3 storage tiers, RDS PostgreSQL, API Gateway, and CloudWatch monitoring.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{aws_techpulse.png}
+\caption{AWS architecture diagram: service-level deployment topology for TechPulse (Free Tier).}
+\label{fig:aws_diagram}
+\end{figure}
+
 \section{Architectural Overview}
 \label{sec:arch_overview}
 
@@ -9,11 +18,11 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 % ---- TikZ: Six-layer architectural stack ----
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
+\resizebox{0.78\textwidth}{!}{%
 \begin{tikzpicture}[node distance=0.0cm]
 
 \def\lw{12.0cm}
-\def\lh{1.05cm}
+\def\lh{0.85cm}
 
 \node[rectangle, draw=awsgray!50, fill=awslightblue, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
@@ -346,6 +355,7 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
 % ---- TikZ: Entity-Relationship Diagram ----
 \begin{figure}[H]
 \centering
+\resizebox{0.82\textwidth}{!}{%
 \begin{tikzpicture}[node distance=0.4cm and 3.2cm, font=\scriptsize]
 
 % documents table
@@ -403,7 +413,8 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
 
 % Indexes are now inside the documents node above
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption{Entity--relationship diagram of the TechPulse PostgreSQL schema.}
 \label{fig:er_diagram}
 \end{figure}
@@ -467,7 +478,7 @@ Figure~\ref{fig:mlops_loop} presents the implemented MLOps lifecycle loop.
 % ---- TikZ: MLOps lifecycle loop ----
 \begin{figure}[H]
 \centering
-\resizebox{0.92\textwidth}{!}{%
+\resizebox{0.68\textwidth}{!}{%
 \begin{tikzpicture}[node distance=1.4cm and 0.5cm]
 
 % Main cycle nodes

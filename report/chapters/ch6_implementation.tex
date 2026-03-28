@@ -106,30 +106,38 @@ Several non-obvious findings arose during implementation that informed the final
 
 This section presents screenshots from the deployed system, demonstrating end-to-end functionality across key components.
 
-\subsection{Frontend: Hybrid Retrieval Query with Citation-Grounded Response}
+\subsection{Frontend: Overview Page}
 
-Figure~\ref{fig:demo_hybrid} shows the TechPulse frontend answering a technology trend query using the hybrid retrieval mode. The response includes inline \texttt{[Source N]} citations and a source list with relevance scores, demonstrating the complete RAG pipeline from query submission through grounded generation.
+Figure~\ref{fig:demo_overview} shows the TechPulse landing page, providing the query input interface with retrieval mode selection (Baseline or Hybrid) and the system branding.
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox{0.9\textwidth}{\centering\vspace{1.5cm}
-\textit{Screenshot pending: Hybrid retrieval query with inline citations and source list.}
-\vspace{1.5cm}}}
-\caption{TechPulse frontend: hybrid retrieval query with citation-grounded response.}
-\label{fig:demo_hybrid}
+\includegraphics[width=0.95\textwidth]{techpulse-overviewpage.png}
+\caption{TechPulse frontend: overview page with query input and retrieval mode selection.}
+\label{fig:demo_overview}
 \end{figure}
 
-\subsection{Frontend: Baseline vs.\ Hybrid Comparison}
+\subsection{Frontend: Hybrid vs.\ Baseline Retrieval Comparison}
 
-Figure~\ref{fig:demo_baseline} shows the same query executed in baseline (vector-only) mode for comparison. The difference in source diversity and citation quality between baseline and hybrid modes provides qualitative evidence supporting the hybrid retrieval hypothesis.
+Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval modes. The hybrid response (left) includes diverse, multi-source citations fused via RRF, while the baseline response (right) relies solely on vector similarity. The difference in source diversity and citation quality provides qualitative evidence supporting the hybrid retrieval hypothesis.
 
 \begin{figure}[H]
 \centering
-\fbox{\parbox{0.9\textwidth}{\centering\vspace{1.5cm}
-\textit{Screenshot pending: Baseline (vector-only) retrieval query for comparison.}
-\vspace{1.5cm}}}
-\caption{TechPulse frontend: baseline (vector-only) retrieval query for comparison with Figure~\ref{fig:demo_hybrid}.}
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{techpulse-frontend-hybrid.png}
+\caption{Hybrid retrieval (BM25 + vector + RRF).}
+\label{fig:demo_hybrid}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{techpulse-frontend-baseline.png}
+\caption{Baseline retrieval (vector-only).}
 \label{fig:demo_baseline}
+\end{subfigure}
+\caption{TechPulse frontend: hybrid vs.\ baseline retrieval for the same query.}
+\label{fig:demo_compare}
 \end{figure}
 
 \subsection{CI/CD Pipeline: GitHub Actions}
@@ -149,7 +157,7 @@ Figure~\ref{fig:demo_cfn} shows the deployed AWS CloudFormation stack created by
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{techpulse-cloudformation.png}
+\includegraphics[width=0.82\textwidth]{techpulse-cloudformation.png}
 \caption{AWS CloudFormation console: TechPulse stack with all resources successfully created.}
 \label{fig:demo_cfn}
 \end{figure}
@@ -160,7 +168,7 @@ Figure~\ref{fig:demo_rds} shows the AWS RDS console with the TechPulse PostgreSQ
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{rds-techpulse.png}
+\includegraphics[width=0.82\textwidth]{rds-techpulse.png}
 \caption{AWS RDS console: TechPulse PostgreSQL instance with pgvector extension.}
 \label{fig:demo_rds}
 \end{figure}
