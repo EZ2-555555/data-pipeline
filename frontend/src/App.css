@@ -151,6 +151,26 @@ body {
   line-height: 1.5;
 }
 
+/* ───── About button ───── */
+.about-btn {
+  margin-top: 1rem;
+  padding: 0.45rem 1.2rem;
+  background: transparent;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.about-btn:hover {
+  border-color: var(--accent-solid);
+  color: var(--accent-solid);
+  background: rgba(232, 84, 46, 0.05);
+}
+
 /* ───── Search card ───── */
 .main-content {
   position: relative;

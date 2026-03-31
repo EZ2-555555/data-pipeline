@@ -10,7 +10,7 @@ Table~\ref{tab:impl_status} summarizes the implementation status of each system 
 
 \noindent\textbf{Status key:} \textit{Unit-tested} = implemented and verified by unit tests only; \textit{Integration-tested} = verified end-to-end in local Docker Compose environment; \textit{Cloud-validated} = deployed and verified in the AWS Free Tier.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \caption{Component Implementation Status Summary.}
 \label{tab:impl_status}
 \centering
@@ -34,7 +34,7 @@ Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS,
 CloudWatch Integration & Cloud-validated & 8 metrics in 1 namespace (\texttt{TechPulse/\{stage\}}) \\
 Evaluation Framework & Integration-tested & 50 queries, RAGAS, statistical tests, cost projection (Phase~B completed) \\
 CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
-SAM Infrastructure & Cloud-validated & Full SAM template; stack creation in progress \\
+SAM Infrastructure & Cloud-validated & Full SAM template; stack deployed and operational \\
 Docker Compose (Local) & Integration-tested & 6 services (db, pgadmin, api, frontend, scheduler, localstack) \\
 React Frontend & Integration-tested & Query interface with citation display \\
 Unit Tests & Integration-tested & 204 tests across 15 test files, all passing \\
@@ -110,7 +110,7 @@ This section presents screenshots from the deployed system, demonstrating end-to
 
 Figure~\ref{fig:demo_overview} shows the TechPulse landing page, providing the query input interface with retrieval mode selection (Baseline or Hybrid) and the system branding.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.95\textwidth]{techpulse-overviewpage.png}
 \caption{TechPulse frontend: overview page with query input and retrieval mode selection.}
@@ -119,9 +119,9 @@ Figure~\ref{fig:demo_overview} shows the TechPulse landing page, providing the q
 
 \subsection{Frontend: Hybrid vs.\ Baseline Retrieval Comparison}
 
-Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval modes. The hybrid response (left) includes diverse, multi-source citations fused via RRF, while the baseline response (right) relies solely on vector similarity. The difference in source diversity and citation quality provides qualitative evidence supporting the hybrid retrieval hypothesis.
+Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval modes. The hybrid response (left) includes diverse, multi-source citations fused via RRF, while the baseline response (right) relies solely on vector similarity. This figure is intended as a qualitative interface illustration; quantitative retrieval conclusions are based on the statistical results reported in Chapter~5.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \begin{subfigure}[t]{0.48\textwidth}
 \centering
@@ -144,7 +144,7 @@ Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval mo
 
 Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the workflow, validating that continuous integration and deployment are fully operational.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.95\textwidth]{github workflow run.png}
 \caption{GitHub Actions CI/CD pipeline: workflow run executing successfully.}
@@ -155,7 +155,7 @@ Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the
 
 Figure~\ref{fig:demo_cfn} shows the deployed AWS CloudFormation stack created by the SAM template, confirming that all infrastructure resources (Lambda functions, API Gateway, S3 buckets, SQS queues, EventBridge rules, and IAM roles) are provisioned and operational.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.82\textwidth]{techpulse-cloudformation.png}
 \caption{AWS CloudFormation console: TechPulse stack with all resources successfully created.}
@@ -166,7 +166,7 @@ Figure~\ref{fig:demo_cfn} shows the deployed AWS CloudFormation stack created by
 
 Figure~\ref{fig:demo_rds} shows the AWS RDS console with the TechPulse PostgreSQL instance, confirming that the production database is running and accessible for the ingestion pipeline and retrieval queries.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.82\textwidth]{rds-techpulse.png}
 \caption{AWS RDS console: TechPulse PostgreSQL instance with pgvector extension.}
