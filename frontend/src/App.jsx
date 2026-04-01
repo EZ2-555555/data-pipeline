@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./App.css";
+import Dashboard from "./Dashboard";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
@@ -70,6 +71,7 @@ function DecoBlobs() {
 }
 
 export default function App() {
+  const [page, setPage] = useState("dashboard");
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState("hybrid");
   const [result, setResult] = useState(null);
@@ -100,6 +102,10 @@ export default function App() {
     }
   }
 
+  if (page === "dashboard") {
+    return <Dashboard onGoToApp={() => setPage("main")} />;
+  }
+
   return (
     <div className="app">
       <DecoBlobs />
@@ -109,6 +115,12 @@ export default function App() {
         <p className="tagline">
           A Real-Time Hybrid RAG System for Emerging Technology Intelligence
         </p>
+        <button
+          className="about-btn"
+          onClick={() => setPage("dashboard")}
+        >
+          About Project ↗
+        </button>
       </header>
 
       <main className="main-content">
