@@ -127,7 +127,7 @@ Several non-obvious findings arose during implementation that informed the final
 
   \item \textbf{SHA-256 deduplication.} The \texttt{ON CONFLICT DO NOTHING} strategy proved fully effective; ArXiv produced the most hash collisions ($\sim$15--20\% per cycle) due to preprint updates.
 
-  \item \textbf{LocalStack fidelity.} S3 and SQS operations matched production behaviour, enabling integration testing without AWS credentials. CloudWatch metrics required cloud deployment to verify.
+  \item \textbf{LocalStack fidelity.} S3 and SQS operations matched production behavior, enabling integration testing without AWS credentials. CloudWatch metrics required cloud deployment to verify.
 
   \item \textbf{HuggingFace rate limits.} The free-tier rate limit ($\sim$30 req/min) triggered the Ollama fallback during sustained evaluation runs, confirming the fallback chain operates correctly.
 

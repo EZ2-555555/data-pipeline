@@ -15,7 +15,7 @@ Dense retrieval relies on embedding models that transform text into high-dimensi
 \section{Hybrid Retrieval and Reranking}
 \label{sec:lit_hybrid}
 
-Hybrid retrieval combines lexical matching (e.g., BM25 or keyword filtering) with semantic similarity search to improve retrieval precision. Thakur et al. (2021) demonstrate that hybrid approaches consistently outperform purely dense retrieval across heterogeneous benchmarks. Reranking further refines candidate relevance using additional contextual signals. Cross-encoder rerankers achieve high accuracy but incur substantial computational overhead (Nogueira \& Cho, 2019); lightweight multi-factor reranking---combining similarity score, recency weighting, and keyword overlap---offers comparable grounding improvements at lower latency (Gao et al., 2023). In dynamic knowledge domains, recency-aware retrieval is particularly important to avoid outdated context injection.
+Hybrid retrieval combines lexical matching (e.g., BM25 (Best Matching~25) or keyword filtering) with semantic similarity search to improve retrieval precision. Thakur et al. (2021) demonstrate that hybrid approaches consistently outperform purely dense retrieval across heterogeneous benchmarks. Reranking further refines candidate relevance using additional contextual signals. Cross-encoder rerankers achieve high accuracy but incur substantial computational overhead (Nogueira \& Cho, 2019); lightweight multi-factor reranking---combining similarity score, recency weighting, and keyword overlap---offers comparable grounding improvements at lower latency (Gao et al., 2023). In dynamic knowledge domains, recency-aware retrieval is particularly important to avoid outdated context injection.
 
 \section{RAG Evaluation Methodologies}
 \label{sec:lit_eval}
@@ -47,9 +47,7 @@ Critically, existing hybrid RAG systems either address a subset of these concern
 \subsection{Closest Prior Systems}
 \label{sec:closest_prior}
 
-Several open-source RAG frameworks and production systems warrant direct comparison: Haystack (deepset, 2023), LlamaIndex (Liu, 2022), Verba (Weaviate, 2023), STORM (Shao et al., 2024), LangChain (LangChain, 2023), and more recent pipeline-oriented systems such as RAGFlow (InfiniFlow, 2024) and Cognita (TrueFoundry, 2024), as well as commercial systems such as Perplexity AI and Bing Copilot. RAGFlow provides a document-understanding RAG engine with chunking quality control and grounded citations but lacks cost governance, drift monitoring, and multi-source scheduled ingestion. Cognita offers a modular, production-ready RAG framework with pluggable retrievers and rerankers but does not address budget constraints or embedding drift detection. Each system addresses a different subset of the six key dimensions---hybrid retrieval, real-time multi-source ingestion, cost governance, MLOps monitoring, drift detection, and hallucination verification---but to our knowledge none integrates all six within a single cost-governed, student-deployable cloud-native architecture. TechPulse's contribution is a \emph{systems integration} effort that combines established techniques within a budget-constrained prototype, addressing a practical gap not covered by existing frameworks.
-
-Table~\ref{tab:related_work} summarizes representative related work and positions TechPulse relative to prior systems.
+Several open-source RAG frameworks and production systems warrant direct comparison. Table~\ref{tab:related_work} summarizes representative related work and positions TechPulse relative to prior systems across six key dimensions.
 
 \begin{table}[H]
 \caption{Comparison of Related Work and Positioning of TechPulse.}
@@ -80,4 +78,4 @@ Typical RAG Prototype & Dense & Optional & Rare & No & Minimal & Rare & Rare \\
 \noindent\small{$^{\dagger}$Full MLOps is implemented and cloud-validated; Phase~B evaluation results are reported in Chapter~5.}
 
 \medskip
-\noindent In summary, the literature confirms that hybrid retrieval with BM25+RRF fusion and production-grade MLOps integration remains underexplored for dynamic technology intelligence. While individual techniques are well established, to our knowledge no reviewed system combines all six identified dimensions within a single cost-governed, student-deployable cloud-native prototype. TechPulse addresses this integration gap. These findings inform the methodology and technical design decisions presented in Chapter~3.
+\noindent In summary, the literature confirms that hybrid retrieval with BM25+RRF fusion and production-grade MLOps integration remains underexplored for dynamic technology intelligence. TechPulse addresses this integration gap. These findings inform the methodology presented in Chapter~3.

@@ -17,26 +17,20 @@ A secondary performance hypothesis requires that the hybrid retrieval pipeline d
 \section{Why This Approach is Suitable}
 \label{sec:method_rationale}
 
-Three considerations motivate the hybrid RAG approach for this specific problem domain.
-
-\textbf{Domain characteristics:} Emerging technology knowledge is temporally dynamic and distributed across heterogeneous sources. Vector-only retrieval treats all documents equally regardless of recency or source authority; hybrid retrieval with BM25 keyword search and RRF fusion explicitly addresses temporal drift, which is critical in rapidly evolving AI/ML domains where a paper from 18 months ago may already be superseded.
-
-\textbf{Operational constraints:} The system must operate within cost and latency bounds suitable for a research prototype deployed on the AWS Free Tier. Full-corpus BM25 scoring adds $O(N)$ computation (one pass over $N$ pre-tokenized chunks) but is executed in-process against a cached index, avoiding network round-trips. Reciprocal Rank Fusion merges three ranked lists in $O(k)$, where $k$ is the candidate pool size (typically $4 \times \text{top\_k} = 20$). The combined overhead is negligible compared to the $O(Nd)$ baseline vector search and avoids the latency penalties of cross-encoder rerankers, which require a forward pass through a BERT-class model per candidate.
-
-\textbf{Production feasibility:} The architecture uses AWS-managed services---Lambda, RDS PostgreSQL, API Gateway, EventBridge---eliminating the need to manage dedicated compute clusters or self-hosted vector databases. This enables a student team to deploy, iterate, and monitor a production-grade system within the course timeline and a prototype budget envelope.
+Three considerations motivate the hybrid RAG approach. First, emerging technology knowledge is temporally sensitive; vector-only search lacks recency signals, whereas BM25+RRF fusion explicitly addresses temporal drift. Second, the system must operate within AWS Free Tier cost and latency bounds: full-corpus BM25 adds $O(N)$ computation against a cached index, and RRF merges ranked lists in $O(k)$, avoiding the prohibitive overhead of cross-encoder rerankers. Third, AWS-managed services (Lambda, RDS, API Gateway, EventBridge) enable a student team to deploy a production-grade system within the course timeline and budget.
 
 \section{Technical Contributions and Design Decisions}
 \label{sec:innovation}
 
 The engineering contribution of TechPulse lies not in any single component but in their integration into a coherent, cost-governed MLOps system. Specifically, four design decisions represent well-motivated engineering choices that distinguish this system from typical RAG prototypes.
 
-\textbf{True parallel hybrid retrieval with parameter-free fusion:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with Reciprocal Rank Fusion (RRF; Cormack et al., 2009). A third recency signal, computed as document age in days, is integrated as an additional RRF ranking. Because RRF operates on ordinal ranks rather than raw scores, it is parameter-free and scale-invariant: no weight tuning ($\alpha$/$\beta$/$\gamma$) is required, eliminating a common source of overfitting in hybrid retrieval systems. A design-phase comparison against weighted reranking ($\alpha$/$\beta$/$\gamma$) showed that weighted scoring is sensitive to corpus composition and incurs prohibitive tail latency (p95~=~25\,s); the empirical evidence favouring RRF is documented in Section~\ref{sec:sensitivity}. The BM25 index is built over the full corpus so that IDF statistics are globally accurate, and refreshed via a 30-minute TTL cache to capture newly ingested documents without rebuilding on every query.
+\textbf{True parallel hybrid retrieval with parameter-free fusion:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with Reciprocal Rank Fusion (RRF; Cormack et al., 2009). A third recency signal is integrated as an additional RRF ranking. Because RRF operates on ordinal ranks, it is parameter-free and scale-invariant. A design-phase comparison against weighted reranking showed that weighted scoring is sensitive to corpus composition and incurs prohibitive tail latency; the empirical evidence is documented in Section~\ref{sec:sensitivity}.
 
-\textbf{Unified vector--relational retrieval without dedicated infrastructure:} By extending PostgreSQL with pgvector, TechPulse achieves hybrid retrieval (structured SQL metadata filtering + cosine vector search) within a single managed database, eliminating the operational complexity of running a separate vector store. This design choice reduces architectural surface area, simplifies deployment automation, and enables cost-governed scaling through standard RDS instances.
+\textbf{Unified vector--relational retrieval without dedicated infrastructure:} PostgreSQL with pgvector combines structured SQL metadata filtering and cosine vector search in a single managed database, eliminating the need for separate vector store infrastructure (Section~\ref{sec:storage}).
 
-\textbf{Idempotent ingestion pipeline with SHA-256 content-addressed deduplication:} The SHA-256 hashing strategy applied to canonicalized document fields ensures that the pipeline can be re-run safely at any time without creating duplicate records. This often-overlooked but practically important engineering practice enables safe experiment replay, crash recovery, and corpus versioning without requiring a separate deduplication service.
+\textbf{Idempotent ingestion pipeline with SHA-256 content-addressed deduplication:} Canonicalized document fields are hashed using SHA-256, enabling safe re-runs without duplicate records---supporting experiment replay, crash recovery, and corpus versioning without a separate deduplication service.
 
-\textbf{Budget-aware inference with programmatic halt:} The integration of AWS Cost Explorer queries into the inference path---where invocations are halted programmatically when monthly cost thresholds are approached---represents an operational optimization strategy not typically addressed in RAG research prototypes. This transforms cost from a passive monitoring concern into an active constraint enforced at runtime, consistent with production-grade MLOps principles.
+\textbf{Budget-aware inference with programmatic halt:} AWS Cost Explorer queries are integrated into the inference path, halting invocations programmatically when monthly cost thresholds are approached. This transforms cost from a passive monitoring concern into an active runtime constraint.
 
 \section{Baseline Retrieval Configuration}
 \label{sec:baseline}
@@ -81,9 +75,9 @@ The same source-type and recency filters applied in Stage~1 are enforced on BM25
 
 \noindent where $\mathcal{R} = \{\text{vector}, \text{BM25}, \text{recency}\}$ represents three independent rankings, $\text{rank}_r(d)$ is the 1-indexed rank of document $d$ in ranking $r$, and $K = 60$ is the standard RRF constant from the original paper. Recency is incorporated as a third ranking signal by sorting candidates by document age in days (ascending; documents with unknown publication dates receive age $= 9{,}999$ and sort last).
 
-RRF has two key advantages over weighted linear scoring: (1)~it is \emph{parameter-free}---no $\alpha$/$\beta$/$\gamma$ weights require tuning, eliminating a common source of overfitting; and (2)~it is \emph{scale-invariant}---because it operates on ordinal ranks, it handles the incomparable score distributions of cosine similarity ($[0,1]$) and BM25 ($[0, \infty)$) without normalisation. A design-phase comparison of weighted reranking (with parameters $\alpha$, $\beta$, $\gamma$) against RRF revealed that weighted scoring is sensitive to corpus composition and induces prohibitive tail latency (p95~=~25\,s), confirming RRF as the superior fusion strategy. Weighted reranking results appear only in design-phase analysis (Section~\ref{sec:sensitivity}); the Phase~B evaluation and final deployed system use RRF exclusively.
+RRF has two key advantages over weighted linear scoring: (1)~it is \emph{parameter-free}---no $\alpha$/$\beta$/$\gamma$ weights require tuning, eliminating a common source of overfitting; and (2)~it is \emph{scale-invariant}---because it operates on ordinal ranks, it handles the incomparable score distributions of cosine similarity ($[0,1]$) and BM25 ($[0, \infty)$) without normalisation. A design-phase comparison of weighted reranking against RRF revealed that weighted scoring is sensitive to corpus composition and induces prohibitive tail latency, confirming RRF as the superior fusion strategy (Section~\ref{sec:sensitivity}). The final deployed system uses RRF exclusively.
 
-Figure~\ref{fig:retrieval_comparison} illustrates three retrieval strategies evaluated during development: the baseline vector-only pipeline (left), the weighted hybrid with dataset-dependent $\alpha$/$\beta$/$\gamma$ weights and p95~=~25\,s tail latency (centre, faded), and the final BM25+RRF hybrid pipeline selected for the production system (right).
+Figure~\ref{fig:retrieval_comparison} illustrates the three retrieval strategies compared during development.
 
 % ---- TikZ: Three-way retrieval comparison diagram ----
 \begin{figure}[H]
@@ -107,7 +101,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates three retrieval strategies eva
 \node[boundbox=awsgray, fit=(bq)(bvs)(btopk)(bgen), inner sep=8pt] {};
 \end{scope}
 
-% ---- CENTER: ORIGINAL HYBRID (Superseded) ----
+% ---- CENTER: WEIGHTED HYBRID (Design-Phase) ----
 \node[pbox=propgray, minimum width=2.4cm, right=4.0cm of bq] (oq) {User Query};
 \node[pbox=propgray, below=of oq, minimum width=2.4cm] (omf) {Metadata Filter\\(recency + source)};
 \node[pbox=propgray, below=of omf, minimum width=2.4cm] (ovs) {Vector Similarity\\Search (Filtered)};
@@ -121,7 +115,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates three retrieval strategies eva
 \draw[parrow, color=propgray!60] (orr) -- (otopk);
 \draw[parrow, color=propgray!60] (otopk) -- (ogen);
 
-\node[layerlabel=propred, above=0.3cm of oq, font=\small\bfseries] {\textbf{Original Hybrid (Superseded)}};
+\node[layerlabel=propred, above=0.3cm of oq, font=\small\bfseries] {\textbf{Weighted Hybrid (Design-Phase)}};
 
 \begin{scope}[on background layer]
 \node[boundbox=propgray, fit=(oq)(omf)(ovs)(orr)(otopk)(ogen), inner sep=8pt] {};
@@ -161,7 +155,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates three retrieval strategies eva
 
 \end{tikzpicture}%
 }
-\caption{Design evolution of retrieval strategies: baseline vector-only (left), original weighted hybrid with $\alpha$/$\beta$/$\gamma$ reranking (centre, superseded due to p95~=~25\,s tail latency), and final BM25+RRF hybrid pipeline (right).}
+\caption{Retrieval strategies compared during design: baseline vector-only (left), weighted hybrid with $\alpha$/$\beta$/$\gamma$ reranking and p95~=~25\,s tail latency (centre, not selected), and BM25+RRF hybrid pipeline selected for the production system (right).}
 \label{fig:retrieval_comparison}
 \end{figure}
 

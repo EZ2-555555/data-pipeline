@@ -41,7 +41,7 @@ April 2026
 \chapter*{Acknowledgments}
 \addcontentsline{toc}{chapter}{ACKNOWLEDGMENTS}
 
-The authors express sincere gratitude to Dr.\ Chantri Polprasert, the course instructor, for providing guidance on the system design and evaluation methodology throughout this project. We also thank the teaching assistants, Mr.\ Swaraj Bhanja and Mr.\ Suryansh Srivastava, for their constructive feedback during development milestones.
+We express sincere gratitude to Dr.\ Chantri Polprasert, the course instructor, for providing guidance on the system design and evaluation methodology throughout this project. We also thank the teaching assistants, Mr.\ Swaraj Bhanja and Mr.\ Suryansh Srivastava, for their constructive feedback during development milestones.
 
 
 
@@ -51,9 +51,9 @@ The authors express sincere gratitude to Dr.\ Chantri Polprasert, the course ins
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{ABSTRACT}
 
-Large language models produce hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by grounding generation in retrieved evidence, yet the relative benefit of hybrid retrieval over vector-only baselines remains under-evaluated in cost-constrained settings.
+Large language models produce hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by grounding generation in retrieved evidence, yet the relative benefit of hybrid retrieval over vector-only baselines remains under-evaluated for single-domain corpora.
 
-This study presents TechPulse, a cloud-native Hybrid RAG system for emerging technology intelligence. The system ingests data from five sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with deterministic preprocessing and MiniLM embedding, indexed in PostgreSQL with pgvector. Design-phase analysis compared weighted reranking against parameter-free Reciprocal Rank Fusion (RRF) and found that weighted scoring yields dataset-dependent optima with prohibitive tail latency (p95~=~25\,s), whereas RRF achieves a p95 of 3.36\,s without tuning. An automatic LLM fallback chain, dual-criteria drift detection, and three-layer hallucination verification ensure availability and trustworthiness. A 50-query paired evaluation with RAGAS metrics and Wilcoxon signed-rank testing shows that hybrid and baseline retrieval achieve comparable quality ($p = 0.795$, Cohen's $d = -0.15$), with citation grounding exceeding 0.90 in both modes---establishing that, for a topically homogeneous corpus, parameter-free RRF matches vector-only retrieval while providing architectural extensibility for future heterogeneous workloads.
+This study presents TechPulse, a cloud-native Hybrid RAG system for emerging technology intelligence. The system ingests data from five sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with deterministic preprocessing and MiniLM embedding, indexed in PostgreSQL with pgvector. Design-phase analysis compared weighted reranking against parameter-free Reciprocal Rank Fusion (RRF) of semantic, BM25 lexical, and recency rankings, and found that weighted scoring yields dataset-dependent optima with prohibitive tail latency (p95~=~25\,s), whereas RRF achieves a p95 of 3.36\,s without tuning. An automatic LLM fallback chain, dual-criteria drift detection, and three-layer hallucination verification ensure availability and trustworthiness. A 50-query paired evaluation with RAGAS metrics and Wilcoxon signed-rank testing shows that hybrid and baseline retrieval achieve comparable quality ($p = 0.795$, Cohen's $d = -0.15$), with citation grounding at or above 0.90 in both modes---establishing that, for a single-domain corpus, parameter-free RRF matches vector-only retrieval while providing architectural extensibility for future heterogeneous workloads.
 
 \medskip
 \noindent\textbf{Keywords:} Retrieval-Augmented Generation; Hybrid Information Retrieval; Vector Databases; Cloud-Native Architecture; MLOps; Semantic Embedding; Emerging Technology Intelligence.

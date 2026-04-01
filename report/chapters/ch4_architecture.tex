@@ -13,7 +13,7 @@ Figure~\ref{fig:aws_diagram} presents the AWS service-level architecture diagram
 \section{Architectural Overview}
 \label{sec:arch_overview}
 
-TechPulse has been implemented as a six-layer, cloud-native system deployed on the AWS Free Tier. Each layer is logically independent with well-defined interfaces, enabling modular development, testing, and future extension. The architecture was adapted from the original proposal to operate within Free Tier cost and service constraints, replacing Aurora Serverless with standard RDS PostgreSQL and favouring free-tier LLM APIs while preserving the core hybrid retrieval and MLOps capabilities.
+TechPulse has been implemented as a six-layer, cloud-native system deployed on the AWS Free Tier. Each layer is logically independent with well-defined interfaces, enabling modular development, testing, and future extension. The architecture was adapted from the original proposal to operate within Free Tier cost and service constraints, replacing Aurora Serverless with standard RDS PostgreSQL and favoring free-tier LLM APIs while preserving the core hybrid retrieval and MLOps capabilities.
 
 % ---- TikZ: Six-layer architectural stack ----
 \begin{figure}[H]
@@ -85,7 +85,7 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 \section{Alignment with the AWS Well-Architected Framework}
 \label{sec:well_architected}
 
-The TechPulse architecture is designed in explicit alignment with the AWS Well-Architected Framework (AWS, 2023). Table~\ref{tab:well_arch} summarises how each pillar is addressed within the implemented system.
+The TechPulse architecture is designed in explicit alignment with the AWS Well-Architected Framework (AWS, 2023). Table~\ref{tab:well_arch} summarizes how each pillar is addressed within the implemented system.
 
 \begin{table}[H]
 \caption{TechPulse Alignment with the AWS Well-Architected Framework Six Pillars.}
@@ -294,11 +294,11 @@ Figure~\ref{fig:state_machine} illustrates the document state machine, showing t
 \label{fig:state_machine}
 \end{figure}
 
-To guarantee idempotency, canonicalized content fields are hashed using SHA-256 before processing. The hash covers source-specific canonical fields: for ArXiv, title, abstract, and publication date; for Hacker News, title, URL, and timestamp; for DEV.to, article title, body, and publication date; for GitHub, repository full name, description, and creation date; for RSS, entry title, summary, and link. Duplicate hashes are skipped at ingestion via PostgreSQL \texttt{ON CONFLICT} clauses, ensuring consistent corpus integrity across experimental runs.
+To guarantee idempotency, canonicalized content fields are hashed using SHA-256 (as described in Section~\ref{sec:innovation}) and deduplicated via PostgreSQL \texttt{ON CONFLICT} clauses, ensuring consistent corpus integrity across experimental runs.
 
 \subsection{Preprocessing and Chunking}
 
-Textual preprocessing has been implemented as a comprehensive 17-step normalization pipeline in the \texttt{normalize\_text()} function. Table~\ref{tab:preprocess_steps} summarises the grouped operations applied in sequence.
+Textual preprocessing has been implemented as a comprehensive 17-step normalization pipeline in the \texttt{normalize\_text()} function. Table~\ref{tab:preprocess_steps} summarizes the grouped operations applied in sequence.
 
 \begin{table}[H]
 \caption{Preprocessing Pipeline: 17-Step Text Normalization.}
@@ -323,7 +323,7 @@ Following normalization, documents are segmented using token-based chunking with
 \section{Embedding and Indexing}
 \label{sec:embedding}
 
-Semantic representations are generated using the \texttt{all-MiniLM-L6-v2} sentence-transformer model (Wang et al., 2020), producing 384-dimensional embeddings. The model is loaded as a lazy-initialized singleton to minimize memory overhead under serverless execution constraints. Embeddings are stored in RDS PostgreSQL using the pgvector extension with an HNSW (Hierarchical Navigable Small World) index configured with $m = 16$ and $\text{ef\_construction} = 64$, enabling efficient approximate nearest-neighbor search with cosine distance. The parameters $m = 16$ (maximum number of bidirectional links per node) and $\text{ef\_construction} = 64$ (size of the dynamic candidate list during index construction) follow the pgvector recommended defaults for datasets up to $\sim$100k vectors, providing a favourable balance between index build time, memory footprint, and recall (pgvector documentation recommends $m \in [8, 64]$ and $\text{ef\_construction} \geq 2 \times m$).
+Semantic representations are generated using the \texttt{all-MiniLM-L6-v2} sentence-transformer model (Wang et al., 2020), producing 384-dimensional embeddings. The model is loaded as a lazy-initialized singleton to minimize memory overhead under serverless execution constraints. Embeddings are stored in RDS PostgreSQL using the pgvector extension with an HNSW (Hierarchical Navigable Small World) index configured with $m = 16$ and $\text{ef\_construction} = 64$, enabling efficient approximate nearest-neighbor search with cosine distance. The parameters $m = 16$ (maximum number of bidirectional links per node) and $\text{ef\_construction} = 64$ (size of the dynamic candidate list during index construction) follow the pgvector recommended defaults for datasets up to $\sim$100k vectors, providing a favorable balance between index build time, memory footprint, and recall (pgvector documentation recommends $m \in [8, 64]$ and $\text{ef\_construction} \geq 2 \times m$).
 
 \section{Storage Architecture (Medallion Layout)}
 \label{sec:storage}
@@ -422,7 +422,7 @@ Figure~\ref{fig:er_diagram} presents the entity--relationship diagram of the Pos
 \section{Prompt Construction and Grounded Generation}
 \label{sec:prompt_ch4}
 
-Retrieved top-$k$ documents are concatenated into a structured prompt template with four logical sections: (1) \textbf{System Instruction}---defines assistant behavior, enforces evidence-grounded responses, and mandates \texttt{[Source N]} citation format; (2) \textbf{Context Block}---concatenates retrieved document excerpts with source identifiers, titles, and publication dates; (3) \textbf{User Question}---the original user query; and (4) \textbf{Citation Instruction}---requires the model to reference supporting documents.
+Retrieved top-$k$ documents are concatenated into a structured prompt template that enforces the three-layer hallucination verification strategy (Section~\ref{sec:innovation}): (1) a \textbf{System Instruction} mandating evidence-grounded responses with \texttt{[Source N]} citation format; (2) a \textbf{Context Block} with retrieved excerpts, source identifiers, titles, and dates; (3) the \textbf{User Question}; and (4) a \textbf{Citation Instruction}.
 
 \begin{lstlisting}[caption={Implemented Structured Generation Prompt Template.}, label={lst:prompt}]
 SYSTEM:
@@ -532,7 +532,7 @@ Temperature & 0.2 & Reduce hallucination risk \\
 Timeout & 300 seconds (Ollama) / 60 seconds (Groq, HuggingFace) & Backend-appropriate limits \\
 Retry Attempts & 4 & Transient failure handling \\
 Backoff Base & 3 seconds & Exponential backoff \\
-Context Window & 4096 tokens (Ollama) & Model-appropriate context \\
+Context Window & 128k tokens (Groq, Bedrock) / 4096 tokens (Ollama) & Model-appropriate context \\
 \bottomrule
 \end{tabular}
 \end{table}
