@@ -60,7 +60,13 @@
 
 ---
 
-## Overview
+## 🚀 Live Deployment
+
+**Frontend:** [TechPulse Live Demo](http://techpulse-dev-frontend-939514668437.s3-website-us-east-1.amazonaws.com/)
+
+Try the system live on AWS S3 + Lambda (Free Tier deployment)
+
+---
 
 TechPulse is a Hybrid RAG system that continuously ingests emerging technology content from **five data sources**, embeds it into a pgvector-powered PostgreSQL database, and serves grounded, citation-backed answers through a React frontend.
 

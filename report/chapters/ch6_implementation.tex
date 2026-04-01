@@ -6,6 +6,8 @@ This chapter documents the current implementation status and key engineering dec
 \section{Overall Implementation Status}
 \label{sec:impl_status}
 
+\noindent\textbf{Live Deployment:} The system is currently deployed at \url{http://techpulse-dev-frontend-939514668437.s3-website-us-east-1.amazonaws.com/}.
+
 Table~\ref{tab:impl_status} summarizes the implementation status of each system component as of the reporting date.
 
 \noindent\textbf{Status key:} \textit{Unit-tested} = implemented and verified by unit tests only; \textit{Integration-tested} = verified end-to-end in local Docker Compose environment; \textit{Cloud-validated} = deployed and verified in the AWS Free Tier.
@@ -50,7 +52,38 @@ Two significant enhancements were made beyond the original proposal: (1) data so
 \section{AWS Free Tier Deployment}
 \label{sec:freetier}
 
-TechPulse is deployed on a personal AWS Free Tier account. The deployment adapts certain services from the original proposal to remain within Free Tier cost constraints while preserving full architectural capabilities. The key deployment characteristics are:
+TechPulse is deployed on a personal AWS Free Tier account. The deployment adapts certain services from the original proposal to remain within Free Tier cost constraints while preserving full architectural capabilities. 
+
+\subsection*{Cost Breakdown (100 queries/day estimate)}
+
+Table~\ref{tab:cost_breakdown} provides a component-level cost estimate for the anticipated 100 queries/day operational scenario:
+
+\begin{table}[H]
+\centering
+\caption{Estimated Monthly Cost Breakdown at 100 Queries/Day Workload.}
+\label{tab:cost_breakdown}
+\begin{tabular}{p{3.2cm}p{2.0cm}p{3.5cm}p{2.0cm}}
+\toprule
+\textbf{Component} & \textbf{Cost/Month} & \textbf{Details} & \textbf{Free Tier} \\
+\midrule
+Lambda (ingestion) & \$0.05 & 10 short-lived invocations/day & \checkmark \\
+Lambda (query handler) & \$0.08 & 100 queries/day, 3.1s avg & \checkmark \\
+Groq LLM API & \$0.12\textsuperscript{$\dagger$} & $\sim$2,300 tokens/query average & Free (500k/day) \\
+RDS PostgreSQL & \$0.08 & db.t3.micro instance (micro is free) & \checkmark \\
+S3 + EventBridge + SQS & \$0.00 & Storage, routing, queue services & \checkmark \\
+\midrule
+\textbf{Total Monthly} & \textbf{\$0.33} & \textbf{Extrapolated from Phase B eval} & \textbf{\checkmark} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textsuperscript{$\dagger$}Groq inference is free within the 500k tokens/day allowance; \$0.12 represents the imputed cost at equivalent commercial per-token rates to enable fair cost projection if the free tier were unavailable.
+
+\noindent Costs are derived from observed token usage and Lambda invocation metrics collected during the Phase~B evaluation run. At higher workloads exceeding the Groq free-tier allowance (500,000 tokens/day), the automatic LLM backend fallback chain (Bedrock → Ollama → HuggingFace) enables cost-controlled scaling. The monthly total of \$0.33 is well below the \$15 budget target, providing a 45$\times$ safety margin.
+
+\subsection*{Key Deployment Characteristics}
+
+The key deployment characteristics are:
 
 \begin{itemize}[leftmargin=0.5in]
   \item \textbf{RDS PostgreSQL instead of Aurora Serverless.} Standard RDS PostgreSQL \texttt{db.t3.micro} (PostgreSQL 16.6, 20GB gp2) replaces the originally proposed Aurora Serverless to stay within budget. The pgvector extension and HNSW indexing remain fully functional.

@@ -30,7 +30,7 @@ System for Emerging Technology Intelligence}\\[4pt]
 Asian Institute of Technology\\[4pt]
 School of Engineering and Technology\\[4pt]
 Thailand\\[8pt]
-March 2026
+April 2026
 }
 \end{center}
 \end{titlepage}
@@ -51,9 +51,9 @@ The authors express sincere gratitude to Dr.\ Chantri Polprasert, the course ins
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{ABSTRACT}
 
-Large language models produce hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by conditioning generation on retrieved evidence, but baseline vector-only retrieval often suffers from contextual imprecision.
+Large language models produce hallucinated or outdated outputs when queried about recent developments. Retrieval-Augmented Generation (RAG) mitigates this by grounding generation in retrieved evidence, yet the relative benefit of hybrid retrieval over vector-only baselines remains under-evaluated in cost-constrained settings.
 
-This study presents TechPulse, a cloud-native Hybrid RAG system for emerging technology intelligence under strict latency and cost constraints. The system ingests data from five heterogeneous sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with deterministic preprocessing, token-based chunking, and MiniLM semantic embedding, indexed in PostgreSQL with pgvector. Retrieval initially employed a weighted linear reranking formula ($\alpha$/$\beta$/$\gamma$), but design-phase sensitivity analysis revealed that optimal weights are dataset-dependent and tail latency was prohibitive (p95~=~25\,s). The system was therefore re-engineered to use parameter-free Reciprocal Rank Fusion (RRF) of semantic, BM25 lexical, and recency rankings, reducing hybrid p95 latency by 87\% to 3.36\,s while maintaining comparable retrieval quality. An automatic LLM fallback chain (Groq $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace) ensures generation availability. The system integrates dual-criteria drift detection, three-layer hallucination verification, and health monitoring. Evaluation compares baseline and hybrid retrieval using RAGAS metrics and statistical testing (Wilcoxon signed-rank, Cohen's~$d$, bootstrap 95\% CI).
+This study presents TechPulse, a cloud-native Hybrid RAG system for emerging technology intelligence. The system ingests data from five sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with deterministic preprocessing and MiniLM embedding, indexed in PostgreSQL with pgvector. Design-phase analysis compared weighted reranking against parameter-free Reciprocal Rank Fusion (RRF) and found that weighted scoring yields dataset-dependent optima with prohibitive tail latency (p95~=~25\,s), whereas RRF achieves a p95 of 3.36\,s without tuning. An automatic LLM fallback chain, dual-criteria drift detection, and three-layer hallucination verification ensure availability and trustworthiness. A 50-query paired evaluation with RAGAS metrics and Wilcoxon signed-rank testing shows that hybrid and baseline retrieval achieve comparable quality ($p = 0.795$, Cohen's $d = -0.15$), with citation grounding exceeding 0.90 in both modes---establishing that, for a topically homogeneous corpus, parameter-free RRF matches vector-only retrieval while providing architectural extensibility for future heterogeneous workloads.
 
 \medskip
 \noindent\textbf{Keywords:} Retrieval-Augmented Generation; Hybrid Information Retrieval; Vector Databases; Cloud-Native Architecture; MLOps; Semantic Embedding; Emerging Technology Intelligence.

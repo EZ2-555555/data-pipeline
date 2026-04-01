@@ -47,7 +47,7 @@ Critically, existing hybrid RAG systems either address a subset of these concern
 \subsection{Closest Prior Systems}
 \label{sec:closest_prior}
 
-Several open-source RAG frameworks and production systems warrant direct comparison: Haystack (deepset, 2023), LlamaIndex (Liu, 2022), Verba (Weaviate, 2023), STORM (Shao et al., 2024), LangChain (LangChain, 2023), and commercial systems such as Perplexity AI and Bing Copilot. Each addresses a different subset of the six key dimensions---hybrid retrieval, real-time multi-source ingestion, cost governance, MLOps monitoring, drift detection, and hallucination verification---but to our knowledge none integrates all six within a single cost-governed, student-deployable cloud-native architecture. TechPulse's contribution is a \emph{systems integration} effort that combines established techniques within a budget-constrained prototype, addressing a practical gap not covered by existing frameworks.
+Several open-source RAG frameworks and production systems warrant direct comparison: Haystack (deepset, 2023), LlamaIndex (Liu, 2022), Verba (Weaviate, 2023), STORM (Shao et al., 2024), LangChain (LangChain, 2023), and more recent pipeline-oriented systems such as RAGFlow (InfiniFlow, 2024) and Cognita (TrueFoundry, 2024), as well as commercial systems such as Perplexity AI and Bing Copilot. RAGFlow provides a document-understanding RAG engine with chunking quality control and grounded citations but lacks cost governance, drift monitoring, and multi-source scheduled ingestion. Cognita offers a modular, production-ready RAG framework with pluggable retrievers and rerankers but does not address budget constraints or embedding drift detection. Each system addresses a different subset of the six key dimensions---hybrid retrieval, real-time multi-source ingestion, cost governance, MLOps monitoring, drift detection, and hallucination verification---but to our knowledge none integrates all six within a single cost-governed, student-deployable cloud-native architecture. TechPulse's contribution is a \emph{systems integration} effort that combines established techniques within a budget-constrained prototype, addressing a practical gap not covered by existing frameworks.
 
 Table~\ref{tab:related_work} summarizes representative related work and positions TechPulse relative to prior systems.
 
@@ -68,6 +68,8 @@ LlamaIndex (Liu, 2022) & Hybrid & Yes & No & No & No & No & No \\
 Verba (Weaviate, 2023) & Dense & No & Single & No & No & No & No \\
 STORM (Shao et al., 2024) & Dense & No & Multi & No & No & No & No \\
 LangChain (LangChain, 2023) & Hybrid & Optional & Plugin & No & Partial & No & No \\
+RAGFlow (InfiniFlow, 2024) & Hybrid & Yes & No & No & No & No & Yes \\
+Cognita (TrueFoundry, 2024) & Hybrid & Yes & Plugin & No & Partial & No & No \\
 Typical RAG Prototype & Dense & Optional & Rare & No & Minimal & Rare & Rare \\
 \textbf{TechPulse (ours)} & \textbf{Hybrid} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes} & \textbf{Full$^{\dagger}$} & \textbf{Dual} & \textbf{3-Layer} \\
 \bottomrule

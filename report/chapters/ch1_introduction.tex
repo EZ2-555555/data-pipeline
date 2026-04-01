@@ -7,7 +7,7 @@
 
 The exponential growth of emerging technologies---including artificial intelligence, machine learning, distributed systems, and advanced computing---has produced an unprecedented volume of technical knowledge distributed across heterogeneous platforms. Scholarly repositories such as ArXiv provide structured, peer-reviewed or preprint research outputs contributing to theoretical and methodological advancement. Community-driven platforms and industry discussion forums such as Hacker News reflect near-real-time practitioner experiences and emerging tool ecosystems. However, the fragmentation of these knowledge regimes creates an information landscape that is increasingly difficult for technology professionals to synthesize effectively and in a timely manner.
 
-Purely generative large language model (LLM) assistants are insufficient for emerging technology intelligence tasks due to their static knowledge cutoff, susceptibility to hallucinated responses, lack of verifiable evidence grounding, and inability to integrate with continuously updating data streams (Ji et al., 2023). Although Retrieval-Augmented Generation (RAG) architectures partially address these limitations by incorporating external context, baseline vector-only retrieval approaches may still retrieve semantically adjacent but contextually irrelevant documents. Such systems often fail to incorporate temporal relevance signals, structured metadata constraints, or recency-aware ranking mechanisms, which are essential for accurately capturing rapidly evolving technology trends.
+Purely generative large language model (LLM) assistants are insufficient for emerging technology intelligence tasks due to their static knowledge cutoff, susceptibility to hallucinated responses, lack of verifiable evidence grounding, and inability to integrate with continuously updating data streams (Ji et al., 2023). Although Retrieval-Augmented Generation (RAG) architectures partially address these limitations by incorporating external context, the relative benefit of augmenting vector-only retrieval with lexical and recency signals remains under-evaluated in cost-constrained, topically focused settings. Moreover, baseline vector-only systems typically lack temporal relevance signals, structured metadata constraints, and recency-aware ranking mechanisms, which are important for accurately capturing rapidly evolving technology trends.
 
 Moreover, many existing RAG research prototypes focus primarily on retrieval accuracy without addressing production-readiness: deterministic pipeline design, idempotent ingestion, monitoring and observability, deployment automation, and cloud cost governance are frequently neglected. This limits their applicability in real-world operational environments.
 
@@ -42,7 +42,7 @@ The primary objective is to design, implement, and evaluate a hybrid Retrieval-A
 \begin{enumerate}[leftmargin=0.5in]
   \item To construct a cloud-native data engineering pipeline for batch and near-real-time ingestion from five heterogeneous data sources.
   \item To implement and compare baseline vector-only retrieval against hybrid retrieval with metadata filtering, full-corpus BM25, and Reciprocal Rank Fusion (RRF).
-  \item To evaluate system performance across context precision, faithfulness, p95 latency, and cost per query.
+  \item To evaluate system performance across context precision, faithfulness, p95 retrieval latency, and cost per query.
   \item To deploy and monitor the system using serverless AWS infrastructure consistent with MLOps best practices (Sculley et al., 2015; Breck et al., 2017).
 \end{enumerate}
 
@@ -66,7 +66,7 @@ Table~\ref{tab:rq_map} provides an explicit mapping from each research question 
 \midrule
 1 & Cloud-native deterministic ingestion & Pipeline idempotency; SHA-256 deduplication pass rate & Unit tests (24 ingestion tests); repeated pipeline runs \\[4pt]
 2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness $\geq 0.80$; citation grounding $> 0.80$ & Paired comparison over 50 queries; Wilcoxon signed-rank test; Cohen's $d$; bootstrap 95\% CI \\[4pt]
-3 & Latency and cost trade-offs & p95 latency $< 2$s; cost $<$ USD~15/month & Per-query timing; token usage profiling; cost projection \\[4pt]
+3 & Latency and cost trade-offs & p95 latency $< 2$s (retrieval stage); cost $<$ USD~15/month & Per-query timing; token usage profiling; cost projection \\[4pt]
 4 & MLOps integration & Drift detection coverage; CI/CD pass rate; health-check uptime & Drift simulation runs; CloudWatch alarm verification \\
 \bottomrule
 \end{tabular}
