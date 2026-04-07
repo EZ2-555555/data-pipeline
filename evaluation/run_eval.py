@@ -169,6 +169,8 @@ INTER_QUERY_DELAY_S = float(os.environ.get("INTER_QUERY_DELAY_S", "2.0"))
 INTER_METRIC_DELAY_S = float(os.environ.get("INTER_METRIC_DELAY_S", "1.0"))
 # Max parallel RAGAS metric workers (3 metrics scored concurrently per sample)
 RAGAS_WORKERS = int(os.environ.get("RAGAS_WORKERS", "3"))
+# Delay before retrying samples whose scores came back NaN (longer to let rate limits clear)
+NAN_RETRY_DELAY_S = float(os.environ.get("NAN_RETRY_DELAY_S", "15.0"))
 
 
 def run_evaluation(queries: list[dict]) -> dict:
@@ -246,17 +248,18 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
             }
             logger.info("RAGAS scoring sample %d/%d…", i + 1, len(results))
 
-            # Score all 3 metrics in parallel
+            # Score 3 metrics sequentially in the main thread.
+            # RAGAS 0.1.x uses asyncio.get_event_loop() internally; ThreadPoolExecutor
+            # worker threads have no event loop in Python 3.10+, causing silent NaN failures.
             sample_scores: dict[str, float] = {}
-            with ThreadPoolExecutor(max_workers=RAGAS_WORKERS) as pool:
-                futures = {
-                    pool.submit(_score_metric, faith_metric, row, "faithfulness", i + 1),
-                    pool.submit(_score_metric, relevancy_metric, row, "answer_relevancy", i + 1),
-                    pool.submit(_score_metric, precision_metric, row, "context_precision", i + 1),
-                }
-                for fut in as_completed(futures):
-                    name, val = fut.result()
-                    sample_scores[name] = val
+            for _metric, _name in [
+                (faith_metric,     "faithfulness"),
+                (relevancy_metric, "answer_relevancy"),
+                (precision_metric, "context_precision"),
+            ]:
+                _mname, _val = _score_metric(_metric, row, _name, i + 1)
+                sample_scores[_mname] = _val
+                time.sleep(INTER_METRIC_DELAY_S)
 
             scores["faithfulness"].append(sample_scores["faithfulness"])
             scores["answer_relevancy"].append(sample_scores["answer_relevancy"])
@@ -264,6 +267,44 @@ def run_ragas_evaluation(results: list[dict]) -> dict | None:
 
             # Brief pause between samples
             time.sleep(INTER_QUERY_DELAY_S)
+
+        # --- NaN retry pass ---
+        # Some samples return NaN due to transient rate-limit hits that exhaust
+        # all retries in the primary pass.  A second pass with a longer initial
+        # wait (NAN_RETRY_DELAY_S=15 s default) lets the API quota refill before
+        # retrying only the failed samples, avoiding a full re-run.
+        nan_indices = [
+            i for i, v in enumerate(scores["faithfulness"])
+            if math.isnan(v)
+        ]
+        if nan_indices:
+            logger.info(
+                "NaN retry pass: %d/%d samples need re-scoring (waiting %gs first)",
+                len(nan_indices), len(results), NAN_RETRY_DELAY_S,
+            )
+            time.sleep(NAN_RETRY_DELAY_S)
+            for i in nan_indices:
+                r = results[i]
+                contexts = [s.get("chunk_text", s.get("title", "")) for s in r["sources"]]
+                if not contexts:
+                    contexts = ["N/A"]
+                row = {
+                    "question": r["query"],
+                    "answer": r["answer"],
+                    "contexts": contexts,
+                    "ground_truth": r.get("ground_truth", ""),
+                }
+                logger.info("NaN retry sample %d/%d…", i + 1, len(results))
+                for _metric, _name in [
+                    (faith_metric,     "faithfulness"),
+                    (relevancy_metric, "answer_relevancy"),
+                    (precision_metric, "context_precision"),
+                ]:
+                    if math.isnan(scores[_name][i]):
+                        _mname, _val = _score_metric(_metric, row, _name, i + 1)
+                        scores[_name][i] = _val
+                        time.sleep(INTER_METRIC_DELAY_S)
+                time.sleep(INTER_QUERY_DELAY_S)
 
         return scores
     except Exception:
@@ -889,7 +930,9 @@ def run_drift_validation() -> dict:
     degraded_mean = statistics.mean(degraded_sims)
     mock_cursor2 = MagicMock()
     mock_cursor2.fetchone.return_value = (healthy_mean,)  # stored baseline
-    mock_cursor2.fetchall.return_value = [(healthy_mean,)] * 5  # stable history
+    mock_cursor2.fetchall.return_value = [  # realistic history with natural variance (~0.02 std)
+        (0.832,), (0.861,), (0.847,), (0.869,), (0.841,)
+    ]
     mock_conn2 = MagicMock()
     mock_conn2.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor2)
     mock_conn2.cursor.return_value.__exit__ = MagicMock(return_value=False)
@@ -916,7 +959,9 @@ def run_drift_validation() -> dict:
     marginal_sims = [s * 0.96 for s in healthy_sims]  # ~4% dip
     mock_cursor3 = MagicMock()
     mock_cursor3.fetchone.return_value = (healthy_mean,)
-    mock_cursor3.fetchall.return_value = [(healthy_mean,)] * 5
+    mock_cursor3.fetchall.return_value = [  # realistic history with natural variance (~0.02 std)
+        (0.832,), (0.861,), (0.847,), (0.869,), (0.841,)
+    ]
     mock_conn3 = MagicMock()
     mock_conn3.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor3)
     mock_conn3.cursor.return_value.__exit__ = MagicMock(return_value=False)
@@ -942,7 +987,9 @@ def run_drift_validation() -> dict:
     catastrophic_sims = [0.05, 0.08, 0.03, 0.06, 0.04]
     mock_cursor4 = MagicMock()
     mock_cursor4.fetchone.return_value = (healthy_mean,)
-    mock_cursor4.fetchall.return_value = [(healthy_mean,)] * 5
+    mock_cursor4.fetchall.return_value = [  # realistic history with natural variance (~0.02 std)
+        (0.832,), (0.861,), (0.847,), (0.869,), (0.841,)
+    ]
     mock_conn4 = MagicMock()
     mock_conn4.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor4)
     mock_conn4.cursor.return_value.__exit__ = MagicMock(return_value=False)
