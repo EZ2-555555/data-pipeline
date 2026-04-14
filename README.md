@@ -539,7 +539,7 @@ The evaluation framework implements a **9-phase pipeline** comparing **baseline 
 
 | Phase | Name | Description |
 |:-----:|:-----|:------------|
-| 1 | RAG Query Execution | 50 queries × 2 modes (baseline + hybrid) with per-query latency |
+| 1 | RAG Query Execution | 50 queries × 2 modes = 100 RAGAS samples (baseline + hybrid) with per-query latency |
 | 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision |
 | 3 | Summary Statistics | Mean, median, p95, citation grounding, token costs per mode |
 | 4 | Grid Search _(design-phase, superseded by RRF)_ | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2 — motivated the switch to RRF |
@@ -574,14 +574,14 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 
 - [x] 5-source data ingestion pipeline (ArXiv, HN, DEV.to, GitHub, RSS) with SHA-256 deduplication
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
-- [x] Hybrid retrieval with 4-stage BM25+RRF fusion (parameter-free)
+- [x] Hybrid retrieval: pgvector + BM25 + weighted RRF + cross-encoder reranking (ms-marco-MiniLM-L-6-v2)
 - [x] Multi-backend LLM fallback chain (Groq → Bedrock → Ollama → HuggingFace)
 - [x] FastAPI backend (`/health`, `/ask`, `/drift`) + React frontend (Vite)
 - [x] Docker Compose (6 services) + container-image Lambda deployment via ECR
 - [x] S3 medallion data lake + SQS-decoupled ingestion pipeline
 - [x] 3-layer hallucination verification + retrieval quality drift detection
 - [x] CloudWatch custom metrics + deep health checks + 3 alarms
-- [x] RAGAS evaluation framework (50 queries, 9-phase pipeline, statistical tests)
+- [x] RAGAS evaluation framework (100 samples, 9-phase pipeline, statistical tests) — hybrid composite 0.723 vs baseline 0.676 (+4.7 pp)
 - [x] AWS IaC via SAM (Free Tier + production templates)
 - [x] GitHub Actions CI/CD — lint → test → SAM validate → deploy → S3 frontend upload
 - [x] 204 unit tests across 15 modules (60%+ coverage gate)

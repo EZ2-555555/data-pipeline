@@ -20,6 +20,14 @@ logger = logging.getLogger(__name__)
 PROBE_PATH = Path(__file__).resolve().parent.parent.parent / "evaluation" / "queries" / "probe_queries.json"
 DRIFT_THRESHOLD = 0.10  # 10% relative drop triggers alert
 
+# Minimum std floor for Shewhart 3σ control limits.
+# Prevents LCL from collapsing to the mean when history is too uniform (e.g.
+# early deployment with few stable readings).  A floor of 0.02 reflects the
+# natural ~1-3% run-to-run variance observed in cosine similarity retrieval
+# systems.  Based on: Montgomery (2020) §4.3 — minimum σ estimation guidance
+# for short-run SPC; Wheeler & Chambers (1992) — practical control chart floors.
+SHEWHART_MIN_STD = 0.02
+
 
 def _load_probes() -> list[dict]:
     with open(PROBE_PATH, encoding="utf-8") as f:
@@ -106,6 +114,9 @@ def run_drift_check() -> dict:
                 hist_std = math.sqrt(
                     sum((h - hist_mean) ** 2 for h in history) / len(history)
                 )
+                # Apply minimum std floor so the LCL never collapses to the mean
+                # when history is too uniform (early deployment / very stable system).
+                hist_std = max(hist_std, SHEWHART_MIN_STD)
                 lcl = hist_mean - 3 * hist_std  # lower control limit
                 if mean_sim < lcl:
                     alert = True

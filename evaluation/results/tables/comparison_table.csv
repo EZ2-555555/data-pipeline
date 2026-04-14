@@ -1,11 +1,11 @@
 Metric,Baseline,Hybrid,Delta
 Queries,50,50,
-Mean Latency (s),2.908,3.119,0.211
-Median Latency (s),2.811,2.809,
-p95 Latency (s),3.676,3.363,-0.313
-Citation Grounding,0.96,0.9,-0.06
-Tokens/Query,2344.6,2304.5,
-Est. Cost (USD),0.005468,0.005437,
-Faithfulness,0.8016,0.77,-0.0315
-Answer Relevancy,0.9416,0.9364,-0.0052
-Context Precision,0.3044,0.3144,0.01
+Mean Latency (s),1.125,2.487,1.362
+Median Latency (s),1.113,1.933,
+p95 Latency (s),1.477,2.444,0.967
+Citation Grounding,0.88,0.86,-0.02
+Tokens/Query,2212.6,2340.5,
+Est. Cost (USD),0.005286,0.005502,
+Faithfulness,0.6894,0.7471,0.0577
+Answer Relevancy,0.8692,0.9343,0.0652
+Context Precision,0.2083,0.278,0.0697

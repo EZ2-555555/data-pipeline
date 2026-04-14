@@ -22,5 +22,12 @@ RUN python -c "\
 from fastembed import TextEmbedding; \
 TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/opt/fastembed_cache')"
 
+# Pre-download the cross-encoder model at build time so hybrid_retrieve()
+# can rerank without a runtime download (Lambda's filesystem is read-only).
+ENV SENTENCE_TRANSFORMERS_HOME=/opt/cross_encoder_cache
+RUN python -c "\
+from sentence_transformers import CrossEncoder; \
+CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
+
 # Default handler — overridden per function via ImageConfig.Command in SAM template
 CMD ["src.pipeline.run_pipeline.lambda_handler"]
