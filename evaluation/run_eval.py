@@ -16,7 +16,6 @@ import os
 import statistics
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # Ensure project root is on sys.path
@@ -1107,12 +1106,12 @@ def main():
     summary = compute_summary(raw_results, ragas_scores)
 
     # Phase 4 & 5: Grid search and sensitivity analysis are SKIPPED.
-    # The hybrid retriever now uses parameter-free RRF (K=60) instead of
-    # weighted linear combination, so α/β/γ sweeps are not applicable.
-    # These phases will be replaced by the 3-config ablation study.
+    # The hybrid retriever now uses weighted RRF (vector=0.50, BM25=0.35,
+    # recency=0.15) instead of the legacy α/β/γ linear combination, so
+    # the old α/β/γ sweeps are not applicable.
     from src.db.connection import close_pool
     close_pool()
-    logger.info("Phase 4-5: SKIPPED — RRF is parameter-free (no α/β/γ to tune)")
+    logger.info("Phase 4-5: SKIPPED — weighted RRF replaces legacy α/β/γ tuning")
 
     # Phase 6: Statistical significance tests (paired baseline vs hybrid)
     logger.info("Phase 6: Statistical significance tests…")

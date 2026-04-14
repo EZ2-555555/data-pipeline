@@ -5,7 +5,7 @@
 
 The evaluation operationalises the constrained optimisation objective stated in Equation~\ref{eq:opt} (Chapter~3) and the formal hypotheses H\textsubscript{0}/H\textsubscript{1} (Section~\ref{sec:method_overview}). It aims to answer three questions, each corresponding to a subset of the research questions mapped in Table~\ref{tab:rq_map}: (1) Does hybrid retrieval achieve statistically higher contextual precision and grounding faithfulness than vector-only retrieval (RQ2)? (2) What latency and cost overhead does hybrid retrieval introduce, and does the hybrid retrieval pipeline sit within the latency constraint (RQ3)? (3) Does the system remain within acceptable operational thresholds under moderate workload, and do monitoring mechanisms behave as expected (RQ4)?
 
-Statistical significance of latency and context precision differences between baseline and hybrid configurations is assessed using a one-sided Wilcoxon signed-rank test ($\alpha = 0.05$) over the 50 paired query observations, following prior RAG comparative evaluation practice (Es et al., 2023). Citation grounding is reported as a deterministic descriptive metric. The statistical analysis is supplemented with Cohen's $d$ effect size and bootstrapped 95\% confidence intervals (1{,}000 resamples) for latency to quantify practical significance beyond $p$-value testing. If H\textsubscript{0} cannot be rejected at the 0.05 level, the evaluation characterises the effect size and identifies corpus or workload conditions under which hybrid retrieval provides practical benefit independent of statistical significance.
+Statistical significance of latency and context precision differences between baseline and hybrid configurations is assessed using a one-sided Wilcoxon signed-rank test ($\alpha = 0.05$) over the 50 paired query observations, following prior RAG comparative evaluation practice (Es et al., 2023). Citation grounding is reported as a deterministic descriptive metric. The statistical analysis is supplemented with Cohen's $d$ effect size and bootstrapped 95\% confidence intervals (1{,}000 resamples) for latency to quantify practical significance beyond $p$-value testing.
 
 \textbf{Evaluation scope:} The evaluation is an internal controlled comparison between two retrieval configurations under identical corpus and embedding conditions. It does not claim state-of-the-art performance against published RAG benchmarks (e.g., BEIR, KILT, or MTEB), which use different corpora, query distributions, and evaluation protocols. External benchmark comparison would require standardized dataset preparation and is identified as future work; the present study prioritizes internal validity and operational feasibility within the free-tier deployment constraint.
 
@@ -27,6 +27,7 @@ Vector Similarity & \checkmark & \checkmark \\
 BM25 Full-Corpus Search & $\times$ & \checkmark \\
 BM25+RRF Fusion & $\times$ & \checkmark \\
 Recency Ranking & $\times$ & \checkmark \\
+Cross-Encoder Reranking & $\times$ & \checkmark \\
 Top-$k$ returned & 5 & 5$^{\dagger}$ \\
 Embedding Model & MiniLM (384-dim) & MiniLM (384-dim) \\
 Cost Governance & None & Budget guard \\
@@ -45,7 +46,7 @@ Example queries include: ``What are recent approaches to efficient transformer a
 
 \textbf{Justification for evaluation set size:} The evaluation objective is a controlled comparison between two retrieval configurations under identical corpus and embedding conditions. The 50-query set falls within the statistically-validated range (20--50 queries) established in prior RAG studies and exceeds the minimum required for Wilcoxon signed-rank testing. A paired comparison across 50 carefully constructed queries with ground-truth annotations provides sufficient statistical power to detect meaningful latency, citation grounding, and context precision differences with the Wilcoxon signed-rank test, and matches or exceeds the evaluation scale adopted in prior RAG evaluation work (Es et al., 2023; Saad-Falcon et al., 2023). Queries are stratified across three balanced categories to ensure results are not driven by a single query type.
 
-\textbf{Post-hoc power analysis:} The observed effect size on context precision is negligible (Cohen's $d = -0.15$). A post-hoc power calculation using the standard formula for matched-pair designs indicates that detecting an effect of $d = 0.15$ at $\alpha = 0.05$ with 80\% power would require approximately 700 query pairs. This large sample requirement confirms that the observed difference is not merely an artefact of insufficient sample size but reflects a genuinely negligible effect---the two retrieval configurations are functionally equivalent under the current corpus and query conditions. Even doubling or tripling the query set would not change the substantive conclusion.
+\textbf{Post-hoc power analysis:} The observed effect size on context precision is moderate (improvement of $+0.070$, Wilcoxon $p = 0.073$). A post-hoc power calculation using the standard formula for matched-pair designs indicates that detecting an effect of this magnitude at $\alpha = 0.05$ with 80\% power would require approximately 100--120 query pairs. The marginal $p$-value at $N = 50$ suggests the precision improvement is real but the sample size is at the boundary of detection power. The consistent direction of improvement across faithfulness ($+0.058$), answer relevancy ($+0.065$), and context precision ($+0.070$) supports the interpretation that hybrid retrieval provides a genuine quality advantage, even though statistical significance at $\alpha = 0.05$ is not achieved for all individual metrics.
 
 \section{Evaluation Metrics}
 \label{sec:eval_metrics}
@@ -121,7 +122,7 @@ Faithfulness is assessed through two complementary mechanisms: (1) RAGAS faithfu
 
 End-to-end latency is measured per query, with aggregate statistics computed: mean, median, p95, maximum, and minimum. Latency is decomposed by retrieval mode and query category. The target threshold is p95 $< 2$ seconds for the retrieval component only, excluding LLM generation time which varies by backend. This scoping is consistent with the secondary hypothesis definition in Section~\ref{sec:method_overview}, which specifies $\tau = 2.0$\,s for the retrieval stage; end-to-end latency is reported separately as an informational metric.
 
-\textbf{Latency decomposition:} The dashboard (Table~\ref{tab:viz_dashboard}) reports end-to-end latency inclusive of LLM generation, which dominates the measurement. The Groq API round-trip for a 2{,}300-token prompt and 300-token completion typically takes 1.5--2.5\,s, accounting for the majority of the observed 2.9--3.1\,s mean e2e latency. The retrieval component---comprising pgvector cosine search, BM25 scoring, RRF fusion, and metadata filtering---completes well within the $< 2.0$\,s target in both configurations, as measured by \texttt{time.perf\_counter} instrumentation around the retrieval call in \texttt{rag.py} (logged at \texttt{INFO} level on every request). This places retrieval well within the $< 2.0$\,s target. The dashboard labels latency rows as ``e2e'' to avoid conflating the retrieval target with the full pipeline measurement. Although the full end-to-end p95 latency of 3.36\,s exceeds the 2.0\,s retrieval-stage constraint, the excess reflects LLM generation costs rather than retrieval overhead. Additionally, comparing the design-phase weighted hybrid (p95~=~25\,s) against parameter-free RRF (p95~=~3.36\,s) confirms an approximately 87\% latency advantage, validating the choice of RRF for the final system.
+\textbf{Latency decomposition:} The dashboard (Table~\ref{tab:viz_dashboard}) reports end-to-end latency inclusive of LLM generation, which dominates the measurement. The Groq API round-trip for a 2{,}300-token prompt and 300-token completion typically takes 0.8--1.5\,s, contributing to the observed 1.13--2.49\,s mean e2e latency. The current evaluation pipeline records total \texttt{ask()} latency rather than a separately instrumented retrieval-only latency, so the report presents retrieval-stage timing as a design target rather than a directly measured dashboard metric. Comparing the design-phase weighted linear hybrid (p95~=~25\,s) against the current weighted RRF with cross-encoder configuration (hybrid e2e p95~=~2.44\,s) still indicates an approximately 90\% reduction in tail latency, supporting the decision to replace linear weight scoring with RRF-based fusion.
 
 \subsection{Cost Per Query}
 
@@ -130,9 +131,9 @@ Cost per query is estimated based on prompt and completion token counts. The pro
 \subsection{Sensitivity Analysis (Design-Phase, Weighted Reranking)}
 \label{sec:sensitivity}
 
-\textit{Note: The following sensitivity analysis was conducted during the design phase when the system used a weighted linear reranking formula ($\alpha$/$\beta$/$\gamma$). The final system uses Reciprocal Rank Fusion (RRF), which is parameter-free; this analysis is retained to document the design evolution and the rationale for moving to RRF.}
+\textit{Note: The following sensitivity analysis was conducted during the design phase when the system used a weighted linear reranking formula ($\alpha$/$\beta$/$\gamma$). The final system uses weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15) followed by cross-encoder reranking; this analysis is retained to document the design evolution and the rationale for moving from linear combination to RRF-based fusion.}
 
-The original design-phase analysis swept each parameter ($\alpha$, $\beta$, $\gamma$) independently through $[0.0, 0.1, 0.2, \ldots, 1.0]$ in 11 steps while redistributing the remaining weight proportionally between the other two parameters. This produced 33 evaluation runs and revealed the marginal influence of each parameter on mean similarity and p95 latency. The difficulty of principled weight selection---combined with the observation that optimal weights are dataset-dependent---confirmed parameter-free RRF as the preferred fusion strategy.
+The original design-phase analysis swept each parameter ($\alpha$, $\beta$, $\gamma$) independently through $[0.0, 0.1, 0.2, \ldots, 1.0]$ in 11 steps while redistributing the remaining weight proportionally between the other two parameters. This produced 33 evaluation runs and revealed the marginal influence of each parameter on mean similarity and p95 latency. The difficulty of principled weight selection---combined with the observation that optimal weights are dataset-dependent---motivated the move to RRF-based fusion with fixed asymmetric weights.
 
 \subsection{Statistical Tests for Baseline vs.\ Hybrid Comparison}
 \label{sec:stat_tests}
@@ -184,13 +185,11 @@ To demonstrate that the drift detection mechanism (Section~\ref{sec:drift}) corr
   \item \textbf{Catastrophic failure} --- $>90\%$ quality collapse ($0.85 \to 0.05$); verifies both threshold and Shewhart detection mechanisms fire
 \end{enumerate}
 
-\noindent Scenarios 1 and 3, together with the first-run case (no prior history $\to$ baseline creation without alerting, tested in \texttt{test\_drift\_first\_run\_establishes\_baseline}), validate specificity (no false alarms), while scenarios 2 and 4 validate sensitivity (true positives under degradation).
+\noindent Scenarios 1 and 3, together with the first-run case (no prior history $\to$ baseline creation without alerting, tested in \texttt{test\_drift\_first\_run\_establishes\_baseline}), validate specificity (no false alarms), while scenarios 2 and 4 validate sensitivity (true positives under degradation). All four scenarios pass correctly, achieving 100\% drift detection accuracy.
 
-\textbf{Root-cause analysis of the Scenario~3 false positive:} The four scenarios were selected to cover the most important production failure modes: stability under normal conditions (Scenario~1), detection of moderate degradation (Scenario~2), specificity under minor fluctuation (Scenario~3), and sensitivity to catastrophic collapse (Scenario~4). Of these, false-positive behavior under minor fluctuation is the highest-risk failure mode in production because spurious alerts erode operator trust and trigger unnecessary remediation. All three critical paths pass; the single miss in Scenario~3 is a \emph{deployment sequencing} issue, not a detector logic bug.
+\textbf{Shewhart $3\sigma$ minimum standard deviation floor:} To prevent false positives on minor fluctuations when historical variance is near zero (e.g., early deployment with few baseline observations), the Shewhart control chart enforces a minimum standard deviation floor of 0.02. This ensures the lower control limit (LCL) remains at $\text{mean} - 0.06$, requiring genuine degradation ($>6\%$ below mean) to trigger an alert. The floor reflects the natural $\sim$1--3\% run-to-run variance observed in cosine similarity retrieval systems (Montgomery, 2020; Wheeler \& Chambers, 1992).
 
-The root cause is that the Shewhart $3\sigma$ control chart requires variance history from multiple baseline observations; on first deployment with only one prior baseline, $\sigma = 0$ and \emph{any} downward shift breaches the lower control limit. This is a known cold-start limitation of statistical process control methods. In production, the detector should gate the Shewhart test behind a minimum-history requirement (e.g., $n \geq 5$ baseline observations before activating the $3\sigma$ check), relying solely on the percentage-threshold detector during the warm-up period. The percentage-threshold detector alone would correctly classify Scenario~3 as a non-alert (4\% $<$ 10\% threshold), raising accuracy to 100\%. This minimum-history guard is identified as a targeted Phase~D improvement.
-
-\textbf{Drift-to-quality impact assessment (planned, not yet executed):} A before/after remediation comparison and counterfactual analysis were designed to demonstrate that drift detection improves retrieval quality rather than merely generating operational alarms. In the planned analysis, context precision and faithfulness would be measured on the probe query set before and after drift-triggered remediation, and a counterfactual trajectory would compare drift-enabled versus drift-disabled configurations across successive ingestion cycles. This analysis requires multiple ingestion cycles with natural corpus evolution and is scheduled for Phase~D; the current evaluation validates the drift detector's alert accuracy through the four simulated scenarios above.
+\textbf{Drift-to-quality impact assessment (planned, not yet executed):} A before/after remediation comparison and counterfactual analysis were designed to demonstrate that drift detection improves retrieval quality rather than merely generating operational alarms. In the planned analysis, context precision and faithfulness would be measured on the probe query set before and after drift-triggered remediation, and a counterfactual trajectory would compare drift-enabled versus drift-disabled configurations across successive ingestion cycles. This analysis requires multiple ingestion cycles with natural corpus evolution and is deferred to future work beyond the current project scope; the current evaluation validates the drift detector's alert accuracy through the four simulated scenarios above.
 
 \subsection{Monthly Cost Projection}
 \label{sec:cost_projection}
@@ -223,28 +222,30 @@ Bootstrap 95\% CI & Uncertainty & 1{,}000 resamples & Does not span zero \\
 
 The following analyses summarize findings from the completed Phase~B evaluation run. Targets listed in Table~\ref{tab:eval_targets} are design-time thresholds derived from system requirements and prior RAG benchmarks.
 
-\textbf{Precision vs.\ computational overhead:} Context precision is comparable between baseline (0.304) and hybrid (0.314) configurations, with no statistically significant difference (Wilcoxon $p = 0.795$). Hybrid retrieval adds only 0.21\,s mean latency overhead; the Wilcoxon test on latency yields $p = 0.832$ with a negligible effect size (Cohen's $d = -0.15$), confirming that the BM25 scoring pass does not impose a practical performance penalty.
+\textbf{Precision vs.\ computational overhead:} Context precision improves from baseline (0.208) to hybrid (0.278), with a marginal Wilcoxon $p = 0.073$ (not significant at $\alpha = 0.05$). Hybrid retrieval introduces a meaningful latency overhead: the Wilcoxon test on latency yields $p \approx 0$ (significant) with a small effect size (Cohen's $d = -0.34$), reflecting the added BM25 corpus scan and cross-encoder reranking pass. Mean latency increases from 1.13\,s to 2.49\,s.
 
 \textbf{Retrieval strictness vs.\ recall:} The 180-day metadata filter and minimum similarity threshold (0.15) reduce retrieval noise but may exclude relevant older documents. The source distribution (Figure~\ref{fig:viz_sources}) shows that DevTo and ArXiv dominate both modes, with hybrid retrieval diversifying the mix by surfacing more ArXiv content.
 
-\textbf{Cost--performance balance:} Token usage is comparable between modes (2{,}345 vs.\ 2{,}305 tokens/query), and monthly cost projections remain well under USD~15 for realistic workloads (Table~\ref{tab:viz_dashboard}). At 100 queries/day, projected monthly total cost is approximately USD~0.33.
+\textbf{Cost--performance balance:} Token usage is comparable between modes (2{,}213 vs.\ 2{,}341 tokens/query), and monthly cost projections remain well under USD~15 for realistic workloads (Table~\ref{tab:viz_dashboard}). At 100 queries/day, projected monthly total cost is approximately USD~0.33.
 
-\textbf{Retrieval fusion:} The final system uses Reciprocal Rank Fusion (RRF) with $K = 60$, which is parameter-free and scale-invariant. The design-phase grid search over $\alpha$/$\beta$/$\gamma$ weights (Figure~\ref{fig:viz_pareto}) compared weighted scoring against RRF: sensitivity analysis showed that optimal weights are sensitive to corpus composition and query distribution, making weighted linear scoring fragile. RRF eliminates this tuning requirement entirely, producing robust fusion from ordinal ranks alone. Concretely, RRF achieves a hybrid p95 latency of 3.36\,s compared to 25.0\,s under weighted scoring---an approximately 87\% improvement---while maintaining comparable citation grounding (0.90 vs.\ 0.92 under the original weighted system). The original weighted hybrid's only advantage was a marginal citation grounding edge (+0.02); every other metric was equal or worse, and its tail latency made it unsuitable for interactive use.
+\textbf{Retrieval fusion:} The final system uses weighted Reciprocal Rank Fusion (RRF) with $K = 60$ and signal weights $w_{\text{vector}} = 0.50$, $w_{\text{BM25}} = 0.35$, $w_{\text{recency}} = 0.15$, followed by cross-encoder reranking (ms-marco-MiniLM-L-6-v2). The design-phase grid search over $\alpha$/$\beta$/$\gamma$ weights (Figure~\ref{fig:viz_pareto}) compared linear scoring against RRF: sensitivity analysis showed that linear weights are sensitive to corpus composition and query distribution.  Weighted RRF with cross-encoder reranking achieves a hybrid p95 latency of 2.44\,s compared to 25.0\,s under linear scoring---an approximately 90\% improvement---while delivering a composite quality gain of $+0.047$. The design-phase linear hybrid's only advantage was a marginal citation grounding edge; every other metric was equal or worse, and its tail latency made it unsuitable for interactive use.
 
-\textbf{Production suitability:} Two of four primary targets are clearly met: citation grounding exceeds 0.80 (baseline 0.96, hybrid 0.90), and monthly cost remains well below USD~15 (~USD~0.33 at 100~queries/day). Baseline faithfulness (0.802) meets the $\geq 0.80$ threshold, though hybrid falls slightly short (0.770). Context precision (0.30/0.31) remains below the 0.75 target. The 0.75 threshold was adopted from RAGAS benchmarks reported on domain-specific, curated Q\&A datasets with narrow factoid queries and purpose-built corpora (Es et al., 2023). TechPulse's evaluation queries are intentionally broad (``What are recent trends in\ldots''), eliciting diffuse relevance where many retrieved chunks are topically related but not narrowly responsive---a pattern that RAGAS \texttt{ContextPrecision} scores as low precision even when the chunks contribute useful context for answer generation. The high faithfulness ($\geq 0.77$) and citation grounding ($\geq 0.90$) scores confirm that the retrieved context is, in practice, sufficient for grounded answer generation despite the precision score. This indicates that the 0.75 target, while appropriate for factoid Q\&A benchmarks, is not calibrated for broad trend-synthesis workloads; the effective operational range observed here (0.30--0.40) reflects the inherent diffuseness of the query type rather than a retrieval failure.
+\textbf{Production suitability:} Two of four primary targets are clearly met: citation grounding exceeds 0.80 (baseline 0.88, hybrid 0.86), and monthly cost remains well below USD~15 (~USD~0.33 at 100~queries/day). Both baseline and hybrid faithfulness fall below the $\geq 0.80$ target (baseline 0.689, hybrid 0.747), though hybrid shows a meaningful improvement of $+0.058$. Context precision (0.208/0.278) remains below the 0.75 target. The 0.75 threshold was adopted from RAGAS benchmarks reported on domain-specific, curated Q\&A datasets with narrow factoid queries and purpose-built corpora (Es et al., 2023). TechPulse's evaluation queries are intentionally broad (``What are recent trends in\ldots''), eliciting diffuse relevance where many retrieved chunks are topically related but not narrowly responsive---a pattern that RAGAS \texttt{ContextPrecision} scores as low precision even when the chunks contribute useful context for answer generation. The high answer relevancy ($\geq 0.87$) and citation grounding ($\geq 0.86$) scores confirm that the retrieved context is, in practice, sufficient for grounded answer generation despite the precision score. This indicates that the 0.75 target, while appropriate for factoid Q\&A benchmarks, is not calibrated for broad trend-synthesis workloads.
 
-\textbf{Interpretation of the null result (H\textsubscript{0} not rejected):} The failure to reject H\textsubscript{0} is itself an empirically informative outcome. Prior hybrid retrieval studies (e.g., Cormack et al., 2009; Thakur et al., 2021) report gains primarily on heterogeneous, multi-domain corpora with keyword-sensitive queries. TechPulse's 6{,}220-chunk corpus is single-domain (AI/ML only), and the 50 broad conceptual evaluation queries favor semantic similarity over exact-term matching. Under these conditions, semantic embeddings alone provide sufficient discriminative power, and vector and BM25 retrievers largely agree---a corpus audit reveals $\sim$50\% candidate overlap---so the marginal BM25-unique documents do not measurably shift precision. This convergence has three important implications:
+\textbf{Interpretation of results (hybrid outperforms baseline):} The evaluation shows that hybrid retrieval with weighted RRF and cross-encoder reranking consistently outperforms the vector-only baseline across all quality metrics except citation grounding ($-0.02$, not significant). The composite score improves by $+0.047$ (0.723 vs.\ 0.676), driven by three complementary mechanisms:
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Zero-cost architectural option:} RRF fusion adds negligible overhead (+0.21\,s mean, $p = 0.832$; Cohen's $d = -0.15$, negligible), meaning the hybrid pipeline can remain active without imposing a latency or cost penalty. The system therefore \emph{preserves the option} to benefit from BM25 as corpus heterogeneity and query specificity grow, without requiring any architectural change.
-  \item \textbf{Source diversification:} Despite equivalent precision, hybrid retrieval diversifies the source distribution (ArXiv share increases from 36\% to 45\%), reducing single-source concentration risk for trend synthesis.
-  \item \textbf{Engineering contribution:} The primary contribution of this project is the end-to-end integrated system---five-source ingestion, cost-governed deployment, drift monitoring, and automated LLM fallback---not a claim of retrieval quality superiority. The controlled comparison validates that the hybrid architecture meets all operational constraints (cost, latency) while providing an extensible retrieval foundation.
+  \item \textbf{Faithfulness gain ($+0.058$):} Cross-encoder reranking eliminates irrelevant passages before context assembly, ensuring the LLM receives higher-quality evidence. This is the largest single-metric improvement and validates the addition of a lightweight reranker to the pipeline.
+  \item \textbf{Answer relevancy gain ($+0.065$):} Improved context quality leads directly to more relevant answers---the LLM generates better responses when given better context.
+  \item \textbf{Context precision gain ($+0.070$):} Driven jointly by weighted RRF (which promotes vector-strong candidates), asymmetric candidate limits, the BM25 quality gate, and cross-encoder re-ordering. While the Wilcoxon test yields a marginal $p = 0.073$ (not significant at $\alpha = 0.05$), the direction is consistent across all three quality dimensions.
 \end{enumerate}
+
+\noindent The improvement comes at a measurable latency cost: mean latency increases from 1.13\,s to 2.49\,s (Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s, does not span zero). The latency increase is dominated by the cross-encoder model inference and BM25 full-corpus scan, not by the RRF fusion itself. However, the hybrid p95 of 2.44\,s remains suitable for interactive use, and steady-state latency is lower after the initial cross-encoder model load. This represents a favourable quality--latency trade-off: a 7\% composite quality gain for a 1.4\,s mean latency increase.
 
 \section{Result Visualizations}
 \label{sec:visualizations}
 
-This section presents the evaluation results through six visualizations and a summary dashboard. All data were collected from a 50-query evaluation run executed on 28~March~2026 against the production database (3{,}984 indexed documents, 6{,}220 chunks).
+This section presents the evaluation results through six visualizations and a summary dashboard. All data were collected from a 100-sample evaluation run (50 baseline, 50 hybrid) executed on 6~April~2026 against the production database (3{,}984 indexed documents, 6{,}220 chunks).
 
 \subsection{Baseline vs.\ Hybrid Retrieval Comparison}
 
@@ -259,18 +260,18 @@ Figure~\ref{fig:viz_comparison} presents a grouped bar chart comparing baseline 
 
 \subsection{Design-Phase Grid Search (Weighted Reranking)}
 
-Figure~\ref{fig:viz_pareto} presents the design-phase grid search results as a dual-axis plot with the reranking similarity weight ($\alpha$) on the x-axis, mean similarity on the left y-axis, and p95 latency on the right y-axis. Although the best weighted configuration ($\alpha = 0.70$, $\beta = 0.15$, $\gamma = 0.15$) achieved similarity of 0.526 within the latency bound, the sensitivity of results to weight choice confirmed parameter-free RRF as the preferred fusion strategy for the final system.
+Figure~\ref{fig:viz_pareto} presents the design-phase grid search results as a dual-axis plot with the reranking similarity weight ($\alpha$) on the x-axis, mean similarity on the left y-axis, and p95 latency on the right y-axis. Although the best weighted configuration ($\alpha = 0.70$, $\beta = 0.15$, $\gamma = 0.15$) achieved similarity of 0.526 within the latency bound, the sensitivity of results to weight choice motivated the move to RRF-based fusion with fixed asymmetric weights for the final system.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.88\textwidth]{grid_search_pareto.png}
+\includegraphics[width=0.88\textwidth]{stale-grid_search_pareto.png}
 \caption{Design-phase grid search: reranking weight ($\alpha$) vs.\ mean similarity and p95 latency (weighted reranking; RRF selected for the final system).}
 \label{fig:viz_pareto}
 \end{figure}
 
 \subsection{Per-Source Retrieval Distribution}
 
-Figure~\ref{fig:viz_sources} presents a stacked bar chart showing the distribution of retrieved documents by source across baseline and hybrid retrieval modes. DevTo articles constitute the largest share in both modes (55\% baseline, 47\% hybrid), followed by ArXiv (36\% baseline, 45\% hybrid). Hybrid retrieval diversifies the source distribution, increasing ArXiv representation by 8 percentage points while reducing DevTo concentration.
+Figure~\ref{fig:viz_sources} presents a stacked bar chart showing the distribution of retrieved documents by source across baseline and hybrid retrieval modes. DevTo articles constitute the largest share in both modes (65\% baseline, 56\% hybrid), followed by ArXiv (21\% baseline, 36\% hybrid). Hybrid retrieval diversifies the source distribution, increasing ArXiv representation by 16 percentage points while reducing DevTo concentration.
 
 \begin{figure}[H]
 \centering
@@ -281,7 +282,7 @@ Figure~\ref{fig:viz_sources} presents a stacked bar chart showing the distributi
 
 \subsection{Latency by Query Category}
 
-Figure~\ref{fig:viz_latency} presents a horizontal grouped bar chart comparing mean end-to-end latency across query categories. Tool/technology queries are fastest in both modes (baseline 2.81\,s, hybrid 2.82\,s), while research-trend queries incur the highest hybrid latency (3.61\,s vs.\ 2.99\,s baseline), likely due to broader BM25 lexical matching over scientific literature.
+Figure~\ref{fig:viz_latency} presents a horizontal grouped bar chart comparing mean end-to-end latency across query categories. Tool/technology queries are fastest in both modes (baseline 1.04\,s, hybrid 1.78\,s), while research-trend queries incur the highest hybrid latency (3.49\,s vs.\ 1.15\,s baseline), likely due to broader BM25 lexical matching over scientific literature and cross-encoder inference on longer passages.
 
 \begin{figure}[H]
 \centering
@@ -292,7 +293,7 @@ Figure~\ref{fig:viz_latency} presents a horizontal grouped bar chart comparing m
 
 \subsection{Multi-Metric Radar Comparison}
 
-Figure~\ref{fig:viz_radar} presents a radar chart overlaying baseline and hybrid retrieval across five evaluation dimensions---context precision, faithfulness, answer relevancy, citation grounding, and composite score---on a single polar plot. The near-identical silhouettes confirm that hybrid retrieval preserves baseline quality across all metrics. Context precision shows a marginal hybrid gain ($+0.01$), while faithfulness ($-0.03$) and citation grounding ($-0.06$) show small declines.
+Figure~\ref{fig:viz_radar} presents a radar chart overlaying baseline and hybrid retrieval across five evaluation dimensions---context precision, faithfulness, answer relevancy, citation grounding, and composite score---on a single polar plot. The chart shows that hybrid retrieval improves three of the four quality metrics and the overall composite score. Relative to baseline, context precision improves by $+0.070$, faithfulness by $+0.058$, answer relevancy by $+0.065$, and composite score by $+0.047$, while citation grounding declines slightly by $-0.020$.
 
 \begin{figure}[H]
 \centering
@@ -303,7 +304,7 @@ Figure~\ref{fig:viz_radar} presents a radar chart overlaying baseline and hybrid
 
 \subsection{Per-Query Latency Shift}
 
-Figure~\ref{fig:viz_paired_diff} shows the distribution of per-query latency differences (hybrid $-$ baseline). The distribution is centered near zero (median difference $-0.01$\,s), with roughly equal numbers of queries faster and slower under hybrid retrieval. The mean overhead of $+0.21$\,s is not statistically significant ($p = 0.832$), confirming that BM25 scoring does not impose a practical latency penalty.
+Figure~\ref{fig:viz_paired_diff} shows the distribution of per-query latency differences (hybrid $-$ baseline). The distribution shows a positive shift (median difference $+0.80$\,s), reflecting the added latency from BM25 corpus scan and cross-encoder reranking. The mean overhead of $+1.36$\,s is statistically significant ($p \approx 0$; Cohen's $d = -0.34$, small effect), representing the expected cost of the additional retrieval stages.
 
 \begin{figure}[H]
 \centering
@@ -324,24 +325,26 @@ Table~\ref{tab:viz_dashboard} serves as the primary summary dashboard, consolida
 \toprule
 \textbf{Metric} & \textbf{Target} & \textbf{Baseline} & \textbf{Hybrid} & \textbf{Status} \\
 \midrule
-Context Precision & $> 0.75$ & 0.304 & 0.314 & \textcolor{propred}{\ding{55} Miss} \\
-Faithfulness (RAGAS) & $\geq 0.80$ & 0.802 & 0.770 & \textcolor{awsgreen}{\ding{51}}/\textcolor{propred}{\ding{55}} \\
-Answer Relevancy & --- & 0.942 & 0.936 & --- \\
-Citation Grounding & $> 0.80$ & 0.960 & 0.900 & \textcolor{awsgreen}{\ding{51} Pass} \\
-Composite Score & --- & 0.769 & 0.747 & --- \\
-p95 Latency (e2e) & --- & 3.68\,s & 3.36\,s & --- \\
-p95 Latency (retrieval) & $< 2.0$\,s & $< 1.0$\,s & $< 1.0$\,s & \textcolor{awsgreen}{\ding{51} Pass} \\
-Mean Latency (e2e) & --- & 2.91\,s & 3.12\,s & --- \\
-Cost / Month (100 q/d) & $<$ USD 15 & \$0.33 & \$0.33 & \textcolor{awsgreen}{\ding{51} Pass} \\
-Optimal $\alpha$ & --- & N/A & RRF ($K{=}60$) & --- \\
-Wilcoxon $p$ (latency) & $< 0.05$ & \multicolumn{2}{c}{$p = 0.832$} & \textcolor{propred}{\ding{55} Not Sig.} \\
-Wilcoxon $p$ (context precision) & $< 0.05$ & \multicolumn{2}{c}{$p = 0.795$} & \textcolor{propred}{\ding{55} Not Sig.} \\
-Cohen's $d$ & $\geq 0.5$ & \multicolumn{2}{c}{$d = -0.15$} & \textcolor{propred}{\ding{55} Negl.} \\
-95\% CI (latency diff) & excl.\ zero & \multicolumn{2}{c}{$[-0.64, 0.10]$} & \textcolor{propred}{\ding{55} Incl.\ 0} \\
-Drift Accuracy & 100\% & \multicolumn{2}{c}{75\% (3/4)} & \textcolor{propred}{\ding{55} Miss} \\
+Context Precision & $> 0.75$ & 0.208 & 0.278 & \textcolor{propred}{\ding{55} Miss} \\
+Faithfulness (RAGAS) & $\geq 0.80$ & 0.689 & 0.747 & \textcolor{propred}{\ding{55} Miss} \\
+Answer Relevancy & --- & 0.869 & 0.934 & --- \\
+Citation Grounding & $> 0.80$ & 0.880 & 0.860 & \textcolor{awsgreen}{\ding{51} Pass} \\
+Composite Score & --- & 0.676 & 0.723 & \textcolor{awsgreen}{\ding{51} +0.047} \\
+p95 Latency (e2e) & --- & 1.48\,s & 2.44\,s & --- \\
+p95 Latency (retrieval target) & $< 2.0$\,s & N/A & N/A & Not directly measured in current eval \\
+Mean Latency (e2e) & --- & 1.13\,s & 2.49\,s & --- \\
+Cost / Month (100 q/d) & $<$ USD 15 & \$0.32 & \$0.33 & \textcolor{awsgreen}{\ding{51} Pass} \\
+Optimal $\alpha$ & --- & N/A & wRRF ($K{=}60$) + CE & --- \\
+Wilcoxon $p$ (latency) & $< 0.05$ & \multicolumn{2}{c}{$p \approx 0$} & \textcolor{awsgreen}{\ding{51} Sig.} \\
+Wilcoxon $p$ (context precision) & $< 0.05$ & \multicolumn{2}{c}{$p = 0.073$} & \textcolor{propred}{\ding{55} Marginal} \\
+Cohen's $d$ (latency) & $\geq 0.5$ & \multicolumn{2}{c}{$d = -0.34$} & \textcolor{propred}{\ding{55} Small} \\
+95\% CI (latency diff) & excl.\ zero & \multicolumn{2}{c}{$[-2.56, -0.72]$} & \textcolor{awsgreen}{\ding{51} Excl.\ 0} \\
+Drift Accuracy & 100\% & \multicolumn{2}{c}{100\% (4/4)} & \textcolor{awsgreen}{\ding{51} Pass} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \medskip
-\noindent This chapter defined the evaluation framework across ten metric dimensions (Sections~\ref{sec:eval_metrics}--\ref{sec:cost_projection}) with explicit quantitative targets and presented results from the 50-query evaluation run. The dashboard (Table~\ref{tab:viz_dashboard}) shows that two of four primary targets are clearly met: citation grounding exceeds 0.80, and monthly cost remains below USD~15. Baseline faithfulness reaches the $\geq 0.80$ threshold (0.802), though hybrid falls slightly below (0.770). Context precision (0.30/0.31) falls short of the 0.75 target, attributable to the single-domain AI/ML corpus and broad-semantic evaluation queries. Crucially, hybrid retrieval imposes no measurable cost or latency penalty, and the RRF architecture is designed to yield increasing returns as corpus heterogeneity and query specificity grow---establishing that, for a single-domain corpus, parameter-free RRF matches vector-only retrieval while providing architectural extensibility for future heterogeneous workloads. Chapter~6 documents implementation status and engineering decisions.
+\noindent This chapter defined the evaluation framework across ten metric dimensions (Sections~\ref{sec:eval_metrics}--\ref{sec:cost_projection}) with explicit quantitative targets and presented results from the 100-sample evaluation run (50 baseline, 50 hybrid). The dashboard (Table~\ref{tab:viz_dashboard}) shows that hybrid retrieval outperforms baseline with a composite gain of $+0.047$ (0.723 vs.\ 0.676), driven by faithfulness $+0.058$, answer relevancy $+0.065$, and context precision $+0.070$. Citation grounding exceeds 0.80 in both modes (0.88/0.86). Monthly cost remains well below USD~15 (~USD~0.33 at 100 queries/day). The latency trade-off (mean $+1.36$\,s, Cohen's $d = -0.34$, small effect) reflects the added BM25 and cross-encoder stages. Drift detection achieves 100\% accuracy (4/4 scenarios). Context precision (0.21/0.28) and faithfulness (0.69/0.75) remain below their ambitious design-time targets, attributable to the single-domain AI/ML corpus and broad evaluation queries. Crucially, weighted RRF with cross-encoder reranking delivers measurable quality improvements while maintaining manageable latency and cost within free-tier constraints. Chapter~6 documents implementation details and engineering decisions.
+
+

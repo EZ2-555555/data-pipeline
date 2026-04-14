@@ -1,7 +1,7 @@
-\chapter{Implementation Progress}
+\chapter{Implementation Details}
 \label{ch:progress}
 
-This chapter documents the current implementation status and key engineering decisions made during development.
+This chapter documents the implementation status and key engineering decisions made during development.
 
 \section{Overall Implementation Status}
 \label{sec:impl_status}
@@ -23,7 +23,7 @@ Table~\ref{tab:impl_status} summarizes the implementation status of each system 
 Data Ingestion (5 sources) & Integration-tested & ArXiv, Hacker News, DEV.to, GitHub, RSS fully implemented \\
 Preprocessing Pipeline & Integration-tested & 17-step normalization + token-based chunking \\
 Embedding Pipeline & Integration-tested & MiniLM L6 v2 (384-dim), lazy singleton \\
-Hybrid Retrieval & Integration-tested & 4-stage pipeline (metadata filter, vector, BM25, RRF fusion) \\
+Hybrid Retrieval & Cloud-validated & 5-stage pipeline (metadata filter, vector, BM25, weighted RRF, cross-encoder) \\
 Baseline Retrieval & Integration-tested & Vector-only comparison mode \\
 RAG Orchestrator & Integration-tested & 3-layer hallucination verification \\
 LLM Backend Fallback & Unit-tested & Auto-cascade across 4 backends \\
@@ -34,12 +34,12 @@ SQS Queue + DLQ & Integration-tested & Ingestion--embedding decoupling (LocalSta
 Drift Detection & Unit-tested & Dual-criteria: 10\% threshold + Shewhart $3\sigma$ \\
 Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS, LLM) \\
 CloudWatch Integration & Cloud-validated & 8 metrics in 1 namespace (\texttt{TechPulse/\{stage\}}) \\
-Evaluation Framework & Integration-tested & 50 queries, RAGAS, statistical tests, cost projection (Phase~B completed) \\
+Evaluation Framework & Cloud-validated & 100-sample run (50 baseline + 50 hybrid), RAGAS, statistical tests, and cost projection; follow-on drift-impact analysis remains future work \\
 CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
 SAM Infrastructure & Cloud-validated & Full SAM template; stack deployed and operational \\
 Docker Compose (Local) & Integration-tested & 6 services (db, pgadmin, api, frontend, scheduler, localstack) \\
 React Frontend & Integration-tested & Query interface with citation display \\
-Unit Tests & Integration-tested & 204 tests across 15 test files, all passing \\
+Unit Tests & Integration-tested & 208 tests across 15 test files, all passing \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -48,6 +48,8 @@ Unit Tests & Integration-tested & 204 tests across 15 test files, all passing \\
 \label{sec:enhancements}
 
 Two significant enhancements were made beyond the original proposal: (1) data source coverage was expanded from two to five sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) to improve corpus diversity and temporal coverage; and (2) the preprocessing pipeline was extended from basic HTML stripping to a 17-step normalization pipeline (validated by 18 dedicated unit tests) to handle the diverse content formats encountered across sources, particularly Markdown-heavy content from DEV.to and GitHub. All five ingesters share the same idempotent, SHA-256-based deduplication architecture.
+
+Additionally, nine research-backed retrieval improvements were applied post-proposal, including: weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15), improved BM25 tokenization with stop-word removal, BM25-only candidate quality gate, asymmetric candidate limits, post-fusion score gate, Shewhart $3\sigma$ minimum standard deviation floor for drift detection, RAGAS evaluation threading fix, cross-encoder reranking (ms-marco-MiniLM-L-6-v2), and NaN retry pass for RAGAS scoring. These improvements are documented in the project's engineering change log and collectively produced a composite quality swing of $+0.069$---from trailing the baseline by $-0.022$ to leading by $+0.047$.
 
 \section{AWS Free Tier Deployment}
 \label{sec:freetier}
@@ -79,7 +81,7 @@ S3 + EventBridge + SQS & \$0.00 & Storage, routing, queue services & \checkmark 
 
 \noindent\textsuperscript{$\dagger$}Groq inference is free within the 500k tokens/day allowance; \$0.12 represents the imputed cost at equivalent commercial per-token rates to enable fair cost projection if the free tier were unavailable.
 
-\noindent Costs are derived from observed token usage and Lambda invocation metrics collected during the Phase~B evaluation run. At higher workloads exceeding the Groq free-tier allowance (500,000 tokens/day), the automatic LLM backend fallback chain (Bedrock → Ollama → HuggingFace) enables cost-controlled scaling. The monthly total of \$0.33 is well below the \$15 budget target, providing a 45$\times$ safety margin.
+\noindent Costs are derived from observed token usage and Lambda invocation metrics collected during the evaluation run. At higher workloads exceeding the Groq free-tier allowance (500,000 tokens/day), the automatic LLM backend fallback chain (Bedrock → Ollama → HuggingFace) enables cost-controlled scaling. The monthly total of \$0.33 is well below the \$15 budget target, providing a 45$\times$ safety margin.
 
 \subsection*{Key Deployment Characteristics}
 
@@ -99,7 +101,7 @@ All infrastructure is defined in a SAM template (\texttt{template-freetier.yaml}
 \section{Test Coverage}
 \label{sec:tests}
 
-The system includes 204 unit tests distributed across 15 test modules covering all major subsystems: ingestion (5 sources), preprocessing (17 normalization steps), embedding, retrieval (BM25 caching, RRF fusion, age-days computation), RAG orchestration, LLM backend fallback, observability (CloudWatch metrics, drift detection), pipeline orchestration, queue management, storage, and API endpoints. All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
+The system includes 208 unit tests distributed across 15 test modules covering all major subsystems: ingestion (5 sources), preprocessing (17 normalization steps), embedding, retrieval (BM25 caching, RRF fusion, age-days computation, cross-encoder reranking), RAG orchestration, LLM backend fallback, observability (CloudWatch metrics, drift detection), pipeline orchestration, queue management, storage, API endpoints (including /dashboard/insights smoke tests), and scheduler. All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
 
 \section{Custom CloudWatch Metrics}
 \label{sec:metrics}
@@ -207,4 +209,5 @@ Figure~\ref{fig:demo_rds} shows the AWS RDS console with the TechPulse PostgreSQ
 \end{figure}
 
 \medskip
-\noindent This chapter documented implementation status across 20 components and key engineering observations. All core pipeline components are integration-tested; cloud deployment via SAM is validated. Chapter~7 presents remaining work and the project timeline.
+\noindent This chapter documented implementation status across 20 components and key engineering observations. All core pipeline components are integration-tested; cloud deployment via SAM is validated. Chapter~7 presents conclusions, limitations, and future work.
+

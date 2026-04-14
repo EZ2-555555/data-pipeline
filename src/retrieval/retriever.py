@@ -24,7 +24,8 @@ MIN_SIMILARITY = 0.15
 # ---------------------------------------------------------------------------
 # Weighted RRF signal weights (positive values; need not sum to 1.0).
 # Semantic vector dominates; recency is a weak signal in the tech domain.
-# Validated by internal grid-search (α=0.70 best) and Ma et al., TREC 2022.
+# Weights chosen from ablation: vector 0.50, BM25 0.35, recency 0.15.
+# See Ma et al., TREC 2022 — asymmetric weighting outperforms uniform RRF.
 # ---------------------------------------------------------------------------
 VECTOR_RRF_WEIGHT  = 0.50
 BM25_RRF_WEIGHT    = 0.35

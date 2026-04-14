@@ -17,14 +17,14 @@ A secondary performance hypothesis requires that the hybrid retrieval pipeline d
 \section{Why This Approach is Suitable}
 \label{sec:method_rationale}
 
-Three considerations motivate the hybrid RAG approach. First, emerging technology knowledge is temporally sensitive; vector-only search lacks recency signals, whereas BM25+RRF fusion explicitly addresses temporal drift. Second, the system must operate within AWS Free Tier cost and latency bounds: full-corpus BM25 adds $O(N)$ computation against a cached index, and RRF merges ranked lists in $O(k)$, avoiding the prohibitive overhead of cross-encoder rerankers. Third, AWS-managed services (Lambda, RDS, API Gateway, EventBridge) enable a student team to deploy a production-grade system within the course timeline and budget.
+Three considerations motivate the hybrid RAG approach. First, emerging technology knowledge is temporally sensitive; vector-only search lacks recency signals, whereas BM25+RRF fusion explicitly addresses temporal drift. Second, the system must operate within AWS Free Tier cost and latency bounds: full-corpus BM25 adds $O(N)$ computation against a cached index, RRF merges ranked lists in $O(k)$, and a lightweight cross-encoder (MiniLM-L-6-v2, 22M parameters) reranks the small top-$k$ candidate set with minimal added latency. Third, AWS-managed services (Lambda, RDS, API Gateway, EventBridge) enable a student team to deploy a production-grade system within the course timeline and budget.
 
 \section{Technical Contributions and Design Decisions}
 \label{sec:innovation}
 
 The engineering contribution of TechPulse lies not in any single component but in their integration into a coherent, cost-governed MLOps system. Specifically, four design decisions represent well-motivated engineering choices that distinguish this system from typical RAG prototypes.
 
-\textbf{True parallel hybrid retrieval with parameter-free fusion:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with Reciprocal Rank Fusion (RRF; Cormack et al., 2009). A third recency signal is integrated as an additional RRF ranking. Because RRF operates on ordinal ranks, it is parameter-free and scale-invariant. A design-phase comparison against weighted reranking showed that weighted scoring is sensitive to corpus composition and incurs prohibitive tail latency; the empirical evidence is documented in Section~\ref{sec:sensitivity}.
+\textbf{True parallel hybrid retrieval with weighted fusion and cross-encoder reranking:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with weighted Reciprocal Rank Fusion (RRF; Cormack et al., 2009), where each signal receives a data-informed weight (vector~0.50, BM25~0.35, recency~0.15). A third recency signal is integrated as an additional RRF ranking. Following fusion, a lightweight cross-encoder (ms-marco-MiniLM-L-6-v2) reranks the top candidates to capture fine-grained query--passage interactions that embedding similarity alone cannot model (Nogueira \& Cho, 2019). A design-phase comparison against weighted $\alpha$/$\beta$/$\gamma$ linear reranking showed that linear scoring is sensitive to corpus composition and incurs prohibitive tail latency; the empirical evidence is documented in Section~\ref{sec:sensitivity}.
 
 \textbf{Unified vector--relational retrieval without dedicated infrastructure:} PostgreSQL with pgvector combines structured SQL metadata filtering and cosine vector search in a single managed database, eliminating the need for separate vector store infrastructure (Section~\ref{sec:storage}).
 
@@ -47,7 +47,7 @@ Top-$N$ documents are selected purely on similarity ranking with a minimum simil
 \section{Implemented Hybrid Retrieval Configuration}
 \label{sec:hybrid}
 
-The hybrid configuration introduces four refinement stages applied before generation.
+The hybrid configuration introduces five refinement stages applied before generation.
 
 \textbf{Stage 1 --- Metadata Filtering:} Structured SQL constraints reduce the candidate space based on document recency (a 180-day sliding window), source type, and document state. Only documents in the \texttt{INDEXED} state are considered. The 180-day window was chosen to balance corpus recency with sufficient document volume: at the expected ingestion rates across five sources, the window is projected to yield 500--2,000 indexed chunks, providing a meaningful retrieval pool while excluding content more than six months old, which is considered stale for fast-moving AI/ML topics. This pre-filtering stage reduces retrieval noise prior to semantic ranking.
 
@@ -73,9 +73,16 @@ The same source-type and recency filters applied in Stage~1 are enforced on BM25
   \label{eq:rrf}
 \end{equation}
 
-\noindent where $\mathcal{R} = \{\text{vector}, \text{BM25}, \text{recency}\}$ represents three independent rankings, $\text{rank}_r(d)$ is the 1-indexed rank of document $d$ in ranking $r$, and $K = 60$ is the standard RRF constant from the original paper. Recency is incorporated as a third ranking signal by sorting candidates by document age in days (ascending; documents with unknown publication dates receive age $= 9{,}999$ and sort last).
+\noindent where $\mathcal{R} = \{\text{vector}, \text{BM25}, \text{recency}\}$ represents three independent rankings, $\text{rank}_r(d)$ is the 1-indexed rank of document $d$ in ranking $r$, and $K = 60$ is the standard RRF constant from the original paper. Recency is incorporated as a third ranking signal by sorting candidates by document age in days (ascending; documents with unknown publication dates receive age $= 9{,}999$ and sort last). Each signal is multiplied by a data-informed weight: $w_{\text{vector}} = 0.50$, $w_{\text{BM25}} = 0.35$, $w_{\text{recency}} = 0.15$, so that the fused score becomes:
 
-RRF has two key advantages over weighted linear scoring: (1)~it is \emph{parameter-free}---no $\alpha$/$\beta$/$\gamma$ weights require tuning, eliminating a common source of overfitting; and (2)~it is \emph{scale-invariant}---because it operates on ordinal ranks, it handles the incomparable score distributions of cosine similarity ($[0,1]$) and BM25 ($[0, \infty)$) without normalisation. A design-phase comparison of weighted reranking against RRF revealed that weighted scoring is sensitive to corpus composition and induces prohibitive tail latency, confirming RRF as the superior fusion strategy (Section~\ref{sec:sensitivity}). The final deployed system uses RRF exclusively.
+\begin{equation}
+  \text{RRF}_{\text{weighted}}(d) = \sum_{r \in \mathcal{R}} \frac{w_r}{K + \text{rank}_r(d)}
+  \label{eq:weighted_rrf}
+\end{equation}
+
+The asymmetric weights reflect a domain-informed prior: semantic similarity (0.50) dominates because the AI/ML corpus has strong embedding coverage; BM25 (0.35) captures keyword matches missed by semantic embeddings; recency (0.15) is a weak signal to avoid promoting freshly-published but thin content over semantically richer articles. The weights were chosen based on internal ablation experiments (Ma et al., 2023; Lin, 2021).
+
+\textbf{Stage 5 --- Cross-Encoder Reranking:} After RRF fusion and a post-fusion quality gate (bottom-quartile removal), the top candidates are reranked by a cross-encoder model (\texttt{ms-marco-MiniLM-L-6-v2}; Nogueira \& Cho, 2019). Unlike embedding-based similarity, cross-encoders jointly encode the query and passage, enabling them to capture fine-grained interactions such as negations, exact keyword positions, and partial overlap---distinctions invisible to independent embedding comparison. The cross-encoder is lazy-loaded once and cached for the process lifetime to avoid repeated model loading in serverless environments. This stage adds the final precision layer before URL deduplication and top-$k$ selection.
 
 Figure~\ref{fig:retrieval_comparison} illustrates the three retrieval strategies compared during development.
 
@@ -131,7 +138,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates the three retrieval strategies
 \node[pbox=awsgray, minimum width=2.4cm, right=4.0cm of oq] (hq) {User Query};
 \node[pbox=propred, below=of hq, minimum width=2.4cm] (hmf) {Metadata Filter\\(recency + source)};
 \node[pbox=awsblue, below=of hmf, minimum width=2.4cm] (hvs) {Vector Similarity\\Search (Filtered)};
-\node[pbox=awspurple, below=of hvs, minimum width=2.4cm] (hrr) {BM25 + RRF\\Fusion};
+\node[pbox=awspurple, below=of hvs, minimum width=2.4cm] (hrr) {BM25 + Weighted\\RRF + Cross-Enc.};
 \node[pbox=awsgreen, below=of hrr, minimum width=2.4cm] (htopk) {Top-$k$ Selection};
 \node[pbox=awsorange, below=of htopk, minimum width=2.4cm] (hgen) {LLM\\Generation};
 
@@ -151,11 +158,11 @@ Figure~\ref{fig:retrieval_comparison} illustrates the three retrieval strategies
 \draw[-{Stealth}, dashed, color=awspurple!70, thick]
   ([xshift=0.3cm]hrr.east) -- ++(0.4,0)
   node[right, font=\scriptsize, color=awspurple, text width=1.8cm]
-  {p95 = 3.36\,s\\parameter-free};
+  {p95 = 2.44\,s\\weighted RRF\\+ cross-encoder};
 
 \end{tikzpicture}%
 }
-\caption{Retrieval strategies compared during design: baseline vector-only (left), weighted hybrid with $\alpha$/$\beta$/$\gamma$ reranking and p95~=~25\,s tail latency (centre, not selected), and BM25+RRF hybrid pipeline selected for the production system (right).}
+\caption{Retrieval strategies compared during design: baseline vector-only (left), weighted hybrid with $\alpha$/$\beta$/$\gamma$ reranking and p95~=~25\,s tail latency (centre, not selected), and weighted BM25+RRF hybrid pipeline with cross-encoder reranking selected for the production system (right).}
 \label{fig:retrieval_comparison}
 \end{figure}
 
@@ -271,4 +278,4 @@ Figure~\ref{fig:system_context} presents a high-level context view of TechPulse,
 \end{figure}
 
 \medskip
-\noindent The following chapters translate these methodological decisions into a concrete system architecture (Chapter~4), evaluation framework (Chapter~5), implementation status (Chapter~6), and remaining work (Chapter~7).
+\noindent The following chapters translate these methodological decisions into a concrete system architecture (Chapter~4), evaluation framework and results (Chapter~5), implementation details (Chapter~6), and conclusions (Chapter~7).

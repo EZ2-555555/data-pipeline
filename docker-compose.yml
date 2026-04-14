@@ -78,7 +78,7 @@ services:
     depends_on:
       - api
 
-  # Scheduler: auto-fetches HN (30min) + ArXiv (12h) + chunks/embeds
+  # Scheduler: auto-fetches all 5 sources (HN, DEV.to, GitHub, RSS every 30min; ArXiv every 12h) + chunks/embeds
   scheduler:
     build: .
     container_name: techpulse-scheduler

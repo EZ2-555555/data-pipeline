@@ -37,7 +37,7 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 \node[rectangle, draw=awsgray!50, fill=awslightpurple, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
       rounded corners=2pt, below=0pt of l5]
-  (l4) {Layer 4 --- Hybrid Retrieval \& RRF Fusion \quad \textcolor{awsgray}{\scriptsize filter $\to$ vector + BM25 $\to$ RRF}};
+  (l4) {Layer 4 --- Hybrid Retrieval \& Fusion \quad \textcolor{awsgray}{\scriptsize filter $\to$ vector + BM25 $\to$ weighted RRF $\to$ cross-encoder}};
 
 \node[rectangle, draw=awsgray!50, fill=awslightgreen, minimum width=\lw,
       minimum height=\lh, font=\small\bfseries, text centered,
@@ -78,7 +78,7 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 
 \end{tikzpicture}%
 }
-\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path. Layer~4 uses parameter-free BM25+RRF fusion, selected over weighted $\alpha$/$\beta$/$\gamma$ reranking based on design-phase analysis (Section~\ref{sec:sensitivity}).}
+\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path. Layer~4 uses weighted BM25+RRF fusion with cross-encoder reranking, selected over weighted $\alpha$/$\beta$/$\gamma$ linear reranking based on design-phase analysis (Section~\ref{sec:sensitivity}).}
 \label{fig:six_layers}
 \end{figure}
 

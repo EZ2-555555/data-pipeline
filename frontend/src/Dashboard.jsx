@@ -60,7 +60,7 @@ const LATENCY_DATA = [
   { mode: "Hybrid",   mean: 2.487, p95: 2.444, color: "#c026d3", colorP95: "rgba(192,38,211,0.38)" },
 ];
 
-// From evaluation/results-hybrid/eval_summary.json sensitivity_analysis.alpha
+// From evaluation/results/eval_summary.json — design-phase sensitivity analysis
 const SENSITIVITY = [
   { alpha: 0.0, sim: 0.4901 },
   { alpha: 0.1, sim: 0.4916 },

@@ -1,12 +1,27 @@
-\chapter{Remaining Work and Limitations}
+\chapter{Conclusions and Future Work}
 
-\section{Remaining Work}
-\label{sec:remaining}
+\section{Summary of Contributions}
+\label{sec:conclusions}
 
-The work plan is organized into four phases. Phases~A and~B have been completed; Phases~C and~D remain. Table~\ref{tab:remaining_phases} provides a phase-level overview with current status, followed by detailed task descriptions.
+This study designed, implemented, and evaluated TechPulse, a cloud-native Hybrid Retrieval-Augmented Generation system for emerging technology intelligence. The key contributions are:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item \textbf{Data Engineering (RQ1):} A deterministic, idempotent ingestion pipeline serves five heterogeneous data sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with SHA-256 content-addressed deduplication. The pipeline produced a corpus of 3{,}984 documents and 6{,}220 indexed chunks, validated by 208 unit tests across 15 modules.
+
+  \item \textbf{Retrieval Optimization (RQ2):} A five-stage hybrid retrieval pipeline---metadata filtering, vector similarity search, full-corpus BM25, weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15), and cross-encoder reranking (ms-marco-MiniLM-L-6-v2)---outperforms the vector-only baseline with a composite quality gain of $+0.047$ (0.723 vs.\ 0.676). Faithfulness improved by $+0.058$, answer relevancy by $+0.065$, and context precision by $+0.070$. Citation grounding remained stable ($-0.020$, no significant difference).
+
+  \item \textbf{Operational Trade-offs (RQ3):} The hybrid pipeline introduces a small latency trade-off (mean 1.13\,s $\to$ 2.49\,s; Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s). Monthly cost is \$0.33 at 100~queries/day, well within the \$15 budget target and the AWS Free Tier.
+
+  \item \textbf{MLOps Integration (RQ4):} Dual-criteria drift detection (10\% threshold + Shewhart $3\sigma$ with minimum std floor) achieves 100\% accuracy across four simulated scenarios. A four-stage CI/CD pipeline (lint, test, build, deploy) using GitHub Actions and AWS SAM ensures reproducible deployments. Eight custom CloudWatch metrics provide operational visibility.
+\end{enumerate}
+
+\section{Project Phases}
+\label{sec:phases}
+
+The work was organized into four phases, all completed. Table~\ref{tab:remaining_phases} provides a summary.
 
 \begin{table}[H]
-\caption{Remaining Work: Phase Overview.}
+\caption{Project Phase Summary.}
 \label{tab:remaining_phases}
 \centering
 \begin{tabular}{p{0.8cm}p{3.5cm}p{2.5cm}p{1.8cm}p{4.0cm}}
@@ -14,20 +29,20 @@ The work plan is organized into four phases. Phases~A and~B have been completed;
 \textbf{Phase} & \textbf{Focus} & \textbf{Timeline} & \textbf{Status} & \textbf{Key Deliverables} \\
 \midrule
 A & System Validation \& Corpus Building & Mar W3--W4 & Done & 3{,}984 docs; 6{,}220 chunks; local integration verified \\
-B & Evaluation \& Experimentation & Mar W4--Apr W1 & Done & 50-query eval; statistical analysis (Ch.~5) \\
-C & Analysis, Monitoring \& Dashboard & Apr W1--W3 & In progress & Drift validation; results dashboard; visualizations \\
-D & Final Report \& Submission & Apr W2--W3 & Not started & Completed report with empirical evidence \\
+B & Evaluation \& Experimentation & Mar W4--Apr W1 & Done & 100-sample eval; statistical analysis (Ch.~5) \\
+C & Analysis, Monitoring \& Dashboard & Apr W1--W2 & Done & Drift validation (4/4); visualizations; 9 retrieval improvements \\
+D & Final Report \& Submission & Apr W2--W3 & Done & Completed report with empirical evidence \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \textbf{Phase~A} built the evaluation corpus through sustained multi-cycle ingestion across all five sources (3{,}984 documents, 6{,}220 chunks indexed), verified end-to-end pipeline operation in the local Docker Compose environment, and initiated AWS Free Tier deployment via the SAM template.
 
-\textbf{Phase~B} executed the 50-query evaluation in both baseline and hybrid modes, applied Wilcoxon signed-rank tests with Cohen's $d$ and bootstrap 95\% CIs, and profiled per-stage latency with cost projections for 50/100/200 queries/day. Full results are reported in Chapter~5.
+\textbf{Phase~B} executed the initial 50-query evaluation in both baseline and hybrid modes, applied Wilcoxon signed-rank tests with Cohen's $d$ and bootstrap 95\% CIs, and profiled per-stage latency with cost projections for 50/100/200 queries/day.
 
-\textbf{Phase~C} validates the dual-criteria drift detection mechanism under simulated conditions, generates result visualizations and comparison tables, and captures remaining system demonstration screenshots.
+\textbf{Phase~C} applied nine research-backed retrieval improvements (weighted RRF, improved BM25 tokenization, candidate quality gate, asymmetric limits, post-fusion gate, Shewhart std floor, evaluation threading fix, cross-encoder reranking, NaN retry), re-ran the full 100-sample evaluation, validated drift detection (4/4 scenarios correct), and generated result visualizations and comparison tables.
 
-\textbf{Phase~D} completes the evaluation and discussion chapters with empirical findings, integrates screenshots and analysis, and prepares the final submission package.
+\textbf{Phase~D} completed the evaluation analysis, integrated all empirical findings into the final report, and prepared the submission package.
 
 \section{Known Limitations}
 \label{sec:limitations}
@@ -35,17 +50,17 @@ D & Final Report \& Submission & Apr W2--W3 & Not started & Completed report wit
 \begin{enumerate}[leftmargin=0.5in]
   \item The evaluation corpus is limited to five technology-focused sources; generalizability to other domains requires further study.
 
-  \item The 50-query evaluation set provides sufficient power for the paired Wilcoxon test but a larger set would strengthen external validity.
+  \item The 100-query evaluation set provides sufficient power for the paired Wilcoxon test but a larger set would strengthen external validity.
 
   \item Amazon Bedrock has not been evaluated as the primary backend; however, the evaluation methodology is backend-agnostic, so comparative findings remain transferable.
 
   \item The \texttt{db.t3.micro} RDS instance may become a bottleneck under high ingestion volumes compared to Aurora Serverless.
 
-  \item Cross-encoder reranking and ANN-optimized indexing are out of scope but identified as future directions.
+  \item ANN-optimized indexing (e.g., pgvector HNSW) is not yet evaluated but is identified as a future direction.
 
   \item Budget governance via Cost Explorer lags by up to 24 hours; real-time enforcement is not feasible on the Learner Lab.
 
-  \item The test suite (204 tests, 15 modules) covers core logic but lacks end-to-end integration tests with a live database.
+  \item The test suite (208 tests, 15 modules) covers core logic but lacks end-to-end integration tests with a live database.
 
   \item The top-$k = 5$ retrieval at 500 tokens/chunk fits Groq and Bedrock context windows but may be silently truncated by Ollama's 4{,}096-token Llama~3.2~3B; a pre-prompt token budget check is identified as a near-term improvement.
 
@@ -55,7 +70,7 @@ D & Final Report \& Submission & Apr W2--W3 & Not started & Completed report wit
 \section{Project Timeline}
 \label{sec:timeline}
 
-Figure~\ref{fig:gantt} presents the project timeline, including completed milestones and remaining work.
+Figure~\ref{fig:gantt} presents the complete project timeline.
 
 \begin{figure}[H]
 \centering
@@ -152,18 +167,18 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 
 % Row 12
 \node[font=\scriptsize, anchor=east] at (-0.2, {12*\rsp+0.5}) {Drift Validation \& Monitoring};
-\fill[awspurple!20] (9.0,{12*\rsp+0.5-\barh/2}) rectangle (10.5,{12*\rsp+0.5+\barh/2});
-\draw[awspurple!60, thick] (9.0,{12*\rsp+0.5-\barh/2}) rectangle (10.5,{12*\rsp+0.5+\barh/2});
+\fill[awspurple!60] (9.0,{12*\rsp+0.5-\barh/2}) rectangle (10.5,{12*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (9.75, {12*\rsp+0.5}) {\checkmark};
 
 % Row 13
 \node[font=\scriptsize, anchor=east] at (-0.2, {13*\rsp+0.5}) {Results Analysis \& Visualization};
-\fill[awspurple!20] (9.0,{13*\rsp+0.5-\barh/2}) rectangle (12.0,{13*\rsp+0.5+\barh/2});
-\draw[awspurple!60, thick] (9.0,{13*\rsp+0.5-\barh/2}) rectangle (12.0,{13*\rsp+0.5+\barh/2});
+\fill[awspurple!60] (9.0,{13*\rsp+0.5-\barh/2}) rectangle (12.0,{13*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (10.5, {13*\rsp+0.5}) {\checkmark};
 
 % Row 14
 \node[font=\scriptsize, anchor=east] at (-0.2, {14*\rsp+0.5}) {Dashboard \& Visualization};
-\fill[awspurple!20] (9.0,{14*\rsp+0.5-\barh/2}) rectangle (13.5,{14*\rsp+0.5+\barh/2});
-\draw[awspurple!60, thick] (9.0,{14*\rsp+0.5-\barh/2}) rectangle (13.5,{14*\rsp+0.5+\barh/2});
+\fill[awspurple!60] (9.0,{14*\rsp+0.5-\barh/2}) rectangle (13.5,{14*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (11.25, {14*\rsp+0.5}) {\checkmark};
 
 % ================================================================
 % PHASE D — Final Report & Submission (Apr W2 -- Apr W3)
@@ -173,14 +188,14 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 
 % Row 15
 \node[font=\scriptsize, anchor=east] at (-0.2, {15*\rsp+0.5}) {Final Report \& Submission};
-\fill[propred!25] (10.5,{15*\rsp+0.5-\barh/2}) rectangle (13.5,{15*\rsp+0.5+\barh/2});
-\draw[propred!60, thick] (10.5,{15*\rsp+0.5-\barh/2}) rectangle (13.5,{15*\rsp+0.5+\barh/2});
+\fill[propred!60] (10.5,{15*\rsp+0.5-\barh/2}) rectangle (13.5,{15*\rsp+0.5+\barh/2});
+\node[font=\scriptsize, white] at (12.0, {15*\rsp+0.5}) {\checkmark};
 
 % ================================================================
-% Current date marker — Mar W4 midpoint ≈ x=8.25
+% Completion marker — Apr W3 ≈ x=13.5
 % ================================================================
-\draw[propred, very thick, dashed] (8.25, 0.8) -- (8.25, -15.5);
-\node[font=\scriptsize\bfseries, propred] at (8.25, 1.1) {Current Status};
+\draw[awsgreen!80!black, very thick, dashed] (13.5, 0.8) -- (13.5, -15.5);
+\node[font=\scriptsize\bfseries, awsgreen!80!black] at (13.5, 1.1) {Complete};
 
 % ================================================================
 % Legend
@@ -196,17 +211,15 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 \draw[awsorange!60, thick] (7.0,-18.2) rectangle (7.8,-17.9);
 \node[font=\scriptsize, anchor=west] at (7.9, -18.05) {Phase B (Evaluation)};
 
-\fill[awspurple!20] (0.5,-18.7) rectangle (1.3,-18.4);
-\draw[awspurple!60, thick] (0.5,-18.7) rectangle (1.3,-18.4);
+\fill[awspurple!60] (0.5,-18.7) rectangle (1.3,-18.4);
 \node[font=\scriptsize, anchor=west] at (1.4, -18.55) {Phase C};
 
-\fill[propred!25] (3.5,-18.7) rectangle (4.3,-18.4);
-\draw[propred!60, thick] (3.5,-18.7) rectangle (4.3,-18.4);
+\fill[propred!60] (3.5,-18.7) rectangle (4.3,-18.4);
 \node[font=\scriptsize, anchor=west] at (4.4, -18.55) {Phase D (Final Report)};
 
 \end{tikzpicture}%
 }
-\caption{Project timeline (Gantt chart). Solid bars indicate completed phases; outlined bars indicate remaining work (Phases A--D).}
+\caption{Project timeline (Gantt chart). All four phases completed.}
 \label{fig:gantt}
 \end{figure}
 
@@ -216,11 +229,11 @@ Figure~\ref{fig:gantt} presents the project timeline, including completed milest
 Several extensions are identified for post-prototype development:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item \textbf{Scaling:} Migration to Aurora Serverless; expansion to additional data sources (StackExchange, conference proceedings)
-  \item \textbf{Retrieval quality:} Cross-encoder reranking evaluation; embedding model fine-tuning or replacement based on drift analysis
+  \item \textbf{Scaling:} Migration to Aurora Serverless; expansion to additional data sources (StackExchange, conference proceedings); ANN-optimized indexing (pgvector HNSW) for sub-linear retrieval at larger corpora
+  \item \textbf{Retrieval quality:} Alternative cross-encoder models (e.g., larger ColBERT variants); embedding model fine-tuning or replacement based on drift analysis; adaptive weight tuning for RRF via online feedback
   \item \textbf{Operational hardening:} Full Bedrock evaluation as primary backend; integration test suite with containerized database; token budget management for constrained-context-window backends; Secrets Manager migration for API key handling
-  \item \textbf{User experience:} User feedback loop for continuous retrieval quality improvement
+  \item \textbf{User experience:} User feedback loop for continuous retrieval quality improvement; query auto-completion; saved searches and alerts for tracked topics
 \end{itemize}
 
 \medskip
-\noindent This chapter summarized the four-phase work plan (Phases~A and~B completed; C and~D remaining), nine known limitations, and future extension directions.
+\noindent This chapter presented the key conclusions and contributions, summarized all four completed project phases, acknowledged known limitations, and outlined future extension directions.

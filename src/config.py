@@ -110,22 +110,6 @@ class _Settings:
         return int(os.getenv("CHUNK_OVERLAP_TOKENS", "50"))
 
     @property
-    def RERANK_ALPHA(self) -> float:
-        return float(os.getenv("RERANK_ALPHA", "0.70"))
-
-    @property
-    def RERANK_BETA(self) -> float:
-        return float(os.getenv("RERANK_BETA", "0.15"))
-
-    @property
-    def RERANK_GAMMA(self) -> float:
-        return float(os.getenv("RERANK_GAMMA", "0.15"))
-
-    @property
-    def RECENCY_LAMBDA(self) -> float:
-        return float(os.getenv("RECENCY_LAMBDA", "0.01"))
-
-    @property
     def DEVTO_TAGS(self) -> str:
         return os.getenv("DEVTO_TAGS", "machinelearning,ai,python,programming,devops,mlops,webdev,cloud,javascript,opensource,security,database,docker,kubernetes,react,node,rust,golang,datascience,blockchain,api")
 
@@ -167,16 +151,3 @@ class _Settings:
 
 
 settings = _Settings()
-
-
-def _validate_settings() -> None:
-    total = settings.RERANK_ALPHA + settings.RERANK_BETA + settings.RERANK_GAMMA
-    if abs(total - 1.0) > 1e-6:
-        raise ValueError(
-            f"RERANK_ALPHA + RERANK_BETA + RERANK_GAMMA must sum to 1.0, got {total:.4f}. "
-            f"Current values: RERANK_ALPHA={settings.RERANK_ALPHA}, "
-            f"RERANK_BETA={settings.RERANK_BETA}, RERANK_GAMMA={settings.RERANK_GAMMA}"
-        )
-
-
-_validate_settings()

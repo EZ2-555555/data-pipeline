@@ -47,7 +47,7 @@ The primary objective is to design, implement, and evaluate a hybrid Retrieval-A
 \section{Significance of the Study}
 \label{sec:significance}
 
-This project contributes at the intersection of data engineering, natural language processing, and MLOps in three ways. First, it provides controlled empirical evidence on whether hybrid retrieval (BM25 + RRF) improves over vector-only baselines within a single-domain, cost-constrained setting---a configuration common in practice but under-represented in the literature. Second, it demonstrates that parameter-free Reciprocal Rank Fusion achieves comparable retrieval quality to tuned weighted reranking while eliminating dataset-dependent weight sensitivity and reducing tail latency by 87\%. Third, the end-to-end system integrates hybrid retrieval, drift detection, hallucination verification, and cost governance within a single deployable architecture on the AWS Free Tier, providing a practical blueprint for student and small-team RAG deployments without reliance on expensive cross-encoder rerankers or dedicated vector database infrastructure.
+This project contributes at the intersection of data engineering, natural language processing, and MLOps in three ways. First, it provides controlled empirical evidence that hybrid retrieval (weighted BM25+RRF with cross-encoder reranking) measurably improves over vector-only baselines within a single-domain, cost-constrained setting---a configuration common in practice but under-represented in the literature. Second, it demonstrates that weighted Reciprocal Rank Fusion combined with a lightweight cross-encoder (ms-marco-MiniLM-L-6-v2) achieves a composite quality gain of $+0.047$ over the baseline while maintaining a manageable latency trade-off (mean $+1.36$\,s, Cohen's $d = -0.34$, small effect). Third, the end-to-end system integrates hybrid retrieval, drift detection, hallucination verification, and cost governance within a single deployable architecture on the AWS Free Tier, providing a practical blueprint for student and small-team RAG deployments.
 
 \section{Alignment Between Research Questions and Evaluation}
 \label{sec:rq_eval_map}
@@ -63,7 +63,7 @@ Table~\ref{tab:rq_map} provides an explicit mapping from each research question 
 \textbf{RQ} & \textbf{Question (abbreviated)} & \textbf{Primary Metric} & \textbf{Evaluation Approach} \\
 \midrule
 1 & Cloud-native deterministic ingestion & Pipeline idempotency; SHA-256 deduplication pass rate & Unit tests (24 ingestion tests); repeated pipeline runs \\[4pt]
-2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness $\geq 0.80$; citation grounding $> 0.80$ & Paired comparison over 50 queries; Wilcoxon signed-rank test; Cohen's $d$; bootstrap 95\% CI \\[4pt]
+2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness; citation grounding $> 0.80$ & Paired comparison over 50 queries; Wilcoxon signed-rank test; Cohen's $d$; bootstrap 95\% CI \\[4pt]
 3 & Latency and cost trade-offs & p95 latency $< 2$s (retrieval stage); cost $<$ USD~15/month & Per-query timing; token usage profiling; cost projection \\[4pt]
 4 & MLOps integration & Drift detection coverage; CI/CD pass rate; health-check uptime & Drift simulation runs; CloudWatch alarm verification \\
 \bottomrule
@@ -71,4 +71,4 @@ Table~\ref{tab:rq_map} provides an explicit mapping from each research question 
 \end{table}
 
 \medskip
-\noindent The study is structured as follows: Chapter~2 reviews the relevant literature; Chapter~3 presents the methodology and hypotheses; Chapter~4 describes the system architecture; Chapter~5 defines the evaluation framework; Chapter~6 documents implementation progress; and Chapter~7 outlines remaining work and limitations. The following chapter reviews the technical foundations underpinning these design decisions.
+\noindent The study is structured as follows: Chapter~2 reviews the relevant literature; Chapter~3 presents the methodology and hypotheses; Chapter~4 describes the system architecture; Chapter~5 defines the evaluation framework and presents results; Chapter~6 documents implementation details; and Chapter~7 presents conclusions, limitations, and future work. The following chapter reviews the technical foundations underpinning these design decisions.

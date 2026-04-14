@@ -4,13 +4,13 @@
 
 ### A Real-Time Hybrid RAG System for Emerging Technology Intelligence
 
-[![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16+pgvector-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![AWS SAM](https://img.shields.io/badge/AWS-SAM%20Free%20Tier-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/serverless/sam/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![Tests](https://img.shields.io/badge/Tests-204%20passed-brightgreen?logo=pytest&logoColor=white)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-208%20passed-brightgreen?logo=pytest&logoColor=white)](tests/)
 [![Coverage](https://img.shields.io/badge/Coverage-60%25+-brightgreen)](tests/)
 
 ---
@@ -101,8 +101,8 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 **Retrieval & Ranking**
 - MiniLM semantic embeddings (all-MiniLM-L6-v2, 384-dim, ONNX)
 - HNSW vector index for fast ANN search
-- 4-stage hybrid retrieval: metadata filter → vector + BM25 → RRF fusion
-- Reciprocal Rank Fusion (RRF, K=60) — parameter-free, scale-invariant
+- 5-stage hybrid retrieval: metadata filter → vector + BM25 → weighted RRF → cross-encoder reranking
+- Reciprocal Rank Fusion (weighted RRF: vector 0.50, BM25 0.35, recency 0.15)
 - Source-type filtering on `/ask`
 
 </td></tr>
@@ -129,17 +129,23 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 </td></tr>
 </table>
 
-### Retrieval Fusion (RRF)
+### Retrieval Fusion (Weighted RRF)
 
-The hybrid retrieval pipeline fuses three independent ranking signals using **Reciprocal Rank Fusion** (Cormack et al., SIGIR 2009):
+The hybrid retrieval pipeline fuses three independent ranking signals using **Weighted Reciprocal Rank Fusion** (based on Cormack et al., SIGIR 2009):
 
 ```
-RRF(d) = Σ  1 / (K + rank_r(d))    for r ∈ {vector, BM25, recency}
+RRF(d) = Σ  w_r / (K + rank_r(d))    for r ∈ {vector, BM25, recency}
 ```
 
-> `K = 60` (standard constant). RRF is **parameter-free** and **scale-invariant** — no weight tuning required.
+| Signal | Weight | Rationale |
+|:-------|:-------|:----------|
+| Vector (semantic) | 0.50 | Dominant signal — preserves faithfulness |
+| BM25 (keyword) | 0.35 | Keyword coverage for lexical matches |
+| Recency | 0.15 | Weak signal — prevents thin fresh content from outranking richer articles |
+
+> `K = 60` (standard constant). Asymmetric weighting validated by internal grid-search (α=0.70 vector-dominant was empirically best) and Ma et al., TREC 2022.
 >
-> _An earlier design-phase weighted formula (α/β/γ) was superseded due to dataset-dependent weights and p95 ≈ 25 s tail latency._
+> _An earlier design-phase equal-weight RRF was superseded because recency at 33% promoted newly-published but thin content, lowering faithfulness and citation grounding._
 
 ---
 
@@ -149,13 +155,13 @@ RRF(d) = Σ  1 / (K + rank_r(d))    for r ∈ {vector, BM25, recency}
 
 **Overview Page**
 
-<img src="report/chapters/img/techpulse-overviewpage.png" width="600" alt="TechPulse Overview">
+<img src="Final Report/chapters/img/techpulse-overviewpage.png" width="600" alt="TechPulse Overview">
 
 **Hybrid Retrieval** (left) vs **Baseline Retrieval** (right)
 
 <p>
-<img src="report/chapters/img/techpulse-frontend-hybrid.png" width="400" alt="Hybrid Retrieval">
-<img src="report/chapters/img/techpulse-frontend-baseline.png" width="400" alt="Baseline Retrieval">
+<img src="Final Report/chapters/img/techpulse-frontend-hybrid.png" width="400" alt="Hybrid Retrieval">
+<img src="Final Report/chapters/img/techpulse-frontend-baseline.png" width="400" alt="Baseline Retrieval">
 </p>
 
 </div>
@@ -400,7 +406,7 @@ data-pipeline/
 │   ├── config.py                     # Centralised env-var settings (DB, AWS, S3, SQS, CW)
 │   ├── scheduler.py                  # Continuous ingestion loop (SQS consumer or DB-poll)
 │   ├── api/
-│   │   └── main.py                   # FastAPI app (/health, /ask, /drift) + Lambda handlers
+│   │   └── main.py                   # FastAPI app (/health, /ask, /drift, /dashboard/insights) + Lambda handlers
 │   ├── db/
 │   │   ├── connection.py             # ThreadedConnectionPool + pgvector adapter
 │   │   └── init_schema.py            # Schema: documents + chunks + drift_baselines + HNSW index
@@ -425,7 +431,7 @@ data-pipeline/
 │   ├── pipeline/
 │   │   └── run_pipeline.py           # RAW → PROCESSED → EMBEDDED → INDEXED
 │   ├── retrieval/
-│   │   └── retriever.py              # Baseline (vector-only) + Hybrid (4-stage, BM25 + RRF fusion)
+│   │   └── retriever.py              # Baseline (vector-only) + Hybrid (5-stage, BM25 + weighted RRF + cross-encoder)
 │   └── orchestrator/
 │       ├── rag.py                    # Retrieve → prompt → generate → hallucination check
 │       └── llm_backends.py           # Groq / Bedrock / HuggingFace / Ollama — fallback chain router
@@ -436,7 +442,11 @@ data-pipeline/
 │   ├── package.json                  # Vite + React 19
 │   └── src/
 │       ├── App.jsx
-│       └── App.css
+│       ├── App.css
+│       ├── Dashboard.jsx
+│       ├── Dashboard.css
+│       ├── main.jsx
+│       └── index.css
 │
 ├── evaluation/
 │   ├── run_eval.py                   # 9-phase evaluation pipeline
@@ -444,7 +454,7 @@ data-pipeline/
 │       ├── eval_queries.json         # 50 queries (3 categories)
 │       └── probe_queries.json        # 20 probe queries for drift detection
 │
-├── tests/                            # 204 tests · 15 modules · 60%+ coverage
+├── tests/                            # 208 tests · 15 modules · 60%+ coverage
 │   ├── test_api.py          test_ingestion.py      test_queue.py
 │   ├── test_db.py           test_llm_backends.py   test_rag.py
 │   ├── test_embedder.py     test_observability.py  test_retriever.py
@@ -506,10 +516,7 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 | `TOP_K` | `5` | Number of retrieval results |
 | `CHUNK_SIZE_TOKENS` | `500` | Tokens per chunk |
 | `CHUNK_OVERLAP_TOKENS` | `50` | Overlap between chunks |
-| `RERANK_ALPHA` | `0.70` | _(Legacy, superseded by RRF)_ Cosine similarity weight |
-| `RERANK_BETA` | `0.15` | _(Legacy, superseded by RRF)_ Keyword overlap weight |
-| `RERANK_GAMMA` | `0.15` | _(Legacy, superseded by RRF)_ Recency decay weight |
-| `RECENCY_LAMBDA` | `0.01` | _(Legacy, superseded by RRF)_ Exponential decay rate |
+
 
 </details>
 
@@ -535,15 +542,15 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 
 ## Evaluation
 
-The evaluation framework implements a **9-phase pipeline** comparing **baseline (vector-only)** vs **hybrid retrieval**:
+The evaluation framework implements a **9-phase pipeline** (7 active, 2 skipped) comparing **baseline (vector-only)** vs **hybrid retrieval**:
 
 | Phase | Name | Description |
 |:-----:|:-----|:------------|
 | 1 | RAG Query Execution | 50 queries × 2 modes = 100 RAGAS samples (baseline + hybrid) with per-query latency |
 | 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision |
 | 3 | Summary Statistics | Mean, median, p95, citation grounding, token costs per mode |
-| 4 | Grid Search _(design-phase, superseded by RRF)_ | α ∈ {0.4, 0.5, 0.6, 0.7}, β=γ=(1−α)/2 — motivated the switch to RRF |
-| 5 | Sensitivity Analysis _(design-phase, superseded by RRF)_ | One-at-a-time sweep of α, β, γ — documented the fragility of weighted scoring |
+| 4 | ~~Grid Search~~ _(skipped)_ | Legacy α/β/γ sweep — superseded by weighted RRF with fixed weights |
+| 5 | ~~Sensitivity Analysis~~ _(skipped)_ | Legacy one-at-a-time sweep — superseded by weighted RRF |
 | 6 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
 | 7 | Drift Validation | 4 simulated scenarios (normal → Shewhart breach → catastrophic) |
 | 8 | Composite Metric | 0.35×Faithfulness + 0.25×Relevancy + 0.20×Precision + 0.20×CitationGrounding |
@@ -576,15 +583,15 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
 - [x] Hybrid retrieval: pgvector + BM25 + weighted RRF + cross-encoder reranking (ms-marco-MiniLM-L-6-v2)
 - [x] Multi-backend LLM fallback chain (Groq → Bedrock → Ollama → HuggingFace)
-- [x] FastAPI backend (`/health`, `/ask`, `/drift`) + React frontend (Vite)
+- [x] FastAPI backend (`/health`, `/ask`, `/drift`, `/dashboard/insights`) + React frontend (Vite)
 - [x] Docker Compose (6 services) + container-image Lambda deployment via ECR
 - [x] S3 medallion data lake + SQS-decoupled ingestion pipeline
 - [x] 3-layer hallucination verification + retrieval quality drift detection
 - [x] CloudWatch custom metrics + deep health checks + 3 alarms
-- [x] RAGAS evaluation framework (100 samples, 9-phase pipeline, statistical tests) — hybrid composite 0.723 vs baseline 0.676 (+4.7 pp)
+- [x] RAGAS evaluation framework (100 samples, 9-phase pipeline with 2 skipped, statistical tests) — hybrid composite 0.723 vs baseline 0.676 (+4.7 pp)
 - [x] AWS IaC via SAM (Free Tier + production templates)
 - [x] GitHub Actions CI/CD — lint → test → SAM validate → deploy → S3 frontend upload
-- [x] 204 unit tests across 15 modules (60%+ coverage gate)
+- [x] 208 unit tests across 15 modules (60%+ coverage gate)
 
 ### Remaining
 

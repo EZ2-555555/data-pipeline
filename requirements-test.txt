@@ -30,4 +30,6 @@ slowapi>=0.1.9
 # NLP (lightweight — tokenizer only)
 tiktoken>=0.5.0
 rank-bm25>=0.2.2
-pytest-cov>=4.1.0
+
+# Cross-encoder reranking (for retriever tests)
+sentence-transformers>=2.7.0
