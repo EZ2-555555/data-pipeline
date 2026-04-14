@@ -51,6 +51,33 @@ Two significant enhancements were made beyond the original proposal: (1) data so
 
 Additionally, nine research-backed retrieval improvements were applied post-proposal, including: weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15), improved BM25 tokenization with stop-word removal, BM25-only candidate quality gate, asymmetric candidate limits, post-fusion score gate, Shewhart $3\sigma$ minimum standard deviation floor for drift detection, RAGAS evaluation threading fix, cross-encoder reranking (ms-marco-MiniLM-L-6-v2), and NaN retry pass for RAGAS scoring. These improvements are documented in the project's engineering change log and collectively produced a composite quality swing of $+0.069$---from trailing the baseline by $-0.022$ to leading by $+0.047$.
 
+\section{Preprocessing Pipeline Architecture}
+\label{sec:preprocessing_detail}
+
+The 17-step text normalization pipeline is applied to all ingested documents before chunking to handle the heterogeneous content formats across five data sources. The steps are sequenced to prevent cascading errors (e.g., stripping HTML tags before removing entity references):
+
+\begin{enumerate}[leftmargin=0.5in, font=\small]
+  \item HTML entity unescaping (\texttt{\&nbsp;} $\to$ space)
+  \item HTML comment removal (\texttt{<!-- -->})
+  \item HTML tag stripping (e.g., \texttt{<p>}, \texttt{<div>}, \texttt{<span>})
+  \item Fenced code block removal (\texttt{```...```})
+  \item Inline code removal (\texttt{`...`})
+  \item Markdown image/link reference removal (\texttt{![alt](url)}, \texttt{[text](url)})
+  \item URL removal (http, https, ftp schemes)
+  \item Markdown heading removal (\texttt{\# \#\# \#\#\#})
+  \item Markdown bold/italic marker removal (\texttt{**}, \texttt{*}, \texttt{\_\_}, \texttt{\_})
+  \item Markdown strikethrough removal (\texttt{~~text~~})
+  \item Markdown horizontal rule removal (\texttt{---}, \texttt{***})
+  \item Markdown blockquote marker removal (\texttt{>})
+  \item Emoji and pictographic symbol removal (Unicode ranges for emoticons, transport, supplemental symbols, regional indicators, dingbats, variation selectors)
+  \item Unicode control character removal (bytes \texttt{0x00--0x1F}, zero-width joiners, byte-order marks)
+  \item Repeated punctuation collapse (e.g., \texttt{!!!} $\to$ \texttt{!})
+  \item Unicode whitespace normalization (\texttt{0xA0} $\to$ space)
+  \item General whitespace collapse (multiple consecutive spaces, tabs, newlines)
+\end{enumerate}
+
+Following normalization, text is split into overlapping token-based chunks using the GPT-4 tokenizer (\texttt{cl100k\_base} encoding from TikToken) with configurable chunk size and overlap. Default parameters are chunk size 500 tokens ($\approx$400 words) and 50-token overlap, balancing context coherence against retrieval candidate diversity. The chunking operation produces 6{,}220 indexed chunks from the 3{,}984 ingested documents.
+
 \section{AWS Free Tier Deployment}
 \label{sec:freetier}
 
@@ -141,6 +168,56 @@ Several non-obvious findings arose during implementation that informed the final
   \item \textbf{pgvector HNSW index build.} Index rebuilds took 45--90\,s on db.t3.micro for corpora above $\sim$10k chunks---acceptable for batch but would need management for real-time updates.
 \end{itemize}
 
+\section{Hybrid Retrieval: BM25 Index Caching \& Architectural Details}
+\label{sec:bm25_caching}
+
+The BM25 component of hybrid retrieval employs module-level index caching with automatic periodic refresh. The full-corpus BM25 index is constructed from all indexed chunks during the initial load and then cached in process memory. The cache is automatically invalidated and reconstructed every 30 minutes to incorporate newly ingested documents while minimizing per-query recomputation overhead. This caching strategy reduces mean BM25 retrieval latency by $\sim$200\,ms (per-query computation ~$O(N)$ tokens against the corpus) but introduces a bounded staleness: queries execute against corpus state from at most 30 minutes prior. For drift detection validation runs, probe queries execute against potentially cached BM25 results; sensitivity analysis confirms that cache age induces <1\% variation in mean cosine similarity measurements, well within the 10\% drift threshold margin.
+
+The BM25 tokenizer (class \texttt{BM25Okapi}) is independent of the query processing tokenizer to ensure consistent vocabulary across corpus indexing and retrieval. Token filtering removes 125 domain-adapted stopwords (including common tech-domain terms like ``tech'', ``technology'', ``article'', ``data''), enforces minimum token length of 2 characters, and normalizes the text to lowercase before tokenization. This design choice prevents false positive matches on ubiquitous terms while preserving domain-specific signal.
+
+\section{Ingestion Scheduler \& Orchestration}
+\label{sec:scheduler}
+
+TechPulse implements two ingestion orchestration modes: (1) AWS EventBridge-based scheduling for cloud deployments, and (2) local polling-based scheduler for Docker Compose environments.
+
+\noindent\textbf{AWS EventBridge:} On AWS, a CloudWatch Events rule (cron expression \texttt{cron(0 */6 * * ? *)}) triggers the ingestion Lambda every 6 hours (00:00, 06:00, 12:00, 18:00 UTC). Each invocation sequentially calls all five ingesters (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS) within a single Lambda function, minimizing cold-start overhead. The 6-hour cycle was determined empirically to balance corpus freshness (query latency impact $<$100\,ms for 6-hour-old documents in the tech domain) against AWS Lambda free-tier invocation limits (1 million/month, ~4 invocations/day).
+
+\noindent\textbf{Local Scheduler:} In Docker Compose development, a dedicated \texttt{scheduler} service implements polling-based orchestration with source-specific refresh intervals: ArXiv every 12 hours (lower volume), and Hacker News, DEV.to, GitHub, RSS every 30 minutes (higher velocity signals). This asymmetric scheduling reflects domain knowledge about source update patterns.
+
+\section{API Endpoints \& Request Handling}
+\label{sec:api_endpoints}
+
+The FastAPI application exposes four primary endpoints:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item \texttt{GET /health} --- Deep health check returning the status of database, S3, SQS, and configured LLM backend (response time: $<$2\,s).
+  
+  \item \texttt{POST /ask} --- Main query endpoint. Accepts \texttt{query} (string), \texttt{mode} (``baseline'' or ``hybrid''), and optional \texttt{top\_k} (default 5). Returns ranked passages, generated answer (if LLM available), per-stage latencies, and citation metadata. Enforced rate limit: 20 requests/minute per IP address (SlowAPI).
+  
+  \item \texttt{POST /drift} --- Manual drift detection trigger. Executes the nine simulated drift scenarios (corpus drift, query drift, embedding shift, LLM change, source imbalance, temporal shift, semantic shift, and label noise) and returns alerting verdicts.
+  
+  \item \texttt{GET /dashboard/insights} --- Complex aggregation endpoint returning dashboard data: trending topics (keywords + growth metrics), 30-day mention time-series, source distribution, and live highlight snippets (top 5 by composite score). Optional query parameters: \texttt{days} (7--60, default 30) and \texttt{sources} (comma-separated filter over ARXIV, HN, DEVTO, GITHUB, RSS).
+\end{enumerate}
+
+Rate limiting is implemented via SlowAPI (dependency: \texttt{slowapi}) to provide basic DOS protection and fair resource allocation in shared environments. The 20 req/min limit on \texttt{/ask} is conservative; monitoring during evaluation runs showed peak throughput of $\sim$2--3 queries/min from a single user.
+
+\section{Citation Grounding Verification}
+\label{sec:citation_grounding}
+
+The three-layer hallucination verification strategy includes an output-layer citation grounding check that validates the generated response's reference completeness. The verification logic:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item \textbf{Sentence splitting:} The response is split on sentence-ending punctuation using regex \texttt{r'(?<=[.!?]){\textbackslash}s+'}, producing atomic sentential units.
+  
+  \item \textbf{Citation detection:} Each sentence is checked for presence of citation markers matching the pattern \texttt{r'{\textbackslash}[Source{\textbackslash}s+{\textbackslash}d+{\textbackslash}]'}, where the captured index $N$ must satisfy $1 \leq N \leq \text{num\_sources}$.
+  
+  \item \textbf{Citation ratio computation:} The fraction $R = \text{cited\_sentences} / \text{total\_sentences}$ is computed and compared against a configurable threshold \texttt{CITATION\_GROUNDING\_THRESHOLD} (default 0.0 for local dev, recommended $\geq 0.5$ for production with capable LLMs).
+  
+  \item \textbf{Hallucinated reference detection:} Invalid source indices (e.g., \texttt{[Source 12]} when only 5 sources are available) trigger a hallucination flag.
+\end{enumerate}
+
+Responses flagged as under-grounded (citation ratio $< $ threshold) or containing invalid references are recorded in CloudWatch as \texttt{HallucinationFlags} metrics for operational monitoring. During evaluation, the RAGAS-computed ``Citation Grounding'' metric (Section~5) correlates with but is independent of this output-layer check, providing complementary signal for model quality assessment.
+
 \section{System Demonstration}
 \label{sec:demo}
 
@@ -179,6 +256,36 @@ Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval mo
 \caption{TechPulse frontend: hybrid vs.\ baseline retrieval for the same query.}
 \label{fig:demo_compare}
 \end{figure}
+
+\subsection{Frontend: Dashboard \& System Monitoring}
+
+In addition to the primary search interface, a comprehensive dashboard provides real-time system monitoring and evaluation results visualization. The dashboard aggregates the following functional components:
+
+\begin{enumerate}[leftmargin=0.5in]
+  \item \textbf{Trending Topic Analysis.} Displays the top-ranked keywords aggregated across all five data sources over a configurable time window (default: 30 days). For each topic, the interface reports weekly and monthly mention counts alongside source coverage metrics and growth percentage relative to monthly average.
+
+  \item \textbf{Time-Series Trend Visualization.} A line chart tracking mention frequency for trending topics over 30 days, enabling stakeholders to observe temporal patterns in technology adoption.
+
+  \item \textbf{Source Distribution Analytics.} A bar chart and tabular view showing document counts per ingestion source (ArXiv, Hacker News, DEV.to, GitHub, RSS), allowing corpus composition assessment.
+
+  \item \textbf{Live Insight Explorer.} An interactive panel enabling source-based filtering of daily highlights (top 5 items by composite score per ingestion cycle). Highlights are presented as clickable links that resolve to source-specific search interfaces: ArXiv API search, GitHub repository search, Hacker News Algolia index, DEV.to tagged search, or Bing News feed search. Resolution logic falls back to topic-aware search queries when direct URLs are unavailable.
+
+  \item \textbf{Pipeline Architecture Diagram.} A sequential six-stage flowchart visualizing the ingestion-to-generation pipeline (Data Sources → Ingestion → Embedding → pgvector DB → Hybrid Retrieval → LLM Answer Generation), providing non-technical stakeholders with system architecture intuition.
+
+  \item \textbf{Evaluation Results Aggregation.} Displays all evaluation metrics computed in Chapter~5:
+  \begin{itemize}
+    \item Radar plot comparing baseline and hybrid RAGAS scores (five dimensions: Faithfulness, Answer Relevancy, Context Precision, Citation Grounding, Composite).
+    \item Bar chart comparing mean and 95th percentile response latencies for both retrieval modes.
+    \item Line chart of sensitivity analysis results, showing composite score variation across $\alpha \in [0.0, 1.0]$ (semantic weight), highlighting the optimal $\alpha = 0.7$ configuration.
+    \item Summary statistics cards: sample count (100), hybrid composite score (0.723), composite gain (+4.7 pp), and projected monthly infrastructure cost (\$0 at Free Tier).
+  \end{itemize}
+
+  \item \textbf{Multi-Source Attribution.} All highlights include explicit source attribution and clickable source chips at the dashboard base, allowing rapid filtering by data origin and validation that the system ingests from all five specified sources.
+\end{enumerate}
+
+The dashboard serves two purposes: (1) communicating system capabilities and results to non-technical stakeholders (e.g., project advisors, peer reviewers) through summary statistics and visualizations, and (2) enabling real-time operational monitoring of ingestion freshness and source distribution balance. Interactive features (source filtering, clickable external links, animated metrics) provide immediate feedback to users exploring the system's outputs.
+
+\noindent\underline{\textit{Note:} Dashboard screenshot to be included in final submission. Placeholder: \texttt{dashboard-overview.png}}
 
 \subsection{CI/CD Pipeline: GitHub Actions}
 

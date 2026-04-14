@@ -63,7 +63,7 @@ Table~\ref{tab:rq_map} provides an explicit mapping from each research question 
 \textbf{RQ} & \textbf{Question (abbreviated)} & \textbf{Primary Metric} & \textbf{Evaluation Approach} \\
 \midrule
 1 & Cloud-native deterministic ingestion & Pipeline idempotency; SHA-256 deduplication pass rate & Unit tests (24 ingestion tests); repeated pipeline runs \\[4pt]
-2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness; citation grounding $> 0.80$ & Paired comparison over 50 queries; Wilcoxon signed-rank test; Cohen's $d$; bootstrap 95\% CI \\[4pt]
+2 & Hybrid vs.\ baseline retrieval precision & Context precision (RAGAS); faithfulness; answer relevancy; composite score; citation grounding $> 0.80$ & Paired comparison over 50 queries; Wilcoxon signed-rank test; Cohen's $d$; bootstrap 95\% CI \\[4pt]
 3 & Latency and cost trade-offs & p95 latency $< 2$s (retrieval stage); cost $<$ USD~15/month & Per-query timing; token usage profiling; cost projection \\[4pt]
 4 & MLOps integration & Drift detection coverage; CI/CD pass rate; health-check uptime & Drift simulation runs; CloudWatch alarm verification \\
 \bottomrule
