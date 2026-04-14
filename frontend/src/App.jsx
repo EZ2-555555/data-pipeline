@@ -107,7 +107,7 @@ export default function App() {
   }
 
   return (
-    <div className="page-anim" key="main">
+    <div className="page-anim main-page" key="main">
       <div className="app">
         <AuroraBg />
         <FloatingTechIcons />

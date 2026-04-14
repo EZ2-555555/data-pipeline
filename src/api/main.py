@@ -7,6 +7,7 @@ import os
 import re
 import time
 from contextlib import asynccontextmanager
+from urllib.parse import quote_plus
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,6 +78,23 @@ STOPWORDS = {
     "who", "why", "will", "with", "work", "would", "you", "your",
     "tech", "technology", "article", "articles", "com", "www", "org", "github",
 }
+
+
+def _resolve_highlight_url(source: str, title: str, raw_url: str) -> str:
+    if raw_url and raw_url.startswith(("http://", "https://")):
+        return raw_url
+    q = quote_plus((title or "technology news").strip())
+    if source == "arxiv":
+        return f"https://arxiv.org/search/?query={q}&searchtype=all"
+    if source == "devto":
+        return f"https://dev.to/search?q={q}"
+    if source == "hn":
+        return f"https://hn.algolia.com/?q={q}"
+    if source == "github":
+        return f"https://github.com/search?q={q}&type=repositories"
+    if source == "rss":
+        return f"https://www.bing.com/news/search?q={q}+rss"
+    return f"https://www.bing.com/news/search?q={q}"
 
 
 def _extract_keywords(text: str, max_terms: int = 24) -> list[str]:
@@ -154,6 +172,7 @@ def dashboard_insights(days: int = 30, sources: str | None = None):
             "total_documents_30d": 0,
             "source_mix": {},
             "topic_highlight": None,
+            "topic_highlights": [],
             "top_keywords_week": [],
             "cross_source_buzz": [],
             "research_practice_gap": [],
@@ -300,22 +319,60 @@ def dashboard_insights(days: int = 30, sources: str | None = None):
         {
             "title": d["title"],
             "source": d["source"],
-            "url": d["url"],
+            "url": _resolve_highlight_url(d["source"], d["title"], d.get("url", "")),
             "published_at": d["published_at"].isoformat(),
             "score": round(score, 2),
         }
         for score, _, d in selected_today[:5]
     ]
 
-    topic_highlight = None
-    if highlight_keyword:
-        topic_highlight = {
-            "keyword": highlight_keyword,
-            "weekly_mentions": week_counter.get(highlight_keyword, 0),
-            "monthly_mentions": keyword_docs.get(highlight_keyword, 0),
-            "source_coverage": len(keyword_sources.get(highlight_keyword, set())),
-            "sources": sorted(keyword_sources.get(highlight_keyword, set())),
-        }
+    # Build top-7 topic highlights from cross-source buzz + weekly keywords
+    topic_highlights: list[dict] = []
+    seen_kws: set[str] = set()
+    for entry in cross_source_buzz:
+        if len(topic_highlights) >= 7:
+            break
+        kw = entry["keyword"]
+        if kw in seen_kws:
+            continue
+        seen_kws.add(kw)
+        weekly = week_counter.get(kw, 0)
+        monthly = keyword_docs.get(kw, 0)
+        # growth = weekly rate vs monthly avg daily rate
+        monthly_daily = monthly / 30 if monthly else 0
+        weekly_daily = weekly / 7 if weekly else 0
+        growth_pct = round(((weekly_daily - monthly_daily) / monthly_daily) * 100, 1) if monthly_daily > 0 else 0.0
+        topic_highlights.append({
+            "keyword": kw,
+            "weekly_mentions": weekly,
+            "monthly_mentions": monthly,
+            "source_coverage": len(keyword_sources.get(kw, set())),
+            "sources": sorted(keyword_sources.get(kw, set())),
+            "growth_pct": growth_pct,
+        })
+    for entry in top_keywords_week:
+        if len(topic_highlights) >= 7:
+            break
+        kw = entry["keyword"]
+        if kw in seen_kws:
+            continue
+        seen_kws.add(kw)
+        weekly = week_counter.get(kw, 0)
+        monthly = keyword_docs.get(kw, 0)
+        monthly_daily = monthly / 30 if monthly else 0
+        weekly_daily = weekly / 7 if weekly else 0
+        growth_pct = round(((weekly_daily - monthly_daily) / monthly_daily) * 100, 1) if monthly_daily > 0 else 0.0
+        topic_highlights.append({
+            "keyword": kw,
+            "weekly_mentions": weekly,
+            "monthly_mentions": monthly,
+            "source_coverage": len(keyword_sources.get(kw, set())),
+            "sources": sorted(keyword_sources.get(kw, set())),
+            "growth_pct": growth_pct,
+        })
+
+    # Keep backward-compat single field (first item or None)
+    topic_highlight = topic_highlights[0] if topic_highlights else None
 
     return {
         "generated_at": time.time(),
@@ -324,6 +381,7 @@ def dashboard_insights(days: int = 30, sources: str | None = None):
         "total_documents_30d": len(docs),
         "source_mix": dict(source_mix),
         "topic_highlight": topic_highlight,
+        "topic_highlights": topic_highlights,
         "top_keywords_week": top_keywords_week,
         "cross_source_buzz": cross_source_buzz,
         "research_practice_gap": research_practice_gap,

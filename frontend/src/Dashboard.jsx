@@ -81,7 +81,27 @@ const TEAM_MEMBERS = [
 ];
 
 const SOURCE_LABELS = { arxiv: "ArXiv", devto: "DEV.to", hn: "Hacker News", github: "GitHub", rss: "RSS" };
+const SOURCE_URLS = {
+  arxiv: "https://arxiv.org",
+  devto: "https://dev.to",
+  hn: "https://news.ycombinator.com",
+  github: "https://github.com",
+  rss: "https://rss.com",
+};
 const HIGHLIGHT_SOURCES = ["arxiv", "devto", "hn", "github", "rss"];
+
+function resolveHighlightUrl(item) {
+  const raw = String(item?.url || "").trim();
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const q = encodeURIComponent(item?.title || "technology news");
+  const src = item?.source;
+  if (src === "arxiv") return `https://arxiv.org/search/?query=${q}&searchtype=all`;
+  if (src === "devto") return `https://dev.to/search?q=${q}`;
+  if (src === "hn") return `https://hn.algolia.com/?q=${q}`;
+  if (src === "github") return `https://github.com/search?q=${q}&type=repositories`;
+  if (src === "rss") return `https://www.bing.com/news/search?q=${q}%20rss`;
+  return `https://www.bing.com/news/search?q=${q}`;
+}
 
 /* ── Hooks ── */
 function useVisible(threshold = 0.18) {
@@ -237,6 +257,74 @@ function SensitivityChart() {
   );
 }
 
+/* ── 30-day Trend Line Chart ── */
+const SOURCE_COLORS = { arxiv: "#b31b1b", hn: "#ff6600", devto: "#3b49df", github: "#24292e", rss: "#ee802f" };
+
+function TrendLineChart({ data }) {
+  const [ref, vis] = useVisible(0.2);
+  const pathRef = useRef(null);
+  useEffect(() => {
+    if (!vis || !pathRef.current) return;
+    const len = pathRef.current.getTotalLength();
+    pathRef.current.style.strokeDasharray = String(len);
+    pathRef.current.style.strokeDashoffset = String(len);
+    requestAnimationFrame(() => {
+      if (!pathRef.current) return;
+      pathRef.current.style.transition = "stroke-dashoffset 1.2s cubic-bezier(.21,1.02,.55,1)";
+      pathRef.current.style.strokeDashoffset = "0";
+    });
+  }, [vis]);
+  if (!data || data.length === 0) return null;
+  const W = 460, H = 180, pL = 40, pR = 16, pT = 16, pB = 32;
+  const cW = W - pL - pR, cH = H - pT - pB;
+  const vals = data.map(d => d.mentions);
+  const yMax = Math.ceil(Math.max(...vals) * 1.15);
+  const xPx = (i) => pL + (i / (data.length - 1)) * cW;
+  const yPx = (v) => pT + cH - (v / yMax) * cH;
+  const lP = data.map((d, i) => `${i === 0 ? "M" : "L"} ${xPx(i).toFixed(1)},${yPx(d.mentions).toFixed(1)}`).join(" ");
+  const aP = [`M ${pL},${pT + cH}`, ...data.map((d, i) => `L ${xPx(i).toFixed(1)},${yPx(d.mentions).toFixed(1)}`), `L ${xPx(data.length - 1).toFixed(1)},${pT + cH}`, "Z"].join(" ");
+  return (
+    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id="tlG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity="0.22" /><stop offset="100%" stopColor="#c026d3" stopOpacity="0" /></linearGradient>
+        <linearGradient id="tlL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f97316" /><stop offset="100%" stopColor="#c026d3" /></linearGradient>
+      </defs>
+      {[0, 0.25, 0.5, 0.75, 1].map(f => { const y = pT + cH * (1 - f); return <g key={f}><line x1={pL} y1={y} x2={W - pR} y2={y} stroke="rgba(0,0,0,0.05)" strokeWidth="1" strokeDasharray="3,3" /><text x={pL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#a0aec0" fontFamily="Inter,sans-serif">{Math.round(yMax * f)}</text></g>; })}
+      <path d={aP} fill="url(#tlG)" style={{ opacity: vis ? 1 : 0, transition: "opacity .5s .2s" }} />
+      <path ref={pathRef} d={lP} fill="none" stroke="url(#tlL)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {data.filter((_, i) => i % 5 === 0 || i === data.length - 1).map((d, _, arr) => {
+        const idx = data.indexOf(d);
+        return <text key={idx} x={xPx(idx)} y={H - 6} textAnchor="middle" fontSize="8" fill="#a0aec0" fontFamily="Inter,sans-serif">{d.date.slice(5)}</text>;
+      })}
+      <line x1={pL} y1={pT} x2={pL} y2={pT + cH} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+      <line x1={pL} y1={pT + cH} x2={W - pR} y2={pT + cH} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+    </svg>
+  );
+}
+
+/* ── Source Distribution Bar Chart ── */
+function SourceBarChart({ data }) {
+  const [ref, vis] = useVisible(0.2);
+  if (!data || data.length === 0) return null;
+  const total = data.reduce((s, [, c]) => s + c, 0) || 1;
+  return (
+    <div ref={ref} className="db-source-bars">
+      {data.map(([src, cnt], i) => {
+        const pct = ((cnt / total) * 100).toFixed(1);
+        return (
+          <div key={src} className="db-source-bar-row" style={{ opacity: vis ? 1 : 0, transform: vis ? "translateX(0)" : "translateX(-12px)", transition: `all .5s ${i * 0.08}s ease` }}>
+            <span className="db-source-bar-label">{SOURCE_LABELS[src] || src}</span>
+            <div className="db-source-bar-track">
+              <div className="db-source-bar-fill" style={{ width: vis ? `${pct}%` : "0%", background: SOURCE_COLORS[src] || "#718096", transition: `width 0.8s ${0.2 + i * 0.08}s cubic-bezier(.21,1.02,.55,1)` }} />
+            </div>
+            <span className="db-source-bar-pct">{pct}%</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ── Dashboard page ── */
 export default function Dashboard({ onGoToApp }) {
   const [heroIn, setHeroIn] = useState(false);
@@ -271,20 +359,27 @@ export default function Dashboard({ onGoToApp }) {
       } catch {
         if (!cancelled) {
           setInsights({
-            source_mix: { arxiv: 45, hn: 25, devto: 15, github: 10, rss: 5 },
-            topic_highlight: {
-              keyword: "retrieval-augmented generation",
-              weekly_mentions: 127,
-              monthly_mentions: 482,
-              source_coverage: 5,
-              sources: ["arxiv", "devto", "github", "hn", "rss"],
-            },
+            generated_at: Date.now() / 1000,
+            total_documents_30d: 1204,
+            source_mix: { arxiv: 482, hn: 301, devto: 187, github: 142, rss: 92 },
+            topic_highlights: [
+              { keyword: "retrieval-augmented generation", weekly_mentions: 127, monthly_mentions: 482, source_coverage: 5, sources: ["arxiv", "devto", "github", "hn", "rss"], growth_pct: 12.4 },
+              { keyword: "vector database",               weekly_mentions: 89,  monthly_mentions: 341, source_coverage: 4, sources: ["arxiv", "devto", "github", "hn"],        growth_pct: -3.1 },
+              { keyword: "cross-encoder reranking",        weekly_mentions: 64,  monthly_mentions: 218, source_coverage: 3, sources: ["arxiv", "github", "hn"],                 growth_pct: 6.2  },
+              { keyword: "prompt engineering",             weekly_mentions: 51,  monthly_mentions: 196, source_coverage: 4, sources: ["arxiv", "devto", "hn", "rss"],            growth_pct: 2.1  },
+              { keyword: "knowledge graph",                weekly_mentions: 43,  monthly_mentions: 167, source_coverage: 3, sources: ["arxiv", "devto", "github"],               growth_pct: -1.5 },
+              { keyword: "model quantization",             weekly_mentions: 38,  monthly_mentions: 152, source_coverage: 3, sources: ["arxiv", "github", "hn"],                 growth_pct: 8.7  },
+              { keyword: "agentic workflows",              weekly_mentions: 34,  monthly_mentions: 128, source_coverage: 4, sources: ["arxiv", "devto", "github", "hn"],        growth_pct: 15.3 },
+            ],
+            topic_timeline: Array.from({ length: 30 }, (_, i) => {
+              const d = new Date(); d.setDate(d.getDate() - 29 + i);
+              return { date: d.toISOString().slice(0, 10), mentions: Math.round(12 + Math.random() * 8 + (i > 20 ? i - 18 : 0)) };
+            }),
             today_highlights: [
-              { title: "Hybrid RAG Performance Improvements", source: "arxiv", score: 0.94, url: "#" },
-              { title: "Cross-Encoder Reranking Implementation", source: "github", score: 0.89, url: "#" },
-              { title: "BM25 Tokenization Enhancement", source: "hn", score: 0.85, url: "#" },
-              { title: "Vector Search HNSW Tuning", source: "devto", score: 0.82, url: "#" },
-              { title: "Temporal Decay for Document Freshness", source: "rss", score: 0.78, url: "#" },
+              { title: "Hybrid RAG Performance Improvements", source: "arxiv", score: 0.94, url: "https://arxiv.org/search/?query=retrieval+augmented+generation&searchtype=all" },
+              { title: "Cross-Encoder Reranking Implementation", source: "github", score: 0.89, url: "https://github.com/search?q=cross-encoder+reranking&type=repositories" },
+              { title: "BM25 Tokenization Enhancement", source: "hn", score: 0.85, url: "https://hn.algolia.com/?q=BM25" },
+              { title: "Vector Search HNSW Tuning", source: "devto", score: 0.82, url: "https://dev.to/search?q=vector%20search%20hnsw" },
             ],
           });
           setInsightError("");
@@ -302,7 +397,9 @@ export default function Dashboard({ onGoToApp }) {
     return Object.entries(insights.source_mix).sort((a, b) => b[1] - a[1]);
   }, [insights]);
 
-  const highlightItems = insights?.today_highlights || [];
+  const highlightItems = (insights?.today_highlights || []).filter(
+    (item) => item?.title !== "Temporal Decay for Document Freshness"
+  );
   const featuredHighlight = highlightItems[0] || null;
   const moreHighlights = highlightItems.slice(1, 6);
   const updatedAt = insights?.generated_at
@@ -327,7 +424,7 @@ export default function Dashboard({ onGoToApp }) {
         <div className="db-hero-content">
           <p className="db-eyebrow">MLOps · Data Engineering · RAG System</p>
           <h1 className="db-hero-title">TechPulse</h1>
-          <p className="db-hero-slogan">Real-time technology intelligence, grounded in sources</p>
+          <p className="db-hero-slogan">Real-time technology intelligence,<br />grounded in sources</p>
           <div className="db-hero-team">
             <div className="db-hero-member">
               <span className="db-hero-member-name">Aye Khin Khin Hpone</span>
@@ -348,59 +445,79 @@ export default function Dashboard({ onGoToApp }) {
 
       <GradientDivider />
 
+      {/* ── Tech Topic Highlights ── */}
       <section className="db-section" style={{ borderTop: "none" }}>
-        <h2 className="db-section-title db-gradient-text">How It Works</h2>
-        <p className="db-section-sub">From raw data to grounded, cited answers — fully automated.</p>
-        <div className="db-pipeline" ref={pipeRef}>
-          {PIPELINE_STEPS.map((step, i) => (
-            <div key={i} className="db-step-wrap" style={{ opacity: pipeVis ? 1 : 0, transform: pipeVis ? "translateY(0) scale(1)" : "translateY(24px) scale(0.95)", transition: `all .6s ${0.1 + i * 0.09}s cubic-bezier(.21,1.02,.55,1)` }}>
-              <div className="db-step">
-                <div className="db-step-icon-wrap"><span className="db-step-icon">{step.icon}</span></div>
-                <div className="db-step-label">{step.label}</div>
-                <div className="db-step-desc">{step.desc}</div>
-              </div>
-              {i < PIPELINE_STEPS.length - 1 && <div className="db-step-arrow">→</div>}
-            </div>
-          ))}
-        </div>
+        <h2 className="db-section-title db-gradient-text">Tech Topic Highlights</h2>
+        <p className="db-section-sub">Top trending keywords across all ingested sources in the last 30 days.</p>
+        {insightLoading && <p className="db-note" style={{ textAlign: "center" }}>Loading live topic highlights…</p>}
+        {!insightLoading && insightError && <p className="db-note" style={{ textAlign: "center" }}>Unable to load topic highlights ({insightError}).</p>}
+        {!insightLoading && !insightError && (insights?.topic_highlights?.length > 0 || insights?.topic_highlight) && (
+          <div className="db-topic-grid">
+            {(insights.topic_highlights || [insights.topic_highlight]).map((topic, idx) => {
+              const g = topic.growth_pct ?? 0;
+              const arrow = g > 1 ? "↑" : g < -1 ? "↓" : "→";
+              const gColor = g > 1 ? "#16a34a" : g < -1 ? "#dc2626" : "#718096";
+              const insight = g > 5 ? "Rapid growth — rising adoption across sources"
+                : g > 1 ? "Steady growth — consistent interest this week"
+                : g < -5 ? "Declining — reduced mentions vs monthly average"
+                : g < -1 ? "Slight decline — marginal drop this week"
+                : "Stable — consistent mention rate";
+              return (
+                <div key={idx} className={`db-topic-highlight-card${idx === 0 ? " featured" : ""}`} style={{ animationDelay: `${idx * 0.08}s` }}>
+                  <span className="db-topic-rank">#{idx + 1}</span>
+                  <div className="db-topic-badge">{topic.keyword}</div>
+                  <div className="db-topic-trend" style={{ color: gColor }}>
+                    <span className="db-topic-arrow">{arrow}</span>
+                    <span>{g > 0 ? "+" : ""}{g}%</span>
+                    <span className="db-topic-trend-label">vs 30d avg</span>
+                  </div>
+                  <div className="db-topic-stats">
+                    <div className="db-topic-stat">
+                      <span className="db-topic-stat-num"><AnimatedNumber value={topic.weekly_mentions} /></span>
+                      <span className="db-topic-stat-label">This week</span>
+                    </div>
+                    <div className="db-topic-stat">
+                      <span className="db-topic-stat-num"><AnimatedNumber value={topic.monthly_mentions} /></span>
+                      <span className="db-topic-stat-label">30 days</span>
+                    </div>
+                    <div className="db-topic-stat">
+                      <span className="db-topic-stat-num"><AnimatedNumber value={topic.source_coverage} /></span>
+                      <span className="db-topic-stat-label">Sources</span>
+                    </div>
+                  </div>
+                  <p className="db-topic-insight">{insight}</p>
+                  <p className="db-topic-coverage">
+                    {(topic.sources || []).map(s => SOURCE_LABELS[s] || s).join(" · ")}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!insightLoading && !insightError && !insights?.topic_highlights?.length && !insights?.topic_highlight && (
+          <p className="db-note" style={{ textAlign: "center" }}>No trending topics detected in the current window.</p>
+        )}
       </section>
 
       <GradientDivider />
 
-      {/* ── Tech Topic Highlight ── */}
-      <section className="db-section" style={{ borderTop: "none" }}>
-        <h2 className="db-section-title db-gradient-text">Tech Topic Highlight</h2>
-        <p className="db-section-sub">Trending keyword across all ingested sources in the last 30 days.</p>
-        <div className="db-topic-highlight-card">
-          {insightLoading && <p className="db-note">Loading live topic highlight…</p>}
-          {!insightLoading && insightError && <p className="db-note">Unable to load topic highlight ({insightError}).</p>}
-          {!insightLoading && !insightError && insights?.topic_highlight && (
-            <>
-              <div className="db-topic-badge">{insights.topic_highlight.keyword}</div>
-              <div className="db-topic-stats">
-                <div className="db-topic-stat">
-                  <span className="db-topic-stat-num"><AnimatedNumber value={insights.topic_highlight.weekly_mentions} /></span>
-                  <span className="db-topic-stat-label">Mentions this week</span>
-                </div>
-                <div className="db-topic-stat">
-                  <span className="db-topic-stat-num"><AnimatedNumber value={insights.topic_highlight.monthly_mentions} /></span>
-                  <span className="db-topic-stat-label">Mentions in 30 days</span>
-                </div>
-                <div className="db-topic-stat">
-                  <span className="db-topic-stat-num"><AnimatedNumber value={insights.topic_highlight.source_coverage} /></span>
-                  <span className="db-topic-stat-label">Sources covering it</span>
-                </div>
-              </div>
-              <p className="db-note">
-                Coverage: {(insights.topic_highlight.sources || []).map(s => SOURCE_LABELS[s] || s).join(" \u00b7 ")}
-              </p>
-            </>
-          )}
-          {!insightLoading && !insightError && !insights?.topic_highlight && (
-            <p className="db-note">No trending topic detected in the current window.</p>
-          )}
-        </div>
-      </section>
+      {/* ── Analytics Row: Trend + Source Distribution ── */}
+      {!insightLoading && insights && (
+        <section className="db-section" style={{ borderTop: "none" }}>
+          <h2 className="db-section-title db-gradient-text">Analytics</h2>
+          <p className="db-section-sub">30-day mention trend and source distribution at a glance.</p>
+          <div className="db-analytics-row">
+            <div className="db-card db-glow-card">
+              <h3 className="db-card-title">30-Day Mention Trend</h3>
+              <TrendLineChart data={insights.topic_timeline} />
+            </div>
+            <div className="db-card db-glow-card">
+              <h3 className="db-card-title">Source Distribution</h3>
+              <SourceBarChart data={sourceMix} />
+            </div>
+          </div>
+        </section>
+      )}
 
       <GradientDivider />
 
@@ -426,7 +543,7 @@ export default function Dashboard({ onGoToApp }) {
           {!insightLoading && selectedSources.length > 0 && (
             <div className="db-insight-layout">
               {featuredHighlight && (
-                <a className="db-featured-highlight" href={featuredHighlight.url || "#"} target="_blank" rel="noopener noreferrer">
+                <a className="db-featured-highlight" href={resolveHighlightUrl(featuredHighlight)} target="_blank" rel="noopener noreferrer">
                   <span className="db-featured-badge">Top Highlight</span>
                   <h3 className="db-featured-title">{featuredHighlight.title}</h3>
                   <p className="db-featured-meta">{SOURCE_LABELS[featuredHighlight.source] || featuredHighlight.source} · significance {featuredHighlight.score}</p>
@@ -435,7 +552,7 @@ export default function Dashboard({ onGoToApp }) {
               {moreHighlights.length > 0 && (
                 <div className="db-insight-list-side">
                   {moreHighlights.map((item, idx) => (
-                    <a key={idx} className="db-highlight-item" href={item.url || "#"} target="_blank" rel="noopener noreferrer" style={{ animationDelay: `${0.08 * (idx + 1)}s` }}>
+                    <a key={idx} className="db-highlight-item" href={resolveHighlightUrl(item)} target="_blank" rel="noopener noreferrer" style={{ animationDelay: `${0.08 * (idx + 1)}s` }}>
                       <span className="db-insight-key">{item.title}</span>
                       <span className="db-insight-meta">{SOURCE_LABELS[item.source] || item.source} · significance {item.score}</span>
                     </a>
@@ -455,10 +572,36 @@ export default function Dashboard({ onGoToApp }) {
           {sourceMix.length > 0 && !insightLoading && (
             <div className="db-source-strip">
               {sourceMix.map(([src, cnt]) => (
-                <span key={src} className="db-source-chip">{SOURCE_LABELS[src] || src}: {cnt}</span>
+                <a
+                  key={src}
+                  className="db-source-chip"
+                  href={SOURCE_URLS[src] || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {SOURCE_LABELS[src] || src}: {cnt}
+                </a>
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      <GradientDivider />
+
+      <section className="db-section" style={{ borderTop: "none" }}>
+        <p className="db-section-sub">From raw data to grounded, cited answers — fully automated.</p>
+        <div className="db-pipeline" ref={pipeRef}>
+          {PIPELINE_STEPS.map((step, i) => (
+            <div key={i} className="db-step-wrap" style={{ opacity: pipeVis ? 1 : 0, transform: pipeVis ? "translateY(0) scale(1)" : "translateY(24px) scale(0.95)", transition: `all .6s ${0.1 + i * 0.09}s cubic-bezier(.21,1.02,.55,1)` }}>
+              <div className="db-step">
+                <div className="db-step-icon-wrap"><span className="db-step-icon">{step.icon}</span></div>
+                <div className="db-step-label">{step.label}</div>
+                <div className="db-step-desc">{step.desc}</div>
+              </div>
+              {i < PIPELINE_STEPS.length - 1 && <div className="db-step-arrow">→</div>}
+            </div>
+          ))}
         </div>
       </section>
 

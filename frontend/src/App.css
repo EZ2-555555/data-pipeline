@@ -49,6 +49,21 @@ body::before {
 .page-anim { animation: pageIn .4s cubic-bezier(.21,1.02,.55,1); }
 @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
 
+.main-page {
+  position: relative;
+  min-height: 100vh;
+}
+
+.main-page .aurora-bg {
+  position: fixed;
+  inset: 0;
+}
+
+.main-page .app {
+  position: relative;
+  z-index: 2;
+}
+
 /* ═══ AURORA MESH GRADIENT BACKGROUND ═══ */
 .aurora-bg {
   position: absolute;
@@ -63,7 +78,7 @@ body::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(0,0,0,0.045) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0,0,0,0.032) 1px, transparent 1px);
   background-size: 24px 24px;
   z-index: 1;
 }
@@ -213,9 +228,7 @@ body::before {
 }
 
 .search-card {
-  background: var(--surface);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 1.8rem;
@@ -356,8 +369,7 @@ body::before {
   align-items: center;
   gap: 12px;
   padding: 1rem 1.4rem;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   animation: fadeSlideUp 0.4s ease;
@@ -387,8 +399,7 @@ body::before {
 }
 .example-card {
   padding: 0.85rem 1rem;
-  background: var(--surface);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85);
   border: 1px solid var(--border);
   border-radius: 14px;
   font-size: 0.88rem;
@@ -422,9 +433,7 @@ body::before {
 /* Result card */
 .result-card {
   margin-top: 1.5rem;
-  background: var(--surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 1.8rem;
