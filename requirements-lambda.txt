@@ -24,3 +24,6 @@ slowapi>=0.1.9
 
 # Retrieval
 rank-bm25>=0.2.2
+
+# Cross-encoder reranking (hybrid retrieval)
+sentence-transformers>=2.7.0

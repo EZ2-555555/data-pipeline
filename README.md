@@ -581,7 +581,7 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 - [x] S3 medallion data lake + SQS-decoupled ingestion pipeline
 - [x] 3-layer hallucination verification + retrieval quality drift detection
 - [x] CloudWatch custom metrics + deep health checks + 3 alarms
-- [x] RAGAS evaluation framework (100 samples, 9-phase pipeline, statistical tests) — hybrid composite 0.830 vs baseline 0.788 (+4.2 pp)
+- [x] RAGAS evaluation framework (100 samples, 9-phase pipeline, statistical tests) — hybrid composite 0.723 vs baseline 0.676 (+4.7 pp)
 - [x] AWS IaC via SAM (Free Tier + production templates)
 - [x] GitHub Actions CI/CD — lint → test → SAM validate → deploy → S3 frontend upload
 - [x] 204 unit tests across 15 modules (60%+ coverage gate)
