@@ -110,6 +110,20 @@ S3 + EventBridge + SQS & \$0.00 & Storage, routing, queue services & \checkmark 
 
 \noindent Costs are derived from observed token usage and Lambda invocation metrics collected during the evaluation run. At higher workloads exceeding the Groq free-tier allowance (500,000 tokens/day), the automatic LLM backend fallback chain (Bedrock → Ollama → HuggingFace) enables cost-controlled scaling. The monthly total of \$0.33 is well below the \$15 budget target, providing a 45$\times$ safety margin.
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\textwidth]{costbreakdownoverview.png}
+\caption{AWS cost breakdown overview: monthly costs by component at 100 queries/day workload, demonstrating Free Tier eligibility (\$0.33 projected monthly cost vs.\ \$15 budget).}
+\label{fig:cost_breakdown_visual}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{cost_projections.png}
+\caption{Cost scaling projections: daily and monthly costs as query volume increases from 50 to 2000 queries/day. Left panel shows daily operating cost (dominated by query-proportional LLM inference cost ~\$0.002/query + fixed infrastructure \$0.43/day). Right panel shows monthly cost trajectory from ~\$3.43/month (50 q/day) to ~\$120/month (2000 q/day), well within budget for reasonable production workloads. Linear scaling until free-tier exhaustion; beyond 500k tokens/day, backend fallback incurs marginal cost increase.}
+\label{fig:cost_projections}
+\end{figure}
+
 \subsection*{Key Deployment Characteristics}
 
 The key deployment characteristics are:
@@ -287,37 +301,40 @@ The dashboard serves two purposes: (1) communicating system capabilities and res
 
 \noindent\underline{\textit{Note:} Dashboard screenshot to be included in final submission. Placeholder: \texttt{dashboard-overview.png}}
 
-\subsection{CI/CD Pipeline: GitHub Actions}
+\subsection{Deployment Validation: CI/CD, Infrastructure, and Database}
 
-Figure~\ref{fig:demo_cicd} shows the GitHub Actions CI/CD pipeline executing the workflow, validating that continuous integration and deployment are fully operational.
+Three key deployment components have been validated and are operational:
+
+\noindent\textbf{(1) CI/CD Pipeline (GitHub Actions):} Figure~\ref{fig:demo_cicd} (left) shows the GitHub Actions workflow executing successfully with all lint, test, build, and deployment stages passing.
+
+\noindent\textbf{(2) Infrastructure (AWS CloudFormation):} Figure~\ref{fig:demo_cfn} (center) shows the deployed AWS CloudFormation stack with all resources provisioned: Lambda functions, API Gateway, S3 buckets, SQS queues, EventBridge rules, and IAM roles.
+
+\noindent\textbf{(3) Database (RDS PostgreSQL):} Figure~\ref{fig:demo_rds} (right) shows the AWS RDS console confirming the TechPulse PostgreSQL instance is running with pgvector extension installed.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.95\textwidth]{github workflow run.png}
-\caption{GitHub Actions CI/CD pipeline: workflow run executing successfully.}
+\begin{subfigure}[t]{0.30\textwidth}
+\centering
+\includegraphics[width=\textwidth]{github workflow run.png}
+\caption{CI/CD: GitHub Actions workflow.}
 \label{fig:demo_cicd}
-\end{figure}
-
-\subsection{AWS CloudFormation Stack}
-
-Figure~\ref{fig:demo_cfn} shows the deployed AWS CloudFormation stack created by the SAM template, confirming that all infrastructure resources (Lambda functions, API Gateway, S3 buckets, SQS queues, EventBridge rules, and IAM roles) are provisioned and operational.
-
-\begin{figure}[htbp]
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.32\textwidth}
 \centering
-\includegraphics[width=0.82\textwidth]{techpulse-cloudformation.png}
-\caption{AWS CloudFormation console: TechPulse stack with all resources successfully created.}
+\includegraphics[width=\textwidth]{techpulse-cloudformation.png}
+\caption{Infrastructure: CloudFormation stack.}
 \label{fig:demo_cfn}
-\end{figure}
-
-\subsection{Database: RDS PostgreSQL with Ingested Corpus}
-
-Figure~\ref{fig:demo_rds} shows the AWS RDS console with the TechPulse PostgreSQL instance, confirming that the production database is running and accessible for the ingestion pipeline and retrieval queries.
-
-\begin{figure}[htbp]
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.32\textwidth}
 \centering
-\includegraphics[width=0.82\textwidth]{rds-techpulse.png}
-\caption{AWS RDS console: TechPulse PostgreSQL instance with pgvector extension.}
+\includegraphics[width=\textwidth]{rds-techpulse.png}
+\caption{Database: RDS PostgreSQL instance.}
 \label{fig:demo_rds}
+\end{subfigure}
+\caption{Deployment validation: CI/CD pipeline, CloudFormation stack, and RDS database all operational.}
+\label{fig:demo_deployment}
 \end{figure}
 
 \medskip

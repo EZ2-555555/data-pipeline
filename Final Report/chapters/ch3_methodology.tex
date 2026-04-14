@@ -167,7 +167,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates the three retrieval strategies
 
 \end{tikzpicture}%
 }
-\caption{Retrieval strategies compared during design: baseline vector-only (left), weighted hybrid with $\alpha$/$\beta$/$\gamma$ reranking and p95~=~25\,s tail latency (centre, not selected), and weighted BM25+RRF hybrid pipeline with cross-encoder reranking selected for the production system (right).}
+\caption{Retrieval strategy comparison: baseline (vector-only) vs. hybrid with RRF fusion.}
 \label{fig:retrieval_comparison}
 \end{figure}
 
@@ -280,7 +280,7 @@ Figure~\ref{fig:system_context} presents a high-level context view of TechPulse,
   (sys.south) -- node[fill=white, inner sep=2pt, font=\scriptsize\bfseries, text=propgray!80, right] {drift alerts / health} (ops.north);
 
 \end{tikzpicture}
-\caption{System context diagram for TechPulse. Solid arrows represent data and query flows; dashed arrows represent monitoring and evaluation signals.}
+\caption{System context diagram: data flows and evaluation signals.}
 \label{fig:system_context}
 \end{figure}
 

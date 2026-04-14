@@ -6,7 +6,7 @@ Figure~\ref{fig:aws_diagram} presents the AWS service-level architecture diagram
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{aws_techpulse.png}
-\caption{AWS architecture diagram: service-level deployment topology for TechPulse (Free Tier).}
+\caption{AWS architecture diagram.}
 \label{fig:aws_diagram}
 \end{figure}
 
@@ -54,33 +54,30 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
       rounded corners=2pt, below=0pt of l2]
   (l1) {Layer 1 --- Data Ingestion (5 sources) \quad \textcolor{awsgray}{\scriptsize ArXiv, HN, DEV.to, GitHub, RSS}};
 
-% Inter-layer flow arrows (right-hand side, upward ingestion path)
+% Inter-layer flow arrows (right-hand side, upward ingestion path - perfectly vertical)
 \draw[-{Stealth}, thick, color=awsblue!70]
-  ([xshift=1.0cm]l1.east) -- node[right, font=\scriptsize, color=awsblue!80] {raw docs}
-  ([xshift=1.0cm]l2.east);
+  (l1.east) -| ++(1.8,0.5) |- node[right, font=\scriptsize, color=awsblue!80] {docs} (l2.east);
 \draw[-{Stealth}, thick, color=awsgreen!70]
-  ([xshift=1.0cm]l2.east) -- node[right, font=\scriptsize, color=awsgreen!80] {chunks}
-  ([xshift=1.0cm]l3.east);
+  (l2.east) -| ++(1.8,0.5) |- node[right, font=\scriptsize, color=awsgreen!80] {chunks} (l3.east);
 \draw[-{Stealth}, thick, color=awspurple!70]
-  ([xshift=1.0cm]l3.east) -- node[right, font=\scriptsize, color=awspurple!80] {ranked docs}
-  ([xshift=1.0cm]l4.east);
+  (l3.east) -| ++(1.8,0.5) |- node[right, font=\scriptsize, color=awspurple!80] {ranked} (l4.east);
 \draw[-{Stealth}, thick, color=awsorange!70]
-  ([xshift=1.0cm]l4.east) -- node[right, font=\scriptsize, color=awsorange!80] {context}
-  ([xshift=1.0cm]l5.east);
+  (l4.east) -| ++(1.8,0.5) |- node[right, font=\scriptsize, color=awsorange!80] {context} (l5.east);
 \draw[-{Stealth}, thick, color=awsblue!70]
-  ([xshift=1.0cm]l5.east) -- node[right, font=\scriptsize, color=awsblue!80] {response}
-  ([xshift=1.0cm]l6.east);
+  (l5.east) -| ++(1.8,0.5) |- node[right, font=\scriptsize, color=awsblue!80] {response} (l6.east);
 
-% Query flow arrow (left-hand side, downward query path)
+% Query flow arrow (left-hand side, downward query path - perfectly vertical)
 \draw[-{Stealth}, dashed, thick, color=propgray!70]
-  ([xshift=-1.0cm]l6.west) -- node[left, font=\scriptsize, color=propgray!80] {query}
-  ([xshift=-1.0cm]l4.west);
+  (l6.west) -| ++(-1.8,-0.5) |- node[left, font=\scriptsize, color=propgray!80] {query} (l4.west);
 
 \end{tikzpicture}%
 }
-\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path. Layer~4 uses the Hybrid Retrieval Pipeline (weighted BM25+RRF fusion with cross-encoder reranking), selected over weighted $\alpha$/$\beta$/$\gamma$ linear reranking based on design-phase analysis (Section~\ref{sec:sensitivity}). Layer~5 (Generative Synthesis (LLM Backend)) implements the backend selection and fallback chain described in Section~\ref{sec:llm_fallback}.}
+\caption{TechPulse six-layer conceptual architecture.}
 \label{fig:six_layers}
 \end{figure}
+
+\textbf{Layer Architecture Overview:}
+TechPulse implements a six-layer, cloud-native stack with well-defined interfaces enabling modular development and testing. The right-hand arrows illustrate the upward data ingestion pipeline: raw documents from five sources (ArXiv, Hacker News, DEV.to, GitHub, RSS) flow through Layer~1 (Ingestion), are normalized and chunked in Layer~2 (Preprocessing), indexed in Layer~3 (Vector Storage with pgvector HNSW), ranked by the Hybrid Retrieval Pipeline in Layer~4 (which combines BM25 and vector similarity via weighted RRF fusion with cross-encoder reranking), synthesized by the LLM backend in Layer~5 with automatic fallback logic (Groq $\to$ Bedrock $\to$ Ollama), and finally exposed via Layer~6 (Monitoring, API Gateway, and React frontend). The left-hand dashed arrow represents the inbound query path from Layer~6 to Layer~4 for retrieval initiation. This layered design aligns with the AWS Well-Architected Framework principles while maintaining Free Tier cost constraints.
 
 \section{Alignment with the AWS Well-Architected Framework}
 \label{sec:well_architected}
@@ -226,7 +223,7 @@ The pipeline has been implemented around four design principles: determinism (id
 
 \end{tikzpicture}%
 }
-\caption{End-to-end data engineering and serving pipeline. Solid arrows indicate data flow; dashed arrows indicate monitoring signals.}
+\caption{End-to-end data engineering and serving pipeline}
 \label{fig:pipeline}
 \end{figure}
 
@@ -290,7 +287,7 @@ Figure~\ref{fig:state_machine} illustrates the document state machine, showing t
 
 \end{tikzpicture}%
 }
-\caption{Document state machine with four deterministic states. Transition labels show triggering processes (top) and storage destinations (bottom).}
+\caption{Document state machine with four deterministic states.}
 \label{fig:state_machine}
 \end{figure}
 
@@ -324,6 +321,54 @@ Following normalization, documents are segmented using token-based chunking with
 \label{sec:embedding}
 
 Semantic representations are generated using the \texttt{all-MiniLM-L6-v2} sentence-transformer model (Wang et al., 2020), producing 384-dimensional embeddings. The model is loaded as a lazy-initialized singleton to minimize memory overhead under serverless execution constraints. Embeddings are stored in RDS PostgreSQL using the pgvector extension with an HNSW (Hierarchical Navigable Small World) index configured with $m = 16$ and $\text{ef\_construction} = 64$, enabling efficient approximate nearest-neighbor search with cosine distance. The parameters $m = 16$ (maximum number of bidirectional links per node) and $\text{ef\_construction} = 64$ (size of the dynamic candidate list during index construction) follow the pgvector recommended defaults for datasets up to $\sim$100k vectors, providing a favorable balance between index build time, memory footprint, and recall (pgvector documentation recommends $m \in [8, 64]$ and $\text{ef\_construction} \geq 2 \times m$).
+
+\section{Hybrid Retrieval Pipeline Architecture}
+\label{sec:retrieval_detail}
+
+The implemented hybrid retrieval pipeline combines vector similarity, full-text (BM25) search, and learning-to-rank fusion. Figure~\ref{fig:retrieval_pipeline} illustrates the four-stage pipeline architecture with per-stage timing estimates and implementation details.
+
+% ---- TikZ: Simplified Hybrid Retrieval Pipeline ----
+\begin{figure}[H]
+\centering
+\resizebox{0.55\textwidth}{!}{%
+\begin{tikzpicture}[node distance=1.2cm, font=\small, every text node part/.style={align=center}]
+
+% Stage nodes
+\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm] (stage0) {Query};
+
+\node[rectangle, draw=awsorange, fill=awslightorange, rounded corners=4pt, minimum width=2.2cm, minimum height=0.7cm, below=of stage0] (stage1) {Metadata\\Filter};
+
+\node[rectangle, draw=awspurple, fill=awslightpurple, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm, below=of stage1, xshift=-2.2cm] (stage2a) {Vector ANN};
+
+\node[rectangle, draw=awsgreen, fill=awslightgreen, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm, below=of stage1, xshift=2.2cm] (stage2b) {BM25};
+
+\node[rectangle, draw=awsorange!70, fill=awsorange!20, rounded corners=4pt, minimum width=2.5cm, minimum height=0.7cm, below=1.0cm of stage1, xshift=0cm] (stage3) {RRF Fusion};
+
+\node[rectangle, draw=propblue!70, fill=propblue!20, rounded corners=4pt, minimum width=2.5cm, minimum height=0.7cm, below=of stage3] (stage4) {Cross-Encoder};
+
+\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm, below=of stage4] (output) {Top-5 Results};
+
+% Arrows (very thick for visibility at small scale)
+\draw[-{Stealth}, line width=2pt] (stage0) -- (stage1) node[midway, right, font=\scriptsize] {normalize};
+\draw[-{Stealth}, line width=2pt] (stage1) -- (stage2a) node[midway, above left, font=\scriptsize] {parallel};
+\draw[-{Stealth}, line width=2pt] (stage1) -- (stage2b) node[midway, above right, font=\scriptsize] {parallel};
+\draw[-{Stealth}, line width=2pt] (stage2a) -| (stage3.west);
+\draw[-{Stealth}, line width=2pt] (stage2b) -| (stage3.east);
+\draw[-{Stealth}, line width=2pt] (stage3) -- (stage4);
+\draw[-{Stealth}, line width=2pt] (stage4) -- (output);
+
+% Timing labels
+\node[font=\scriptsize, below=0.15cm of stage1, xshift=-1.3cm] {50ms};
+\node[font=\scriptsize, below=0.15cm of stage2a] {250ms};
+\node[font=\scriptsize, below=0.15cm of stage2b] {150ms};
+\node[font=\scriptsize, below=0.15cm of stage3] {50ms};
+\node[font=\scriptsize, below=0.15cm of stage4] {350ms};
+
+\end{tikzpicture}%
+}
+\caption{Hybrid retrieval pipeline architecture with four stages}
+\label{fig:retrieval_pipeline}
+\end{figure}
 
 \section{Storage Architecture (Medallion Layout)}
 \label{sec:storage}
@@ -470,6 +515,86 @@ To ensure generation availability across diverse deployment environments, TechPu
 
 All four backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with bounded retry logic (4 retries with exponential backoff) before cascading to the next tier. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
 
+% ---- TikZ: LLM Backend Fallback Chain Flowchart ----
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.6cm and 2.0cm, font=\small, every path/.style={thick}]
+
+% Entry node
+\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
+      minimum width=2.5cm, minimum height=0.7cm]
+  (query) {Query Received};
+
+% Tier 1: Groq
+\node[rectangle, draw=awsorange, fill=awslightorange, rounded corners=4pt,
+      minimum width=2.8cm, minimum height=0.7cm, below=0.8cm of query]
+  (groq) {1. Groq (Primary)\\Llama 3.1 8B};
+
+% Retry logic (implicit, shown in label)
+\draw[parrow] (query) -- (groq);
+\draw[-{Stealth}, thick, dashed, color=awsorange!70]
+  ([xshift=1.4cm]groq.east) arc (0:-90:0.8cm)
+  node[right, font=\scriptsize, color=awsorange!70] {retry (4x)};
+
+% Tier 2: Bedrock (fork on Groq failure)
+\node[rectangle, draw=awspurple, fill=awslightpurple, rounded corners=4pt,
+      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of groq]
+  (bedrock) {2. Bedrock (Nova)\\AWS Free Tier};
+\draw[parrow, color=propred!80] (groq.east) -- (bedrock.west)
+  node[above, font=\scriptsize, color=propred!80] {fail};
+
+% Tier 3: Ollama (fork on Bedrock failure)
+\node[rectangle, draw=awsgreen, fill=awslightgreen, rounded corners=4pt,
+      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of bedrock]
+  (ollama) {3. Ollama (Local)\\Inference API};
+\draw[parrow, color=propred!80] (bedrock.east) -- (ollama.west)
+  node[above, font=\scriptsize, color=propred!80] {fail};
+
+% Tier 4: HuggingFace (fork on Ollama failure)
+\node[rectangle, draw=propblue!70, fill=propblue!20, rounded corners=4pt,
+      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of ollama]
+  (hf) {4. HuggingFace\\Mistral-7B-Instruct};
+\draw[parrow, color=propred!80] (ollama.east) -- (hf.west)
+  node[above, font=\scriptsize, color=propred!80] {fail};
+
+% Fallback (all fail)
+\node[rectangle, draw=propred!80, fill=propred!20, rounded corners=4pt,
+      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of hf]
+  (fallback) {Fallback:\\Retrieval-Only};
+\draw[parrow, color=propred!80] (hf.east) -- (fallback.west)
+  node[above, font=\scriptsize, color=propred!80] {all fail};
+
+% Success paths (arcs returning downward from each backend)
+\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
+      minimum width=3.0cm, minimum height=0.7cm, below=1.2cm of bedrock,
+      xshift=1.0cm]
+  (result) {Response Sent\\(with grounded citation)};
+
+% Success arrows from each tier
+\draw[parrow, color=awsgreen!80] ([xshift=0.5cm,yshift=-0.35cm]groq.south)
+  arc (-90:0:0.5cm) -- ([xshift=-1.5cm]result.north)
+  node[left, font=\scriptsize, color=awsgreen!80] {success};
+
+\draw[parrow, color=awsgreen!80] (bedrock.south) -- (result.north);
+
+\draw[parrow, color=awsgreen!80] ([xshift=-0.5cm,yshift=-0.35cm]ollama.south)
+  arc (-90:-180:0.5cm) -- ([xshift=1.5cm]result.north)
+  node[right, font=\scriptsize, color=awsgreen!80] {success};
+
+\draw[parrow, color=awsgreen!80] ([xshift=-1.0cm]hf.south) -- ([xshift=2.5cm]result.north)
+  node[right, font=\scriptsize, color=awsgreen!80] {success};
+
+\draw[parrow, color=propred!70] 
+  ([xshift=1.4cm]fallback.south) -- ([xshift=3.0cm]result.north)
+  node[right, font=\scriptsize, color=propred!70] {degraded};
+
+\end{tikzpicture}%
+}
+\caption{LLM backend fallback chain with automatic cascading.}
+\label{fig:llm_fallback}
+\end{figure}
+
 \section{Deployment, Monitoring, and MLOps}
 \label{sec:mlops}
 
@@ -511,7 +636,7 @@ Figure~\ref{fig:mlops_loop} presents the implemented MLOps lifecycle loop.
 
 \end{tikzpicture}%
 }
-\caption{MLOps lifecycle loop with continuous ingestion, evaluation, monitoring, and budget governance.}
+\caption{MLOps lifecycle loop with continuous evaluation and monitoring.}
 \label{fig:mlops_loop}
 \end{figure}
 
@@ -592,77 +717,10 @@ All infrastructure is defined as code using AWS SAM, ensuring reproducible and c
 
 Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing the physical service placement for the Free Tier configuration.
 
-% ---- TikZ: AWS Deployment Architecture ----
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=0.5cm and 0.8cm, font=\scriptsize]
-
-% VPC boundary
-\node[rectangle, draw=awsblue!50, dashed, rounded corners=6pt,
-      minimum width=14.0cm, minimum height=5.8cm,
-      label={[font=\scriptsize\bfseries, color=awsblue!70]above left:AWS VPC (default)}]
-  (vpc) at (5.0, -1.5) {};
-
-% EventBridge — same y as Ingestion Lambda for a straight arrow
-\node[compnode=awsorange] (eb) at (-1.5, 0.8) {EventBridge\\Scheduler};
-
-% Lambda functions inside VPC
-\node[compnode=awsorange] (ingest)  at (2.0,  0.8) {Ingestion\\Lambda};
-\node[compnode=awsorange] (preproc) at (2.0, -0.8) {Preprocess \&\\Embed Lambda};
-\node[compnode=awsorange] (ragapi)  at (5.5,  0.8) {RAG API\\Lambda (Mangum)};
-\node[compnode=awsorange] (hcheck)  at (5.5, -0.8) {Health Check\\Lambda};
-
-% Storage
-\node[compnode=awsgreen] (s3)  at (2.0, -2.8) {S3 Buckets\\(data + frontend)};
-\node[compnode=awsgreen] (sqs) at (4.0, -2.8) {SQS Queue\\+ DLQ};
-\node[compnode=awspurple] (rds) at (6.5, -2.8) {RDS PostgreSQL\\db.t3.micro + pgvector};
-
-% API Gateway
-\node[compnode=awsblue] (apigw) at (9.0, 0.8) {API Gateway\\(HTTP)};
-
-% LLM Backend (external)
-\node[compnode=awsgray] (hf) at (9.0, -0.8) {Groq / Bedrock\\Inference API};
-
-% Monitoring
-\node[compnode=propgray] (cw)  at (8.5, -2.8) {CloudWatch\\Logs + Metrics};
-\node[compnode=propgray] (sns) at (10.8, -2.8) {SNS\\Alerts};
-
-% External: user + GitHub
-\node[compnode=awsblue] (user) at (12.0, 0.8) {React Frontend\\(User)};
-\node[compnode=propgray] (gh)  at (-1.5, -2.8) {GitHub Actions\\CI/CD + SAM};
-
-% === Arrows (all anchored to box centres / explicit anchors) ===
-% EventBridge → Ingestion (straight horizontal)
-\draw[parrow] (eb.east) -- (ingest.west);
-% Ingestion → Preprocess (straight vertical)
-\draw[parrow] (ingest.south) -- (preproc.north);
-% Ingestion → SQS (right-angle route)
-\draw[parrow] ([xshift=4pt]ingest.south) -- ++(0,-0.5) -| (sqs.north);
-% SQS → Preprocess
-\draw[parrow] ([xshift=-4pt]sqs.north) -- ++(0,0.5) -| (preproc.south);
-% Preprocess → RDS
-\draw[parrow] (preproc.east) -- ++(0.4,0) |- ([yshift=4pt]rds.north);
-% Preprocess → S3
-\draw[parrow] ([xshift=-4pt]preproc.south) -- ([xshift=-4pt]s3.north);
-% RDS → RAG API (routed right of Health Check box)
-\draw[parrow] ([yshift=-4pt]rds.north) -- ++(0,0.4) -- ++(0.5,0) |- (ragapi.south);
-% RAG API → API Gateway (straight horizontal)
-\draw[parrow] (ragapi.east) -- (apigw.west);
-% RAG API → LLM Backend
-\draw[parrow] ([yshift=-4pt]ragapi.east) -- ++(0.2,0) |- (hf.west);
-% API Gateway → User (straight horizontal)
-\draw[parrow] (apigw.east) -- (user.west);
-% Monitoring (dashed, routed left of LLM Backend box)
-\draw[parrow, dashed, color=propgray] ([xshift=-4pt]ragapi.south) -- ++(0,-0.6) -- ++(2.4,0) |- (cw.north);
-\draw[parrow, dashed, color=propgray] (hcheck.south) -- ++(0,-0.3) -| ([xshift=-4pt]cw.north);
-\draw[parrow, dashed, color=propgray] (cw.east) -- (sns.west);
-% GitHub Actions → VPC (enters from below)
-\draw[parrow, dashed, color=propgray] (gh.east) -- (s3.west);
-
-\end{tikzpicture}%
-}
-\caption{AWS cloud deployment architecture (AWS Free Tier configuration).}
+\includegraphics[width=\textwidth]{aws_techpulse.png}
+\caption{AWS cloud deployment architecture (Free Tier configuration).}
 \label{fig:aws_deploy}
 \end{figure}
 
