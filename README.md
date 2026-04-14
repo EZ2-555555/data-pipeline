@@ -198,7 +198,7 @@ Ingestion (fetch + SHA-256 dedup → DB + S3 raw tier + SQS message)
 Pipeline (normalise → chunk [RAW→PROCESSED] → MiniLM embed [→EMBEDDED] → S3 + DB [→INDEXED])
     │
     ▼
-Retrieval (metadata filter → vector + BM25 → RRF fusion → top-k)
+Retrieval (metadata filter → vector + BM25 → weighted RRF → cross-encoder reranking → top-k)
     │
     ▼
 RAG Orchestrator (budget guard → build context → structured prompt → LLM [retry] → hallucination check → token cost)

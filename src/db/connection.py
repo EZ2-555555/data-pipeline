@@ -28,6 +28,7 @@ def _get_pool() -> pool.ThreadedConnectionPool:
                 dbname=settings.DB_NAME,
                 user=settings.DB_USER,
                 password=settings.DB_PASSWORD,
+                connect_timeout=5,
             )
             logger.info("Database connection pool created")
     return _pool

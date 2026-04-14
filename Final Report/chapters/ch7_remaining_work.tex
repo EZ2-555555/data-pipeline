@@ -12,7 +12,7 @@ This study designed, implemented, and evaluated TechPulse, a cloud-native Hybrid
 
   \item \textbf{Operational Trade-offs (RQ3):} The hybrid pipeline introduces a small latency trade-off (mean 1.13\,s $\to$ 2.49\,s; Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s). Monthly cost is \$0.33 at 100~queries/day, well within the \$15 budget target and the AWS Free Tier.
 
-  \item \textbf{MLOps Integration (RQ4):} Dual-criteria drift detection (10\% threshold + Shewhart $3\sigma$ with minimum std floor) achieves 100\% accuracy across four simulated scenarios. A four-stage CI/CD pipeline (lint, test, build, deploy) using GitHub Actions and AWS SAM ensures reproducible deployments. Eight custom CloudWatch metrics provide operational visibility.
+  \item \textbf{MLOps Integration (RQ4):} Dual-criteria drift detection (10\% threshold + Shewhart $3\sigma$ with minimum std floor) achieves 100\% accuracy across four simulated drift scenarios. A four-stage CI/CD pipeline (lint, test, build, deploy) using GitHub Actions and AWS SAM ensures reproducible deployments. Eight custom CloudWatch metrics provide operational visibility.
 \end{enumerate}
 
 \section{Project Phases}
@@ -50,13 +50,13 @@ D & Final Report \& Submission & Apr W2--W3 & Done & Completed report with empir
 \begin{enumerate}[leftmargin=0.5in]
   \item The evaluation corpus is limited to five technology-focused sources; generalizability to other domains requires further study.
 
-  \item The 100-query evaluation set provides sufficient power for the paired Wilcoxon test but a larger set would strengthen external validity.
+  \item The 50-query evaluation set (100 paired observations) provides sufficient power for the paired Wilcoxon test but a larger set would strengthen external validity.
 
   \item Amazon Bedrock has not been evaluated as the primary backend; however, the evaluation methodology is backend-agnostic, so comparative findings remain transferable.
 
   \item The \texttt{db.t3.micro} RDS instance may become a bottleneck under high ingestion volumes compared to Aurora Serverless.
 
-  \item ANN-optimized indexing (e.g., pgvector HNSW) is not yet evaluated but is identified as a future direction.
+  \item The deployed HNSW index (m=16, ef\_construction=64) has not been formally benchmarked against alternative parameter settings or flat-scan baselines; such evaluation is identified as a future direction.
 
   \item Budget governance via Cost Explorer lags by up to 24 hours; real-time enforcement is not feasible on the Learner Lab.
 
@@ -231,6 +231,7 @@ Several extensions are identified for post-prototype development:
 \begin{itemize}[leftmargin=0.5in]
   \item \textbf{Scaling:} Migration to Aurora Serverless; expansion to additional data sources (StackExchange, conference proceedings); ANN-optimized indexing (pgvector HNSW) for sub-linear retrieval at larger corpora
   \item \textbf{Retrieval quality:} Alternative cross-encoder models (e.g., larger ColBERT variants); embedding model fine-tuning or replacement based on drift analysis; adaptive weight tuning for RRF via online feedback
+  \item \textbf{Machine learning lifecycle:} Adoption of a formal experiment tracking platform (e.g., MLflow or Weights \& Biases) for versioned evaluation runs; a model registry for embedding and reranker artifacts; domain-specific relevance labeling for supervised fine-tuning of embeddings or rerankers; and periodic re-evaluation triggered by corpus growth milestones
   \item \textbf{Operational hardening:} Full Bedrock evaluation as primary backend; integration test suite with containerized database; token budget management for constrained-context-window backends; Secrets Manager migration for API key handling
   \item \textbf{User experience:} User feedback loop for continuous retrieval quality improvement; query auto-completion; saved searches and alerts for tracked topics
 \end{itemize}

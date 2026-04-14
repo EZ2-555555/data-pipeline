@@ -32,6 +32,11 @@ The engineering contribution of TechPulse lies not in any single component but i
 
 \textbf{Budget-aware inference with programmatic halt:} AWS Cost Explorer queries are integrated into the inference path, halting invocations programmatically when monthly cost thresholds are approached. This transforms cost from a passive monitoring concern into an active runtime constraint.
 
+\subsection{Scope of Machine Learning Development}
+\label{sec:ml_scope}
+
+TechPulse does not train a foundation model from scratch. Instead, the machine learning contribution lies in the selection, integration, configuration, and controlled evaluation of pretrained components within a production-grade RAG pipeline. The system uses a pretrained sentence-transformer embedding model (\texttt{all-MiniLM-L6-v2}), a pretrained cross-encoder reranker (\texttt{ms-marco-MiniLM-L-6-v2}), and configurable LLM backends for answer generation. Model development is operationalised as comparative system design: baseline vector-only retrieval is contrasted against a hybrid configuration whose retrieval-stage parameters---RRF weights, candidate pool sizing, BM25 quality gate, recency decay, and cross-encoder integration---were tuned through a design-phase grid search and iterative ablation (Section~\ref{sec:sensitivity}). The project therefore addresses machine learning model development through model selection, retrieval-stage tuning, and empirical evaluation under deployment constraints, which is appropriate for a production-oriented RAG system in a cost-constrained academic setting. A conventional supervised training workflow, formal experiment tracker (e.g., MLflow), and model registry were outside the current prototype scope; these are identified as future work in Section~\ref{sec:future}.
+
 \section{Baseline Retrieval Configuration}
 \label{sec:baseline}
 
@@ -218,6 +223,8 @@ Evaluation & RAGAS + statistical testing & Standardized RAG quality metrics + pa
 \bottomrule
 \end{tabular}
 \end{table}
+
+\noindent The full LLM backend fallback hierarchy and execution logic are detailed in Section~\ref{sec:llm_fallback} (Chapter~\ref{ch:arch}).
 
 \section{System Context Overview}
 \label{sec:system_context}

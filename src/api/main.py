@@ -60,12 +60,22 @@ RESEARCH_SOURCES = {"arxiv"}
 PRACTICE_SOURCES = {"devto", "hn"}
 TOKEN_RE = re.compile(r"[a-z][a-z0-9+\-]{2,}")
 STOPWORDS = {
-    "about", "after", "also", "among", "analyzes", "analysis", "and", "are", "around", "been",
-    "best", "between", "build", "data", "develop", "developers", "during", "from", "gets", "have",
-    "helps", "how", "into", "its", "latest", "more", "new", "news", "open", "over", "paper",
-    "papers", "post", "posts", "research", "results", "shows", "source", "study", "system", "than",
-    "that", "the", "their", "these", "this", "through", "topic", "topics", "using", "what", "with",
-    "your", "tech", "technology", "article", "articles",
+    "about", "after", "again", "all", "also", "among", "analyzes", "analysis", "and", "any",
+    "are", "around", "based", "been", "before", "being", "below", "best", "between", "both",
+    "build", "but", "can", "could", "data", "develop", "developers", "did", "does", "doing",
+    "down", "during", "each", "few", "for", "from", "further", "get", "gets", "give", "got",
+    "had", "has", "have", "having", "help", "helps", "her", "here", "hers", "him", "his",
+    "how", "http", "https", "into", "its", "just", "know", "known", "last", "latest", "let",
+    "like", "look", "made", "make", "many", "may", "more", "most", "much", "must", "need",
+    "new", "news", "not", "now", "off", "one", "only", "open", "other", "our", "out", "over",
+    "own", "paper", "papers", "part", "per", "post", "posts", "put", "really", "research",
+    "results", "run", "said", "same", "set", "should", "show", "shows", "since", "some",
+    "source", "still", "study", "such", "system", "take", "tell", "than", "that", "the",
+    "their", "them", "then", "there", "these", "they", "think", "this", "those", "through",
+    "time", "too", "topic", "topics", "under", "until", "upon", "use", "used", "using",
+    "very", "want", "was", "way", "well", "were", "what", "when", "where", "which", "while",
+    "who", "why", "will", "with", "work", "would", "you", "your",
+    "tech", "technology", "article", "articles", "com", "www", "org", "github",
 }
 
 

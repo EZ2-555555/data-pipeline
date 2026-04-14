@@ -78,7 +78,7 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 
 \end{tikzpicture}%
 }
-\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path. Layer~4 uses weighted BM25+RRF fusion with cross-encoder reranking, selected over weighted $\alpha$/$\beta$/$\gamma$ linear reranking based on design-phase analysis (Section~\ref{sec:sensitivity}).}
+\caption{Six-layer conceptual architecture of TechPulse. Right-hand arrows show the upward data flow; the left-hand dashed arrow shows the query path. Layer~4 uses weighted BM25+RRF fusion with cross-encoder reranking, selected over weighted $\alpha$/$\beta$/$\gamma$ linear reranking based on design-phase analysis (Section~\ref{sec:sensitivity}). Layer~5 (Generative Synthesis) implements the LLM backend selection and fallback chain described in Section~\ref{sec:llm_fallback}.}
 \label{fig:six_layers}
 \end{figure}
 
@@ -234,7 +234,7 @@ The pipeline has been implemented around four design principles: determinism (id
 
 Ingestion has been implemented through AWS Lambda functions orchestrated by Amazon EventBridge, supporting both scheduled and event-driven execution. Each of the five ingesters (ArXiv, Hacker News, DEV.to, GitHub, RSS) operates independently with source-specific data extraction logic. Raw artifacts are persisted in Amazon S3 under a structured prefix hierarchy (\texttt{/raw/arxiv/}, \texttt{/raw/hn/}, \texttt{/raw/devto/}, \texttt{/raw/github/}, \texttt{/raw/rss/}, \texttt{/processed/}) to preserve transformation lineage. The ingestion pipeline is decoupled from the embedding pipeline via Amazon SQS, providing backpressure control, failure isolation, and independent horizontal scaling. Messages that fail processing after three retry attempts are routed to a Dead Letter Queue with 14-day retention for controlled replay.
 
-All five ingesters share a common architectural pattern: (1) fetch data from API or feed; (2) extract and normalize fields; (3) compute SHA-256 content hash over canonicalized fields; (4) insert into the \texttt{documents} table with \texttt{ON CONFLICT (content\_hash) DO NOTHING} for idempotent deduplication; (5) write raw JSON to S3; and (6) enqueue document ID to SQS for downstream processing.
+All five ingesters share a common architectural pattern: (1) fetch data from API or feed; (2) extract and normalize fields; (3) compute SHA-256 content hash over canonicalized fields; (4) insert into the \texttt{documents} table with \texttt{ON CONFLICT (content\_hash) DO NOTHING} for idempotent deduplication; (5) write raw JSON to S3; and (6) enqueue document ID to SQS for downstream processing. After indexing, a RAG orchestrator coordinates retrieval and generation by interfacing with the LLM backend fallback chain, as illustrated in Figure~\ref{fig:pipeline} and detailed in Section~\ref{sec:llm_fallback}.
 
 \subsection{Document State Lifecycle}
 

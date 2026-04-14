@@ -98,9 +98,9 @@ Figure~\ref{fig:eval_framework} summarizes the implemented evaluation framework.
 % Statistical test annotation — spans all four metric columns
 \node[rectangle, draw=propblue!60, fill=propblue!10, rounded corners=3pt,
       font=\scriptsize, text width=13.5cm, text centered, inner sep=3pt]
-  (stat) at (0, -3.5) {Statistical test: Wilcoxon signed-rank (one-sided, $\alpha{=}0.05$) applied to paired latency and citation grounding differences ($N{=}50$) \enspace$|$\enspace Cohen's $d$ effect size \enspace$|$\enspace Bootstrap 95\% CI};
+  (stat) at (0, -3.5) {Statistical test: Wilcoxon signed-rank (one-sided, $\alpha{=}0.05$) applied to paired latency and context precision differences ($N{=}50$) \enspace$|$\enspace Cohen's $d$ effect size \enspace$|$\enspace Bootstrap 95\% CI};
 \draw[-{Stealth}, dashed, color=propblue!60] (stat.north -| m3.south) -- (m3.south);
-\draw[-{Stealth}, dashed, color=propblue!60] (stat.north -| m2.south) -- (m2.south);
+\draw[-{Stealth}, dashed, color=propblue!60] (stat.north -| m1.south) -- (m1.south);
 
 \end{tikzpicture}%
 }
@@ -185,7 +185,7 @@ To demonstrate that the drift detection mechanism (Section~\ref{sec:drift}) corr
   \item \textbf{Catastrophic failure} --- $>90\%$ quality collapse ($0.85 \to 0.05$); verifies both threshold and Shewhart detection mechanisms fire
 \end{enumerate}
 
-\noindent Scenarios 1 and 3, together with the first-run case (no prior history $\to$ baseline creation without alerting, tested in \texttt{test\_drift\_first\_run\_establishes\_baseline}), validate specificity (no false alarms), while scenarios 2 and 4 validate sensitivity (true positives under degradation). All four scenarios pass correctly, achieving 100\% drift detection accuracy.
+\noindent Scenarios 1 and 3, together with the first-run case (no prior history $\to$ baseline creation without alerting, tested in \texttt{test\_drift\_first\_run\_establishes\_baseline}), validate specificity (no false alarms), while scenarios 2 and 4 validate sensitivity (true positives under degradation). All four scenarios pass correctly, achieving 100\% detection accuracy under these simulated conditions.
 
 \textbf{Shewhart $3\sigma$ minimum standard deviation floor:} To prevent false positives on minor fluctuations when historical variance is near zero (e.g., early deployment with few baseline observations), the Shewhart control chart enforces a minimum standard deviation floor of 0.02. This ensures the lower control limit (LCL) remains at $\text{mean} - 0.06$, requiring genuine degradation ($>6\%$ below mean) to trigger an alert. The floor reflects the natural $\sim$1--3\% run-to-run variance observed in cosine similarity retrieval systems (Montgomery, 2020; Wheeler \& Chambers, 1992).
 
@@ -242,6 +242,8 @@ The following analyses summarize findings from the completed Phase~B evaluation 
 
 \noindent The improvement comes at a measurable latency cost: mean latency increases from 1.13\,s to 2.49\,s (Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s, does not span zero). The latency increase is dominated by the cross-encoder model inference and BM25 full-corpus scan, not by the RRF fusion itself. However, the hybrid p95 of 2.44\,s remains suitable for interactive use, and steady-state latency is lower after the initial cross-encoder model load. This represents a favourable quality--latency trade-off: a 7\% composite quality gain for a 1.4\,s mean latency increase.
 
+\textbf{Scalability interpretation:} The present evaluation assesses scalability analytically and through latency profiling under the current corpus size (3{,}984 documents, 6{,}220 chunks) and moderate projected workloads (50--200 queries/day) rather than through large-scale concurrent load testing. The primary scaling bottlenecks are expected to be the BM25 full-corpus scan ($O(N)$ over all indexed chunks), the cross-encoder reranking pass (sequential model inference over the fused candidate set), and the \texttt{db.t3.micro} RDS instance ceiling. Mitigating factors include: BM25 index caching (30-minute TTL avoids redundant corpus scans), serverless Lambda autoscaling for the API and ingestion layers, and the lightweight cross-encoder architecture (22M parameters). At higher corpus scales, the architecture supports horizontal scaling through larger RDS instances, dedicated reranker endpoints, reduced candidate pool sizes, and asynchronous queue-based ingestion decoupling. Controlled load testing and throughput benchmarking under concurrent query traffic are identified as future work.
+
 \section{Result Visualizations}
 \label{sec:visualizations}
 
@@ -260,12 +262,12 @@ Figure~\ref{fig:viz_comparison} presents a grouped bar chart comparing baseline 
 
 \subsection{Design-Phase Grid Search (Weighted Reranking)}
 
-Figure~\ref{fig:viz_pareto} presents the design-phase grid search results as a dual-axis plot with the reranking similarity weight ($\alpha$) on the x-axis, mean similarity on the left y-axis, and p95 latency on the right y-axis. Although the best weighted configuration ($\alpha = 0.70$, $\beta = 0.15$, $\gamma = 0.15$) achieved similarity of 0.526 within the latency bound, the sensitivity of results to weight choice motivated the move to RRF-based fusion with fixed asymmetric weights for the final system.
+Figure~\ref{fig:viz_pareto} presents the design-phase grid search results as a dual-axis plot with the reranking similarity weight ($\alpha$) on the x-axis, mean similarity on the left y-axis, and p95 latency on the right y-axis. This grid search swept only four $\alpha$ values on a reduced query subset, so its per-configuration p95 latencies (1.3--2.7\,s) are lower than the 25\,s p95 observed when the best linear configuration ($\alpha = 0.70$) was subsequently evaluated on the full 50-query set (reported in the stale design-phase evaluation). Although the best grid-search configuration ($\alpha = 0.70$, $\beta = 0.15$, $\gamma = 0.15$) achieved similarity of 0.526 within the latency bound at grid-search scale, the full evaluation revealed that linear scoring scaled poorly under diverse query loads, motivating the move to RRF-based fusion with fixed asymmetric weights for the final system.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.88\textwidth]{stale-grid_search_pareto.png}
-\caption{Design-phase grid search: reranking weight ($\alpha$) vs.\ mean similarity and p95 latency (weighted reranking; RRF selected for the final system).}
+\caption{Design-phase grid search: reranking weight ($\alpha$) vs.\ mean similarity and p95 latency. The grid search used a reduced query subset; when the best configuration ($\alpha{=}0.70$) was evaluated on the full 50-query set, p95 latency rose to 25\,s (see Section~\ref{sec:discussion}), confirming that linear scoring did not scale and motivating the switch to weighted RRF.}
 \label{fig:viz_pareto}
 \end{figure}
 

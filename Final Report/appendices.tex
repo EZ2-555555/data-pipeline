@@ -14,5 +14,120 @@ The complete source code for TechPulse is maintained on GitHub:
 \url{http://techpulse-dev-frontend-939514668437.s3-website-us-east-1.amazonaws.com/}
 \end{center}
 
-The repository includes: five data ingesters (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS); 17-step preprocessing with tiktoken chunking; MiniLM-L6-v2 embedding; hybrid retrieval (metadata filter, pgvector, BM25, weighted RRF, cross-encoder reranking); RAG orchestration with three-layer hallucination verification; four-backend LLM fallback chain; dual-criteria drift detection; AWS SAM infrastructure-as-code; React frontend; 100-query evaluation framework with RAGAS and statistical tests; four-stage CI/CD via GitHub Actions; 208 unit tests across 15 modules; and Docker Compose local development (6 services).
+The repository includes: five data ingesters (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS); 17-step preprocessing with tiktoken chunking; MiniLM-L6-v2 embedding; hybrid retrieval (metadata filter, pgvector, BM25, weighted RRF, cross-encoder reranking); RAG orchestration with three-layer hallucination verification; four-backend LLM fallback chain; dual-criteria drift detection; AWS SAM infrastructure-as-code; React frontend; 50-query evaluation framework (100 paired samples) with RAGAS and statistical tests; four-stage CI/CD via GitHub Actions; 208 unit tests across 15 modules; and Docker Compose local development (6 services).
+
+\chapter{System Setup and Reproduction Steps}
+\label{app:setup}
+
+This appendix provides step-by-step instructions for reproducing the TechPulse system in both local development and AWS cloud environments.
+
+\section*{Prerequisites}
+
+\begin{itemize}[leftmargin=0.5in]
+  \item Python 3.13+ and \texttt{pip}
+  \item Docker and Docker Compose
+  \item Node.js 18+ and npm (for frontend)
+  \item AWS CLI v2 and AWS SAM CLI (for cloud deployment)
+  \item An AWS account (Free Tier eligible)
+  \item A Groq API key (free at \url{https://console.groq.com})
+\end{itemize}
+
+\section*{Step 1: Clone and Install Dependencies}
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+git clone https://github.com/EZ2-555555/data-pipeline.git
+cd data-pipeline
+python -m venv .venv
+# On Windows: .venv\Scripts\activate
+# On macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+\end{lstlisting}
+
+\section*{Step 2: Local Development with Docker Compose}
+
+Docker Compose starts six services: PostgreSQL with pgvector, pgAdmin, LocalStack (S3 + SQS), FastAPI backend, React frontend, and the ingestion scheduler.
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+# Create a .env file with required variables
+cat > .env <<EOF
+GROQ_API_KEY=your_groq_api_key_here
+LLM_BACKEND=groq
+EOF
+
+# Start all services
+docker compose up --build -d
+
+# Verify services are running
+docker compose ps
+\end{lstlisting}
+
+\noindent The frontend is accessible at \texttt{http://localhost:3000} and the API at \texttt{http://localhost:8000}. The database admin interface (pgAdmin) is at \texttt{http://localhost:5050} (login: \texttt{admin@techpulse.dev} / \texttt{admin}).
+
+\section*{Step 3: Initialize the Database}
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+# Initialize schema (creates documents, chunks,
+# drift_baselines tables and pgvector HNSW index)
+python -c "from src.db.init_schema import init_schema; \
+           init_schema()"
+\end{lstlisting}
+
+\section*{Step 4: Run Ingestion and Build Corpus}
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+# Run a single ingestion cycle for all five sources
+python -c "from src.orchestrator.orchestrator import \
+           run_orchestrator; run_orchestrator()"
+
+# Or run the scheduler for continuous ingestion
+python -m src.scheduler
+\end{lstlisting}
+
+\section*{Step 5: Run Tests}
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+pip install -r requirements-test.txt
+pytest tests/ -v --tb=short
+# Expected: 208 tests passed across 15 modules
+\end{lstlisting}
+
+\section*{Step 6: Run Evaluation}
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+# Execute the 100-sample evaluation
+# (50 baseline + 50 hybrid queries)
+python evaluation/run_eval.py
+
+# Results are written to:
+#   evaluation/results/eval_summary.json
+#   evaluation/results/ragas_scores.json
+#   evaluation/results/raw_results.json
+\end{lstlisting}
+
+\section*{Step 7: AWS Cloud Deployment}
+
+\begin{lstlisting}[language=bash, basicstyle=\ttfamily\small]
+# 1. Configure AWS credentials
+aws configure
+
+# 2. Edit SAM configuration with your VPC/subnet IDs
+#    and database password
+vi infra/samconfig-freetier.toml
+
+# 3. Validate configuration (checks for placeholders)
+make validate-config
+
+# 4. Build and push Lambda container image to ECR
+#    (see infra/README.md for detailed ECR steps)
+docker build -f Dockerfile.lambda -t techpulse-lambda .
+
+# 5. Deploy with SAM
+sam build --template-file infra/template-freetier.yaml
+sam deploy --config-file infra/samconfig-freetier.toml
+
+# 6. Deploy frontend to S3
+./deploy-frontend.sh
+\end{lstlisting}
+
+\noindent The SAM template provisions all required resources: RDS PostgreSQL (\texttt{db.t3.micro}), S3 buckets, SQS queue with DLQ, four Lambda functions, HTTP API Gateway, SNS alert topic, EventBridge schedules, and CloudWatch alarms. The CI/CD pipeline (GitHub Actions) automates this deployment on merge to \texttt{main}.
 
