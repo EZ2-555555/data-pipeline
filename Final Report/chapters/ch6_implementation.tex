@@ -95,7 +95,7 @@ Table~\ref{tab:cost_breakdown} provides a component-level cost estimate for the 
 \toprule
 \textbf{Component} & \textbf{Cost/Month} & \textbf{Details} & \textbf{Free Tier} \\
 \midrule
-Lambda (ingestion) & \$0.05 & 10 short-lived invocations/day & \checkmark \\
+Lambda (ingestion) & \$0.05 & 4 invocations/day (every 6\,h) & \checkmark \\
 Lambda (query handler) & \$0.08 & 100 queries/day, 3.1s avg & \checkmark \\
 Groq LLM API & \$0.12\textsuperscript{$\dagger$} & $\sim$2,300 tokens/query average & Free (500k/day) \\
 RDS PostgreSQL & \$0.08 & db.t3.micro instance (micro is free) & \checkmark \\
@@ -120,7 +120,7 @@ S3 + EventBridge + SQS & \$0.00 & Storage, routing, queue services & \checkmark 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{cost_projections.png}
-\caption{Cost scaling projections: daily and monthly costs as query volume increases from 50 to 2000 queries/day. Left panel shows daily operating cost (dominated by query-proportional LLM inference cost ~\$0.002/query + fixed infrastructure \$0.43/day). Right panel shows monthly cost trajectory from ~\$3.43/month (50 q/day) to ~\$120/month (2000 q/day), well within budget for reasonable production workloads. Linear scaling until free-tier exhaustion; beyond 500k tokens/day, backend fallback incurs marginal cost increase.}
+\caption{Cost scaling projections: daily and monthly costs as query volume increases from 50 to 2{,}000 queries/day. Left panel shows the daily variable operating cost (query-proportional Lambda and imputed Groq LLM inference). Right panel shows total monthly cost including fixed infrastructure (Lambda ingestion, RDS db.t3.micro), ranging from \$0.23/month (50~q/day) to \$4.13/month (2{,}000~q/day)---all well within the \$15 budget target. Beyond $\sim$213~queries/day, the Groq free-tier token allowance (500k tokens/day) is exhausted; the automatic LLM fallback chain absorbs overflow.}
 \label{fig:cost_projections}
 \end{figure}
 
@@ -161,9 +161,9 @@ Eight custom CloudWatch metrics have been implemented within a single \texttt{Te
   \item \texttt{PipelineErrors} --- pipeline failure count
   \item \texttt{ApiLatency} --- per-request API response time
   \item \texttt{HallucinationFlags} --- count of citation grounding failures
+  \item \texttt{DriftMeanSimilarity} --- mean cosine similarity from the 20-query probe set
+  \item \texttt{DriftAlert} --- binary flag (0/1) indicating whether drift criteria are breached
 \end{enumerate}
-
-Additionally, the drift detection module publishes \texttt{DriftMeanSimilarity} and \texttt{DriftAlert} metrics for time-series tracking of retrieval quality.
 
 \section{Engineering Observations}
 \label{sec:eng_obs}
@@ -208,12 +208,12 @@ The FastAPI application exposes four primary endpoints:
   
   \item \texttt{POST /ask} --- Main query endpoint. Accepts \texttt{query} (string, 1--2000 characters), \texttt{mode} (``baseline'' or ``hybrid''), and optional \texttt{sources} (list of up to 5 source types to filter, e.g., \texttt{["arxiv", "hn"]}). Source values are validated against \texttt{VALID\_SOURCES = \{arxiv, hn, github, devto, rss\}}; invalid values return HTTP~422 with the allowed set. Returns ranked passages, generated answer (if LLM available), and citation metadata. The top-$k$ parameter is configured server-side via the \texttt{TOP\_K} environment variable (default~5) and is not exposed as a client parameter to prevent abuse. Enforced rate limit: 10 requests/minute per IP address (SlowAPI).
   
-  \item \texttt{POST /drift} --- Manual drift detection trigger (rate-limited to 2 requests/minute). Executes the nine simulated drift scenarios (corpus drift, query drift, embedding shift, LLM change, source imbalance, temporal shift, semantic shift, and label noise) and returns alerting verdicts.
+  \item \texttt{POST /drift} --- Manual drift detection trigger (rate-limited to 2 requests/minute). Runs the canonical 20-query probe set through hybrid retrieval and evaluates two criteria: relative quality drop $> 10\%$ and Shewhart $3\sigma$ lower control limit breach; returns mean/std similarity, baseline reference, and alert reason.
   
   \item \texttt{GET /dashboard/insights} --- Complex aggregation endpoint returning dashboard data: trending topics (keywords + growth metrics), 30-day mention time-series, source distribution, and live highlight snippets (top 5 by composite score). Optional query parameters: \texttt{days} (7--60, default 30) and \texttt{sources} (comma-separated filter over ARXIV, HN, DEVTO, GITHUB, RSS).
 \end{enumerate}
 
-Rate limiting is implemented via SlowAPI (dependency: \texttt{slowapi}) to provide basic DOS protection and fair resource allocation in shared environments. Per-endpoint limits are set according to computational cost: \texttt{/ask} at 10~req/min (each invocation incurs retrieval, optional cross-encoder reranking, and LLM generation) and \texttt{/drift} at 2~req/min (each invocation runs all nine drift scenarios against the full probe set). Monitoring during evaluation runs showed peak throughput of $\sim$2--3 queries/min from a single user.
+Rate limiting is implemented via SlowAPI (dependency: \texttt{slowapi}) to provide basic DOS protection and fair resource allocation in shared environments. Per-endpoint limits are set according to computational cost: \texttt{/ask} at 10~req/min (each invocation incurs retrieval, optional cross-encoder reranking, and LLM generation) and \texttt{/drift} at 2~req/min (each invocation evaluates 20 probe queries against the drift detection criteria). Monitoring during evaluation runs showed peak throughput of $\sim$2--3 queries/min from a single user.
 
 \section{Citation Grounding Verification}
 \label{sec:citation_grounding}
@@ -230,45 +230,75 @@ The three-layer hallucination verification strategy includes an output-layer cit
   \item \textbf{Hallucinated reference detection:} Invalid source indices (e.g., \texttt{[Source 12]} when only 5 sources are available) trigger a hallucination flag.
 \end{enumerate}
 
-Responses flagged as under-grounded (citation ratio $< $ threshold) or containing invalid references are recorded in CloudWatch as \texttt{HallucinationFlags} metrics for operational monitoring. During evaluation, the RAGAS-computed ``Citation Grounding'' metric (Section~5) correlates with but is independent of this output-layer check, providing complementary signal for model quality assessment.
+Responses flagged as under-grounded (citation ratio $< $ threshold) or containing invalid references are recorded in CloudWatch as \texttt{HallucinationFlags} metrics for operational monitoring. During evaluation, the RAGAS-computed ``Citation Grounding'' metric (Section~\ref{sec:eval_metrics}) correlates with but is independent of this output-layer check, providing complementary signal for model quality assessment.
 
 \section{System Demonstration}
 \label{sec:demo}
 
 This section presents screenshots from the deployed system, demonstrating end-to-end functionality across key components.
 
-\subsection{Frontend: Overview Page}
+\subsection{Frontend: Overview and Search Interface}
 
-Figure~\ref{fig:demo_overview} shows the TechPulse landing page, providing the query input interface with retrieval mode selection (Baseline or Hybrid) and the system branding.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\textwidth]{techpulse-overviewpage.png}
-\caption{TechPulse frontend: overview page with query input and retrieval mode selection.}
-\label{fig:demo_overview}
-\end{figure}
-
-\subsection{Frontend: Hybrid vs.\ Baseline Retrieval Comparison}
-
-Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval modes. The hybrid response (left) includes diverse, multi-source citations fused via RRF, while the baseline response (right) relies solely on vector similarity. This figure is intended as a qualitative interface illustration; quantitative retrieval conclusions are based on the statistical results reported in Chapter~5.
+Figure~\ref{fig:demo_overview_search} presents the two primary frontend views. The landing page (left) features the system branding, call-to-action buttons, and a hero section introducing TechPulse. The search interface (right) provides the full-featured query panel with retrieval mode selection (Baseline or Hybrid), recent query history in the sidebar, and suggested starter queries.
 
 \begin{figure}[htbp]
 \centering
 \begin{subfigure}[t]{0.48\textwidth}
 \centering
-\includegraphics[width=\textwidth]{techpulse-frontend-hybrid.png}
+\includegraphics[width=\textwidth]{techpulse-overviewpage.png}
+\caption{Landing page.}
+\label{fig:demo_overview}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{rag_overview.png}
+\caption{Search interface with sidebar and query history.}
+\label{fig:demo_search}
+\end{subfigure}
+\caption{TechPulse frontend: landing page (left) and main search interface (right).}
+\label{fig:demo_overview_search}
+\end{figure}
+
+\subsection{Frontend: Hybrid vs.\ Baseline Retrieval Comparison}
+
+Figure~\ref{fig:demo_compare} shows the updated frontend executing queries in both retrieval modes. The hybrid response (left) includes diverse, multi-source citations fused via RRF with relevance scoring, while the baseline response (right) relies solely on vector similarity. This figure is intended as a qualitative interface illustration; quantitative retrieval conclusions are based on the statistical results reported in Chapter~5.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{hybridmodel.png}
 \caption{Hybrid retrieval (BM25 + vector + RRF).}
 \label{fig:demo_hybrid}
 \end{subfigure}
 \hfill
 \begin{subfigure}[t]{0.48\textwidth}
 \centering
-\includegraphics[width=\textwidth]{techpulse-frontend-baseline.png}
+\includegraphics[width=\textwidth]{baseline.png}
 \caption{Baseline retrieval (vector-only).}
 \label{fig:demo_baseline}
 \end{subfigure}
 \caption{TechPulse frontend: hybrid vs.\ baseline retrieval for the same query.}
 \label{fig:demo_compare}
+\end{figure}
+
+Figure~\ref{fig:demo_compare_modes} shows the built-in compare view, which presents baseline and hybrid responses side-by-side for the same query, enabling direct qualitative comparison of answer quality, source diversity, and citation patterns.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{compare model.png}
+\caption{TechPulse frontend: side-by-side compare mode (baseline vs.\ hybrid) for the same query.}
+\label{fig:demo_compare_modes}
+\end{figure}
+
+Figure~\ref{fig:demo_loading} illustrates the step-by-step loading sequence visible during hybrid retrieval, providing real-time progress feedback to the user as the system fetches documents, ranks evidence, and generates the grounded answer.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.45\textwidth]{stepbysteploading_rag.png}
+\caption{TechPulse frontend: step-by-step RAG pipeline loading indicator during hybrid retrieval.}
+\label{fig:demo_loading}
 \end{figure}
 
 \subsection{Frontend: Dashboard \& System Monitoring}
@@ -294,8 +324,8 @@ In addition to the primary search interface, a comprehensive dashboard provides 
   \begin{itemize}
     \item Radar plot comparing baseline and hybrid RAGAS scores (five dimensions: Faithfulness, Answer Relevancy, Context Precision, Citation Grounding, Composite).
     \item Bar chart comparing mean and 95th percentile response latencies for both retrieval modes.
-    \item Line chart of sensitivity analysis results, showing composite score variation across $\alpha \in [0.0, 1.0]$ (semantic weight), highlighting the optimal $\alpha = 0.7$ configuration.
-    \item Summary statistics cards: sample count (100), hybrid composite score (0.723), composite gain (+4.7 pp), and projected monthly infrastructure cost (\$0 at Free Tier).
+    \item Line chart of design-phase sensitivity analysis (superseded by wRRF), showing composite score variation across $\alpha \in [0.0, 1.0]$ (semantic weight) under the linear-reranking scheme that was replaced by weighted RRF in the final system.
+    \item Summary statistics cards: sample count (100), hybrid composite score (0.723), composite gain (+4.7 pp), and projected monthly infrastructure cost (\$0 infrastructure at Free Tier; total imputed cost including Groq LLM inference is $\sim$\$0.33/month at 100~queries/day, as reported in Table~\ref{tab:cost_breakdown}).
   \end{itemize}
 
   \item \textbf{Multi-Source Attribution.} All highlights include explicit source attribution and clickable source chips at the dashboard base, allowing rapid filtering by data origin and validation that the system ingests from all five specified sources.
@@ -303,7 +333,45 @@ In addition to the primary search interface, a comprehensive dashboard provides 
 
 The dashboard serves two purposes: (1) communicating system capabilities and results to non-technical stakeholders (e.g., project advisors, peer reviewers) through summary statistics and visualizations, and (2) enabling real-time operational monitoring of ingestion freshness and source distribution balance. Interactive features (source filtering, clickable external links, animated metrics) provide immediate feedback to users exploring the system's outputs.
 
-\noindent\underline{\textit{Note:} Dashboard screenshot to be included in final submission. Placeholder: \texttt{dashboard-overview.png}}
+Figures~\ref{fig:demo_dashboard_topics}--\ref{fig:demo_dashboard_eval} present the deployed dashboard interface.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{techtopichighlight.png}
+\caption{Tech Topic Highlights: trending topics with growth metrics, source coverage, and weekly/monthly mention counts.}
+\label{fig:demo_dashboard_topics}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{analytics_liveinsight.png}
+\caption{Analytics \& Live Insight Explorer: 30-day mention trend, source distribution, and daily highlights with source filtering.}
+\label{fig:demo_dashboard_insights}
+\end{subfigure}
+\caption{TechPulse dashboard: trending topic analysis (left) and analytics with live insight explorer (right).}
+\label{fig:demo_dashboard_main}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{evalresult_1.png}
+\caption{RAGAS metrics radar (Baseline vs.\ Hybrid) and response latency comparison (mean and P95).}
+\label{fig:demo_dashboard_eval1}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{evalresult_2.png}
+\caption{Hybrid weight sensitivity analysis and summary statistics (sample count, composite score, gain, monthly cost).}
+\label{fig:demo_dashboard_eval2}
+\end{subfigure}
+\caption{TechPulse dashboard: evaluation results --- RAGAS metrics and latency (left), sensitivity analysis and key statistics (right).}
+\label{fig:demo_dashboard_eval}
+\end{figure}
 
 \subsection{Deployment Validation: CI/CD, Infrastructure, and Database}
 

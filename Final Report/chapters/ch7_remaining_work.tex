@@ -10,7 +10,7 @@ This study designed, implemented, and evaluated TechPulse, a cloud-native Hybrid
 
   \item \textbf{Retrieval Optimization (RQ2):} A five-stage hybrid retrieval pipeline---metadata filtering, vector similarity search, full-corpus BM25, weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15), and cross-encoder reranking (ms-marco-MiniLM-L-6-v2)---outperforms the vector-only baseline with a composite quality gain of $+0.047$ (0.723 vs.\ 0.676). Faithfulness improved by $+0.058$, answer relevancy by $+0.065$, and context precision by $+0.070$. Citation grounding remained stable ($-0.020$, no significant difference).
 
-  \item \textbf{Operational Trade-offs (RQ3):} The hybrid pipeline introduces a small latency trade-off (mean 1.13\,s $\to$ 2.49\,s; Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s). Monthly cost is \$0.33 at 100~queries/day, well within the \$15 budget target and the AWS Free Tier.
+  \item \textbf{Operational Trade-offs (RQ3):} The hybrid pipeline introduces a moderate latency trade-off (mean 1.13\,s $\to$ 2.49\,s; Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s). Monthly cost is \$0.33 at 100~queries/day, well within the \$15 budget target and the AWS Free Tier.
 
   \item \textbf{MLOps Integration (RQ4):} Dual-criteria drift detection (10\% threshold + Shewhart $3\sigma$ with minimum std floor) achieves 100\% accuracy across four simulated drift scenarios. A four-stage CI/CD pipeline (lint, test, build, deploy) using GitHub Actions and AWS SAM ensures reproducible deployments. Eight custom CloudWatch metrics provide operational visibility.
 \end{enumerate}
@@ -236,6 +236,9 @@ Several extensions are identified for post-prototype development:
   \item \textbf{User experience:} User feedback loop for continuous retrieval quality improvement; query auto-completion; saved searches and alerts for tracked topics
   \item \textbf{Orchestration and human oversight:} Migration from single-Lambda execution to AWS Step Functions for multi-stage pipeline orchestration with per-stage error handling, retry policies, and parallel execution of independent ingestion sources. Integration of a human-in-the-loop (HITL) review stage---where low-confidence answers (e.g., composite score below a configurable threshold) are routed to a manual review queue before delivery---was considered but excluded from the current prototype for two reasons: (1)~the project targets a fully automated, zero-operational-cost pipeline suitable for a two-person academic team without 24/7 human availability; and (2)~the free-tier deployment constraint precludes the additional AWS services (Step Functions state transitions, SNS/SES notifications, DynamoDB task queues) that a robust HITL workflow requires. A Step Functions--based orchestrator with an optional HITL approval gate is identified as the natural next step for production deployment where operational staff are available.
 \end{itemize}
+
+\medskip
+\noindent\textbf{Closing reflection.} This study demonstrates that the primary challenge in modern RAG systems is not retrieval accuracy alone, but the integration of retrieval quality, system reliability, and cost governance into a unified, production-grade architecture. TechPulse contributes an end-to-end reference implementation showing that meaningful quality gains are achievable within free-tier infrastructure constraints, and that lightweight statistical evaluation can rigorously quantify those gains even with modest evaluation budgets.
 
 \medskip
 \noindent This chapter presented the key conclusions and contributions, summarized all four completed project phases, acknowledged known limitations, and outlined future extension directions.

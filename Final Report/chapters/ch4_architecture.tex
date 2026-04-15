@@ -325,48 +325,12 @@ Semantic representations are generated using the \texttt{all-MiniLM-L6-v2} sente
 \section{Hybrid Retrieval Pipeline Architecture}
 \label{sec:retrieval_detail}
 
-The implemented hybrid retrieval pipeline combines vector similarity, full-text (BM25) search, and learning-to-rank fusion. Figure~\ref{fig:retrieval_pipeline} illustrates the four-stage pipeline architecture with per-stage timing estimates and implementation details.
+The implemented hybrid retrieval pipeline combines vector similarity, full-text (BM25) search, and learning-to-rank fusion. Figure~\ref{fig:retrieval_pipeline} illustrates the five-stage pipeline architecture with per-stage timing estimates and implementation details.
 
-% ---- TikZ: Simplified Hybrid Retrieval Pipeline ----
 \begin{figure}[H]
 \centering
-\resizebox{0.55\textwidth}{!}{%
-\begin{tikzpicture}[node distance=1.2cm, font=\small, every text node part/.style={align=center}]
-
-% Stage nodes
-\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm] (stage0) {Query};
-
-\node[rectangle, draw=awsorange, fill=awslightorange, rounded corners=4pt, minimum width=2.2cm, minimum height=0.7cm, below=of stage0] (stage1) {Metadata\\Filter};
-
-\node[rectangle, draw=awspurple, fill=awslightpurple, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm, below=of stage1, xshift=-2.2cm] (stage2a) {Vector ANN};
-
-\node[rectangle, draw=awsgreen, fill=awslightgreen, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm, below=of stage1, xshift=2.2cm] (stage2b) {BM25};
-
-\node[rectangle, draw=awsorange!70, fill=awsorange!20, rounded corners=4pt, minimum width=2.5cm, minimum height=0.7cm, below=1.0cm of stage1, xshift=0cm] (stage3) {RRF Fusion};
-
-\node[rectangle, draw=propblue!70, fill=propblue!20, rounded corners=4pt, minimum width=2.5cm, minimum height=0.7cm, below=of stage3] (stage4) {Cross-Encoder};
-
-\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt, minimum width=2.0cm, minimum height=0.6cm, below=of stage4] (output) {Top-5 Results};
-
-% Arrows (very thick for visibility at small scale)
-\draw[-{Stealth}, line width=2pt] (stage0) -- (stage1) node[midway, right, font=\scriptsize] {normalize};
-\draw[-{Stealth}, line width=2pt] (stage1) -- (stage2a) node[midway, above left, font=\scriptsize] {parallel};
-\draw[-{Stealth}, line width=2pt] (stage1) -- (stage2b) node[midway, above right, font=\scriptsize] {parallel};
-\draw[-{Stealth}, line width=2pt] (stage2a) -| (stage3.west);
-\draw[-{Stealth}, line width=2pt] (stage2b) -| (stage3.east);
-\draw[-{Stealth}, line width=2pt] (stage3) -- (stage4);
-\draw[-{Stealth}, line width=2pt] (stage4) -- (output);
-
-% Timing labels
-\node[font=\scriptsize, below=0.15cm of stage1, xshift=-1.3cm] {50ms};
-\node[font=\scriptsize, below=0.15cm of stage2a] {250ms};
-\node[font=\scriptsize, below=0.15cm of stage2b] {150ms};
-\node[font=\scriptsize, below=0.15cm of stage3] {50ms};
-\node[font=\scriptsize, below=0.15cm of stage4] {350ms};
-
-\end{tikzpicture}%
-}
-\caption{Hybrid retrieval pipeline architecture with four stages}
+\includegraphics[width=0.75\textwidth]{Hybrid retrieval pipeline architecture with four stages.png}
+\caption{Hybrid retrieval pipeline architecture with five stages.}
 \label{fig:retrieval_pipeline}
 \end{figure}
 
@@ -527,79 +491,9 @@ To ensure generation availability across diverse deployment environments, TechPu
 
 All four backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with zero per-backend retries; instead, the fallback chain itself provides redundancy by cascading immediately to the next tier on failure. This design is driven by the API Gateway HTTP API's hard 30-second integration timeout: a single Groq timeout (15\,s) plus one retry (15\,s) would already exhaust the budget before reaching any fallback. By eliminating retries and relying on the fallback chain, the system maximizes the probability of returning a generated answer within the timeout window. The Bedrock backend in particular enforces its timeout via \texttt{botocore.Config(read\_timeout=15, connect\_timeout=5, retries=\{"max\_attempts": 0\})}, ensuring that a slow AWS endpoint cannot silently consume the remaining deadline. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
 
-% ---- TikZ: LLM Backend Fallback Chain Flowchart ----
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=0.6cm and 2.0cm, font=\small, every path/.style={thick},
-                     tier/.style={rectangle, rounded corners=4pt, minimum width=2.8cm,
-                                  minimum height=0.7cm, align=center, text width=2.6cm}]
-
-% Entry node
-\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
-      minimum width=2.5cm, minimum height=0.7cm]
-  (query) {Query Received};
-
-% Tier 1: Groq
-\node[tier, draw=awsorange, fill=awslightorange, below=0.8cm of query]
-  (groq) {1. Groq (Primary)\\Llama 3.1 8B};
-
-% Retry logic (implicit, shown in label)
-\draw[parrow] (query) -- (groq);
-\draw[-{Stealth}, thick, dashed, color=awsorange!70]
-  ([xshift=1.4cm]groq.east) arc (0:-90:0.8cm)
-  node[right, font=\scriptsize, color=awsorange!70] {fallback};
-
-% Tier 2: Bedrock (fork on Groq failure)
-\node[tier, draw=awspurple, fill=awslightpurple, right=2.0cm of groq]
-  (bedrock) {2. Bedrock (Nova)\\AWS Free Tier};
-\draw[parrow, color=propred!80] (groq.east) -- (bedrock.west)
-  node[above, font=\scriptsize, color=propred!80] {fail};
-
-% Tier 3: Ollama (fork on Bedrock failure)
-\node[tier, draw=awsgreen, fill=awslightgreen, right=2.0cm of bedrock]
-  (ollama) {3. Ollama (Local)\\Inference API};
-\draw[parrow, color=propred!80] (bedrock.east) -- (ollama.west)
-  node[above, font=\scriptsize, color=propred!80] {fail};
-
-% Tier 4: HuggingFace (fork on Ollama failure)
-\node[tier, draw=propblue!70, fill=propblue!20, right=2.0cm of ollama]
-  (hf) {4. HuggingFace\\Mistral-7B-Instruct};
-\draw[parrow, color=propred!80] (ollama.east) -- (hf.west)
-  node[above, font=\scriptsize, color=propred!80] {fail};
-
-% Fallback (all fail)
-\node[tier, draw=propred!80, fill=propred!20, right=2.0cm of hf]
-  (fallback) {Fallback:\\Retrieval-Only};
-\draw[parrow, color=propred!80] (hf.east) -- (fallback.west)
-  node[above, font=\scriptsize, color=propred!80] {all fail};
-
-% Success paths (arcs returning downward from each backend)
-\node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
-      minimum width=3.0cm, minimum height=0.7cm, below=1.2cm of bedrock,
-      xshift=1.0cm, align=center, text width=2.8cm]
-  (result) {Response Sent\\(with grounded citation)};
-
-% Success arrows from each tier
-\draw[parrow, color=awsgreen!80] ([xshift=0.5cm,yshift=-0.35cm]groq.south)
-  arc (-90:0:0.5cm) -- ([xshift=-1.5cm]result.north)
-  node[left, font=\scriptsize, color=awsgreen!80] {success};
-
-\draw[parrow, color=awsgreen!80] (bedrock.south) -- (result.north);
-
-\draw[parrow, color=awsgreen!80] ([xshift=-0.5cm,yshift=-0.35cm]ollama.south)
-  arc (-90:-180:0.5cm) -- ([xshift=1.5cm]result.north)
-  node[right, font=\scriptsize, color=awsgreen!80] {success};
-
-\draw[parrow, color=awsgreen!80] ([xshift=-1.0cm]hf.south) -- ([xshift=2.5cm]result.north)
-  node[right, font=\scriptsize, color=awsgreen!80] {success};
-
-\draw[parrow, color=propred!70] 
-  ([xshift=1.4cm]fallback.south) -- ([xshift=3.0cm]result.north)
-  node[right, font=\scriptsize, color=propred!70] {degraded};
-
-\end{tikzpicture}%
-}
+\includegraphics[width=\textwidth]{LLM backend fallback chain with automatic cascading.png}
 \caption{LLM backend fallback chain with automatic cascading.}
 \label{fig:llm_fallback}
 \end{figure}
@@ -724,14 +618,7 @@ All infrastructure is defined as code using AWS SAM, ensuring reproducible and c
 \section{AWS Cloud Deployment Architecture}
 \label{sec:cloud_arch}
 
-Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing the physical service placement for the Free Tier configuration.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{aws_techpulse.png}
-\caption{AWS cloud deployment architecture (Free Tier configuration).}
-\label{fig:aws_deploy}
-\end{figure}
+The AWS cloud deployment topology follows the architecture presented in Figure~\ref{fig:aws_diagram}, showing the physical service placement for the Free Tier configuration. The SAM-managed stack deploys all resources within a single \texttt{us-east-1} region to maximise Free Tier eligibility.
 
 \section{User Interface}
 \label{sec:ui}
