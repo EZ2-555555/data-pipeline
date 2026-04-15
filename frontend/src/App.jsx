@@ -5,12 +5,12 @@ import Dashboard from "./Dashboard";
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 const EXAMPLE_QUERIES = [
-  "What are the latest trends in quantum computing?",
-  "How is Rust being adopted in systems programming?",
-  "What recent advances have been made in LLM fine-tuning?",
-  "What are emerging best practices for MLOps pipelines?",
-  "How are vector databases used in production RAG systems?",
-  "What new techniques improve cross-encoder reranking?",
+  "How does retrieval-augmented generation improve LLM accuracy?",
+  "What are the benefits of hybrid search combining BM25 and vector retrieval?",
+  "How do cross-encoder rerankers improve search relevance?",
+  "What is the role of pgvector in production RAG systems?",
+  "How does weighted reciprocal rank fusion work in hybrid retrieval?",
+  "What techniques reduce hallucination in LLM-generated answers?",
 ];
 
 const SOURCE_BADGES = {
@@ -228,8 +228,22 @@ export default function App() {
       if (err.name === "AbortError") throw err;
       throw new Error("Unable to reach the API. Check your network connection or try again shortly.");
     }
-    if (res.status === 429) throw new Error("Rate limit exceeded. Please wait a moment and try again.");
-    if (!res.ok) throw new Error(`Server error (HTTP ${res.status}). Please try again.`);
+    if (!res.ok) {
+      let detail = null;
+      try {
+        const body = await res.json();
+        if (body && typeof body.detail === "string") detail = body.detail;
+        else if (body && typeof body.answer === "string") detail = body.answer;
+      } catch { /* body was not JSON */ }
+
+      if (res.status === 429) {
+        throw new Error(detail || "Rate limit exceeded. Please wait a moment and try again.");
+      }
+      if (res.status >= 500) {
+        throw new Error(detail || `The server is having trouble right now (HTTP ${res.status}). Please try again in a moment.`);
+      }
+      throw new Error(detail || `Request failed (HTTP ${res.status}). Please try again.`);
+    }
     return res.json();
   }
 

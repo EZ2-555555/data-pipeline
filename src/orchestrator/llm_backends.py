@@ -18,17 +18,19 @@ from src.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Retry configuration for Ollama / HuggingFace
-MAX_RETRIES = 4
-BACKOFF_BASE_S = 3.0  # exponential: 3s, 6s, 12s, 24s
+# Retry configuration — keep total time under ~25 s so the Lambda responds
+# before the API-Gateway HTTP-API 30-second integration timeout.
+MAX_RETRIES = 1
+BACKOFF_BASE_S = 1.0  # exponential: 1 s
 
 
-# Fallback order: primary → next tier → last tier
+# Fallback order — keep short (one fallback) to stay within the 30-second
+# API-Gateway timeout budget after retrieval + embedding overhead.
 _FALLBACK_CHAIN = {
-    "groq": ["bedrock", "ollama", "huggingface"],
-    "bedrock": ["groq", "ollama", "huggingface"],
-    "ollama": ["groq", "huggingface"],
-    "huggingface": ["groq", "ollama"],
+    "groq": ["bedrock"],
+    "bedrock": ["groq"],
+    "ollama": ["groq"],
+    "huggingface": ["groq"],
 }
 
 _BACKENDS = {

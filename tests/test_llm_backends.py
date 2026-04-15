@@ -20,22 +20,22 @@ def test_generate_ollama_primary(mock_settings, mock_ollama):
     mock_ollama.assert_called_once()
 
 
-@patch("src.orchestrator.llm_backends._generate_huggingface", return_value="HF result")
+@patch("src.orchestrator.llm_backends._generate_groq", return_value="Groq result")
 @patch("src.orchestrator.llm_backends._generate_ollama", side_effect=Exception("down"))
 @patch("src.orchestrator.llm_backends.settings")
-def test_generate_fallback_to_huggingface(mock_settings, mock_ollama, mock_hf):
+def test_generate_fallback_to_groq(mock_settings, mock_ollama, mock_groq):
     mock_settings.LLM_BACKEND = "ollama"
     mock_settings.LLM_MAX_TOKENS = 512
 
     from src.orchestrator.llm_backends import generate
     result = generate("test prompt")
-    assert result == "HF result"
+    assert result == "Groq result"
 
 
-@patch("src.orchestrator.llm_backends._generate_huggingface", side_effect=Exception("hf down"))
+@patch("src.orchestrator.llm_backends._generate_groq", side_effect=Exception("groq down"))
 @patch("src.orchestrator.llm_backends._generate_ollama", side_effect=Exception("ollama down"))
 @patch("src.orchestrator.llm_backends.settings")
-def test_generate_all_backends_fail(mock_settings, mock_ollama, mock_hf):
+def test_generate_all_backends_fail(mock_settings, mock_ollama, mock_groq):
     mock_settings.LLM_BACKEND = "ollama"
     mock_settings.LLM_MAX_TOKENS = 512
 
@@ -108,17 +108,14 @@ def test_generate_ollama_retries(mock_settings, mock_post, mock_sleep):
     import requests
     mock_post.side_effect = [
         requests.RequestException("timeout"),
-        requests.RequestException("timeout"),
-        requests.RequestException("timeout"),
-        requests.RequestException("timeout"),
-        requests.RequestException("timeout"),  # MAX_RETRIES = 4, so 5 total attempts
+        requests.RequestException("timeout"),  # MAX_RETRIES = 1, so 2 total attempts
     ]
 
     from src.orchestrator.llm_backends import _generate_ollama
     with pytest.raises(requests.RequestException):
         _generate_ollama("hello", 512)
 
-    assert mock_post.call_count == 5  # 1 + 4 retries
+    assert mock_post.call_count == 2  # 1 + 1 retry
 
 
 # ---------------------------------------------------------------------------
@@ -184,17 +181,14 @@ def test_generate_huggingface_retries(mock_settings, mock_post, mock_sleep):
     import requests
     mock_post.side_effect = [
         requests.RequestException("error"),
-        requests.RequestException("error"),
-        requests.RequestException("error"),
-        requests.RequestException("error"),
-        requests.RequestException("error"),  # MAX_RETRIES = 4, so 5 total attempts
+        requests.RequestException("error"),  # MAX_RETRIES = 1, so 2 total attempts
     ]
 
     from src.orchestrator.llm_backends import _generate_huggingface
     with pytest.raises(requests.RequestException):
         _generate_huggingface("hello", 100)
 
-    assert mock_post.call_count == 5  # 1 + 4 retries
+    assert mock_post.call_count == 2  # 1 + 1 retry
 
 
 # ---------------------------------------------------------------------------
