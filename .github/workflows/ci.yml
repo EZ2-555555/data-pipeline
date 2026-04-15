@@ -223,7 +223,7 @@ jobs:
         run: |
           cd frontend
           npm ci
-          VITE_API_URL=${{ steps.api.outputs.url }} npm run build
+          VITE_API_BASE=${{ steps.api.outputs.url }} npm run build
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4

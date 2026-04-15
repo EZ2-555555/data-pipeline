@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./Dashboard.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 /* ── Aurora mesh gradient background ── */
 function AuroraBg() {
@@ -173,9 +173,9 @@ function RadarChart() {
       {Array.from({ length: n }, (_, i) => { const [x, y] = sp(1, i); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />; })}
       {[0.2, 0.4, 0.6, 0.8].map(lv => { const [x, y] = sp(lv, 0); return <text key={lv} x={x + 5} y={y + 3} fontSize="9" fill="#a0aec0" fontFamily="Inter,sans-serif">{Math.round(lv * 100)}%</text>; })}
       <polygon points={toP(bl)} fill="url(#rGB)" stroke="#f97316" strokeWidth="2.5" strokeLinejoin="round" filter="url(#glow)" style={{ opacity: vis ? 1 : 0, transition: "opacity 0.8s ease" }} />
-      {bl.map((v, i) => { const [x, y] = sp(v, i); return <circle key={`b${i}`} cx={x} cy={y} r="5.5" fill="#f97316" stroke="#fff" strokeWidth="2" style={{ opacity: vis ? 1 : 0, transform: vis ? "scale(1)" : "scale(0)", transformOrigin: `${x}px ${y}px`, transition: `all 0.5s ${0.3 + i * 0.1}s cubic-bezier(.21,1.02,.55,1)` }} />; })}
+      {bl.map((v, i) => { const [x, y] = sp(v, i); return <circle key={`b${i}`} cx={x} cy={y} r="5.5" fill="#f97316" stroke="#fff" strokeWidth="2" style={{ opacity: vis ? 1 : 0, transform: vis ? "scale(1)" : "scale(0)", transformOrigin: `${x}px ${y}px`, transition: `all 0.5s ${0.3 + i * 0.1}s cubic-bezier(.21,1.02,.55,1)`, cursor: "pointer" }}><title>{RAGAS_METRICS[i].label}: {(v * 100).toFixed(1)}% (Baseline)</title></circle>; })}
       <polygon points={toP(hy)} fill="url(#rGH)" stroke="#c026d3" strokeWidth="2.5" strokeLinejoin="round" strokeDasharray="7,3" filter="url(#glow)" style={{ opacity: vis ? 1 : 0, transition: "opacity 0.8s 0.2s ease" }} />
-      {hy.map((v, i) => { const [x, y] = sp(v, i); return <circle key={`h${i}`} cx={x} cy={y} r="5.5" fill="#c026d3" stroke="#fff" strokeWidth="2" style={{ opacity: vis ? 1 : 0, transform: vis ? "scale(1)" : "scale(0)", transformOrigin: `${x}px ${y}px`, transition: `all 0.5s ${0.5 + i * 0.1}s cubic-bezier(.21,1.02,.55,1)` }} />; })}
+      {hy.map((v, i) => { const [x, y] = sp(v, i); return <circle key={`h${i}`} cx={x} cy={y} r="5.5" fill="#c026d3" stroke="#fff" strokeWidth="2" style={{ opacity: vis ? 1 : 0, transform: vis ? "scale(1)" : "scale(0)", transformOrigin: `${x}px ${y}px`, transition: `all 0.5s ${0.5 + i * 0.1}s cubic-bezier(.21,1.02,.55,1)`, cursor: "pointer" }}><title>{RAGAS_METRICS[i].label}: {(v * 100).toFixed(1)}% (Hybrid)</title></circle>; })}
       {RAGAS_METRICS.map((m, i) => { const a = ar(i), lx = cx + LR * Math.cos(a), ly = cy + LR * Math.sin(a); const anchor = lx < cx - 12 ? "end" : lx > cx + 12 ? "start" : "middle"; const dy = ly < cy - R * 0.55 ? -6 : ly > cy + R * 0.55 ? 14 : 4; return <text key={i} x={lx} y={ly + dy} textAnchor={anchor} fontSize="11.5" fontWeight="600" fill="#4a5568" fontFamily="Inter,sans-serif">{m.short}</text>; })}
     </svg>
   );
@@ -197,8 +197,8 @@ function LatencyChart() {
       {[0, 1, 2, 3].map(t => <g key={t}><line x1={pL} y1={yPx(t)} x2={W - pR} y2={yPx(t)} stroke="rgba(0,0,0,0.06)" strokeWidth="1" strokeDasharray={t === 0 ? "0" : "4,3"} /><text x={pL - 7} y={yPx(t) + 4} textAnchor="end" fontSize="10" fill="#a0aec0" fontFamily="Inter,sans-serif">{t}s</text></g>)}
       {LATENCY_DATA.map((d, gi) => { const offX = pL + gi * groupW + (groupW - 2 * barW - gap) / 2; const mH = vis ? hPx(d.mean) : 0, pH = vis ? hPx(d.p95) : 0; const mY = pT + cH - mH, pY = pT + cH - pH; return (
         <g key={gi}>
-          <rect x={offX} y={mY} width={barW} height={mH} rx="6" fill={gi === 0 ? "url(#lB)" : "url(#lH)"} filter="url(#barGlow)" style={{ transition: "y 1s cubic-bezier(.21,1.02,.55,1),height 1s cubic-bezier(.21,1.02,.55,1)" }} />
-          <rect x={offX + barW + gap} y={pY} width={barW} height={pH} rx="6" fill={gi === 0 ? "url(#lBp)" : "url(#lHp)"} style={{ transition: "y 1s .1s cubic-bezier(.21,1.02,.55,1),height 1s .1s cubic-bezier(.21,1.02,.55,1)" }} />
+          <rect x={offX} y={mY} width={barW} height={mH} rx="6" fill={gi === 0 ? "url(#lB)" : "url(#lH)"} filter="url(#barGlow)" style={{ transition: "y 1s cubic-bezier(.21,1.02,.55,1),height 1s cubic-bezier(.21,1.02,.55,1)", cursor: "pointer" }}><title>{d.mode + " Mean: " + d.mean + "s"}</title></rect>
+          <rect x={offX + barW + gap} y={pY} width={barW} height={pH} rx="6" fill={gi === 0 ? "url(#lBp)" : "url(#lHp)"} style={{ transition: "y 1s .1s cubic-bezier(.21,1.02,.55,1),height 1s .1s cubic-bezier(.21,1.02,.55,1)", cursor: "pointer" }}><title>{d.mode + " P95: " + d.p95 + "s"}</title></rect>
           <text x={offX + barW / 2} y={mY - 6} textAnchor="middle" fontSize="10.5" fontWeight="700" fill={d.color} fontFamily="Inter,sans-serif" style={{ opacity: vis ? 1 : 0, transition: "opacity .4s .9s" }}>{d.mean}s</text>
           <text x={offX + barW + gap + barW / 2} y={pY - 6} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#a0aec0" fontFamily="Inter,sans-serif" style={{ opacity: vis ? 1 : 0, transition: "opacity .4s 1s" }}>{d.p95}s</text>
           <text x={offX + barW + gap / 2} y={H - pB + 18} textAnchor="middle" fontSize="12" fontWeight="600" fill="#4a5568" fontFamily="Inter,sans-serif">{d.mode}</text>
@@ -223,11 +223,12 @@ function SensitivityChart() {
     const len = pathRef.current.getTotalLength();
     pathRef.current.style.strokeDasharray = String(len);
     pathRef.current.style.strokeDashoffset = String(len);
-    requestAnimationFrame(() => {
+    const rafId = requestAnimationFrame(() => {
       if (!pathRef.current) return;
       pathRef.current.style.transition = "stroke-dashoffset 1.4s cubic-bezier(.21,1.02,.55,1)";
       pathRef.current.style.strokeDashoffset = "0";
     });
+    return () => cancelAnimationFrame(rafId);
   }, [vis]);
   const W = 500, H = 230, pL = 54, pR = 28, pT = 28, pB = 48, cW = W - pL - pR, cH = H - pT - pB, yMin = 0.484, yMax = 0.538;
   const xPx = a => pL + (a / 1) * cW, yPx = s => pT + cH - ((s - yMin) / (yMax - yMin)) * cH;
@@ -245,7 +246,7 @@ function SensitivityChart() {
       <text x={xPx(0.75)} y={pT + 13} textAnchor="middle" fontSize="9" fontWeight="600" fill="#10b981" fontFamily="Inter,sans-serif" style={{ opacity: vis ? 1 : 0, transition: "opacity .5s .7s" }}>✓ within P95 threshold</text>
       <path d={aP} fill="url(#aG)" style={{ opacity: vis ? 1 : 0, transition: "opacity .6s .2s" }} />
       <path ref={pathRef} d={lP} fill="none" stroke="url(#lG)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {SENSITIVITY.map((d, i) => <circle key={i} cx={xPx(d.alpha)} cy={yPx(d.sim)} r={d.best ? 7 : 4} fill={d.best ? "#f97316" : "#fff"} stroke={d.best ? "#fff" : "#f97316"} strokeWidth={d.best ? 2.5 : 1.5} style={{ opacity: vis ? 1 : 0, transform: vis ? "scale(1)" : "scale(0)", transformOrigin: `${xPx(d.alpha)}px ${yPx(d.sim)}px`, transition: `all .4s ${0.8 + i * 0.06}s cubic-bezier(.21,1.02,.55,1)` }} />)}
+      {SENSITIVITY.map((d, i) => <circle key={i} cx={xPx(d.alpha)} cy={yPx(d.sim)} r={d.best ? 7 : 4} fill={d.best ? "#f97316" : "#fff"} stroke={d.best ? "#fff" : "#f97316"} strokeWidth={d.best ? 2.5 : 1.5} style={{ opacity: vis ? 1 : 0, transform: vis ? "scale(1)" : "scale(0)", transformOrigin: `${xPx(d.alpha)}px ${yPx(d.sim)}px`, transition: `all .4s ${0.8 + i * 0.06}s cubic-bezier(.21,1.02,.55,1)`, cursor: "pointer" }}><title>{"\u03B1 = " + d.alpha.toFixed(1) + " | Similarity: " + d.sim.toFixed(4) + (d.best ? " (best)" : "")}</title></circle>)}
       <line x1={bx} y1={pT + 20} x2={bx} y2={by - 10} stroke="#e8542e" strokeWidth="1.5" strokeDasharray="4,3" style={{ opacity: vis ? 1 : 0, transition: "opacity .4s 1.3s" }} />
       <text x={bx + 9} y={by - 14} fontSize="11" fontWeight="700" fill="#e8542e" fontFamily="Inter,sans-serif" style={{ opacity: vis ? 1 : 0, transition: "opacity .4s 1.4s" }}>α = 0.7  ★  best</text>
       {[0, 0.2, 0.4, 0.6, 0.8, 1].map(t => <g key={t}><line x1={xPx(t)} y1={pT + cH} x2={xPx(t)} y2={pT + cH + 4} stroke="rgba(0,0,0,0.12)" strokeWidth="1" /><text x={xPx(t)} y={H - pB + 18} textAnchor="middle" fontSize="10" fill="#a0aec0" fontFamily="Inter,sans-serif">{t.toFixed(1)}</text></g>)}
@@ -263,19 +264,21 @@ const SOURCE_COLORS = { arxiv: "#b31b1b", hn: "#ff6600", devto: "#3b49df", githu
 function TrendLineChart({ data }) {
   const [ref, vis] = useVisible(0.2);
   const pathRef = useRef(null);
+  const [hover, setHover] = useState(null);
   useEffect(() => {
     if (!vis || !pathRef.current) return;
     const len = pathRef.current.getTotalLength();
     pathRef.current.style.strokeDasharray = String(len);
     pathRef.current.style.strokeDashoffset = String(len);
-    requestAnimationFrame(() => {
+    const rafId = requestAnimationFrame(() => {
       if (!pathRef.current) return;
       pathRef.current.style.transition = "stroke-dashoffset 1.2s cubic-bezier(.21,1.02,.55,1)";
       pathRef.current.style.strokeDashoffset = "0";
     });
+    return () => cancelAnimationFrame(rafId);
   }, [vis]);
   if (!data || data.length === 0) return null;
-  const W = 460, H = 180, pL = 40, pR = 16, pT = 16, pB = 32;
+  const W = 460, H = 200, pL = 48, pR = 16, pT = 16, pB = 40;
   const cW = W - pL - pR, cH = H - pT - pB;
   const vals = data.map(d => d.mentions);
   const yMax = Math.ceil(Math.max(...vals) * 1.15);
@@ -284,7 +287,7 @@ function TrendLineChart({ data }) {
   const lP = data.map((d, i) => `${i === 0 ? "M" : "L"} ${xPx(i).toFixed(1)},${yPx(d.mentions).toFixed(1)}`).join(" ");
   const aP = [`M ${pL},${pT + cH}`, ...data.map((d, i) => `L ${xPx(i).toFixed(1)},${yPx(d.mentions).toFixed(1)}`), `L ${xPx(data.length - 1).toFixed(1)},${pT + cH}`, "Z"].join(" ");
   return (
-    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }} onMouseLeave={() => setHover(null)}>
       <defs>
         <linearGradient id="tlG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity="0.22" /><stop offset="100%" stopColor="#c026d3" stopOpacity="0" /></linearGradient>
         <linearGradient id="tlL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f97316" /><stop offset="100%" stopColor="#c026d3" /></linearGradient>
@@ -292,12 +295,27 @@ function TrendLineChart({ data }) {
       {[0, 0.25, 0.5, 0.75, 1].map(f => { const y = pT + cH * (1 - f); return <g key={f}><line x1={pL} y1={y} x2={W - pR} y2={y} stroke="rgba(0,0,0,0.05)" strokeWidth="1" strokeDasharray="3,3" /><text x={pL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#a0aec0" fontFamily="Inter,sans-serif">{Math.round(yMax * f)}</text></g>; })}
       <path d={aP} fill="url(#tlG)" style={{ opacity: vis ? 1 : 0, transition: "opacity .5s .2s" }} />
       <path ref={pathRef} d={lP} fill="none" stroke="url(#tlL)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {data.filter((_, i) => i % 5 === 0 || i === data.length - 1).map((d, _, arr) => {
+      {/* Hover crosshair */}
+      {hover !== null && (
+        <g>
+          <line x1={xPx(hover)} y1={pT} x2={xPx(hover)} y2={pT + cH} stroke="rgba(232,84,46,0.3)" strokeWidth="1" strokeDasharray="3,2" />
+          <circle cx={xPx(hover)} cy={yPx(data[hover].mentions)} r="5" fill="#f97316" stroke="#fff" strokeWidth="2" />
+          <rect x={xPx(hover) - 52} y={yPx(data[hover].mentions) - 34} width="104" height="26" rx="6" fill="rgba(30,30,30,0.88)" />
+          <text x={xPx(hover)} y={yPx(data[hover].mentions) - 17} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#fff" fontFamily="Inter,sans-serif">{data[hover].date} : {data[hover].mentions}</text>
+        </g>
+      )}
+      {/* Invisible hover zones per data point */}
+      {data.map((d, i) => (
+        <rect key={i} x={xPx(i) - cW / data.length / 2} y={pT} width={cW / data.length} height={cH} fill="transparent" onMouseEnter={() => setHover(i)} style={{ cursor: "crosshair" }} />
+      ))}
+      {data.filter((_, i) => i % 5 === 0 || i === data.length - 1).map((d) => {
         const idx = data.indexOf(d);
-        return <text key={idx} x={xPx(idx)} y={H - 6} textAnchor="middle" fontSize="8" fill="#a0aec0" fontFamily="Inter,sans-serif">{d.date.slice(5)}</text>;
+        return <text key={idx} x={xPx(idx)} y={H - pB + 16} textAnchor="middle" fontSize="8" fill="#a0aec0" fontFamily="Inter,sans-serif">{d.date.slice(5)}</text>;
       })}
       <line x1={pL} y1={pT} x2={pL} y2={pT + cH} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
       <line x1={pL} y1={pT + cH} x2={W - pR} y2={pT + cH} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+      <text x={12} y={pT + cH / 2} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#718096" fontFamily="Inter,sans-serif" transform={`rotate(-90,12,${pT + cH / 2})`}>Documents Ingested</text>
+      <text x={pL + cW / 2} y={H - 2} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#718096" fontFamily="Inter,sans-serif">Date</text>
     </svg>
   );
 }
@@ -305,19 +323,26 @@ function TrendLineChart({ data }) {
 /* ── Source Distribution Bar Chart ── */
 function SourceBarChart({ data }) {
   const [ref, vis] = useVisible(0.2);
+  const [hoverIdx, setHoverIdx] = useState(null);
   if (!data || data.length === 0) return null;
   const total = data.reduce((s, [, c]) => s + c, 0) || 1;
   return (
     <div ref={ref} className="db-source-bars">
       {data.map(([src, cnt], i) => {
         const pct = ((cnt / total) * 100).toFixed(1);
+        const isHover = hoverIdx === i;
         return (
-          <div key={src} className="db-source-bar-row" style={{ opacity: vis ? 1 : 0, transform: vis ? "translateX(0)" : "translateX(-12px)", transition: `all .5s ${i * 0.08}s ease` }}>
+          <div key={src} className={`db-source-bar-row${isHover ? " hovered" : ""}`}
+            onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}
+            style={{ opacity: vis ? 1 : 0, transform: vis ? "translateX(0)" : "translateX(-12px)", transition: `all .5s ${i * 0.08}s ease` }}>
             <span className="db-source-bar-label">{SOURCE_LABELS[src] || src}</span>
             <div className="db-source-bar-track">
               <div className="db-source-bar-fill" style={{ width: vis ? `${pct}%` : "0%", background: SOURCE_COLORS[src] || "#718096", transition: `width 0.8s ${0.2 + i * 0.08}s cubic-bezier(.21,1.02,.55,1)` }} />
             </div>
             <span className="db-source-bar-pct">{pct}%</span>
+            {isHover && (
+              <span className="db-source-bar-tooltip">{cnt} documents ({pct}% of {total} total)</span>
+            )}
           </div>
         );
       })}
@@ -363,17 +388,24 @@ export default function Dashboard({ onGoToApp }) {
             total_documents_30d: 1204,
             source_mix: { arxiv: 482, hn: 301, devto: 187, github: 142, rss: 92 },
             topic_highlights: [
-              { keyword: "retrieval-augmented generation", weekly_mentions: 127, monthly_mentions: 482, source_coverage: 5, sources: ["arxiv", "devto", "github", "hn", "rss"], growth_pct: 12.4 },
-              { keyword: "vector database",               weekly_mentions: 89,  monthly_mentions: 341, source_coverage: 4, sources: ["arxiv", "devto", "github", "hn"],        growth_pct: -3.1 },
-              { keyword: "cross-encoder reranking",        weekly_mentions: 64,  monthly_mentions: 218, source_coverage: 3, sources: ["arxiv", "github", "hn"],                 growth_pct: 6.2  },
-              { keyword: "prompt engineering",             weekly_mentions: 51,  monthly_mentions: 196, source_coverage: 4, sources: ["arxiv", "devto", "hn", "rss"],            growth_pct: 2.1  },
-              { keyword: "knowledge graph",                weekly_mentions: 43,  monthly_mentions: 167, source_coverage: 3, sources: ["arxiv", "devto", "github"],               growth_pct: -1.5 },
-              { keyword: "model quantization",             weekly_mentions: 38,  monthly_mentions: 152, source_coverage: 3, sources: ["arxiv", "github", "hn"],                 growth_pct: 8.7  },
-              { keyword: "agentic workflows",              weekly_mentions: 34,  monthly_mentions: 128, source_coverage: 4, sources: ["arxiv", "devto", "github", "hn"],        growth_pct: 15.3 },
+              { keyword: "retrieval-augmented generation", weekly_mentions: 127, monthly_mentions: 482, source_coverage: 5, sources: ["arxiv", "devto", "github", "hn", "rss"], growth_pct: 12.4, insight: "Strong growth driven by enterprise adoption of RAG pipelines across all tracked sources", top_source: "arxiv", top_source_pct: 45 },
+              { keyword: "agentic workflows",              weekly_mentions: 94,  monthly_mentions: 310, source_coverage: 4, sources: ["arxiv", "devto", "github", "hn"],        growth_pct: 15.3, insight: "Fastest-rising topic as LLM agent frameworks gain traction in production systems", top_source: "github", top_source_pct: 38 },
+              { keyword: "vector database",                weekly_mentions: 89,  monthly_mentions: 341, source_coverage: 4, sources: ["arxiv", "devto", "github", "hn"],        growth_pct: -3.1, insight: "Slight cooling after major pgvector and Qdrant releases stabilized the ecosystem", top_source: "github", top_source_pct: 41 },
+              { keyword: "cross-encoder reranking",        weekly_mentions: 64,  monthly_mentions: 218, source_coverage: 3, sources: ["arxiv", "github", "hn"],                 growth_pct: 6.2,  insight: "Research-driven growth in two-stage retrieval with reranking optimization", top_source: "arxiv", top_source_pct: 52 },
+              { keyword: "prompt engineering",              weekly_mentions: 51,  monthly_mentions: 196, source_coverage: 4, sources: ["arxiv", "devto", "hn", "rss"],           growth_pct: -8.4, insight: "Declining as focus shifts toward automated agent pipelines and tool use", top_source: "devto", top_source_pct: 34 },
+              { keyword: "knowledge graphs",                weekly_mentions: 43,  monthly_mentions: 167, source_coverage: 3, sources: ["arxiv", "devto", "github"],               growth_pct: 4.8,  insight: "Renewed interest driven by GraphRAG and hybrid retrieval architectures", top_source: "arxiv", top_source_pct: 48 },
+              { keyword: "model quantization",              weekly_mentions: 38,  monthly_mentions: 152, source_coverage: 3, sources: ["arxiv", "github", "hn"],                 growth_pct: -1.2, insight: "Stable activity as GGUF and AWQ formats become standard for edge deployment", top_source: "github", top_source_pct: 44 },
             ],
             topic_timeline: Array.from({ length: 30 }, (_, i) => {
               const d = new Date(); d.setDate(d.getDate() - 29 + i);
-              return { date: d.toISOString().slice(0, 10), mentions: Math.round(12 + Math.random() * 8 + (i > 20 ? i - 18 : 0)) };
+              /* Realistic ingestion pattern: ~30-38 base, weekday peaks, growth trend last 10 days */
+              const dayOfWeek = d.getDay();
+              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+              const base = isWeekend ? 24 : 35;
+              const trend = i > 19 ? (i - 19) * 2.5 : 0;
+              const dip = i === 12 ? -8 : 0; /* mid-month maintenance dip */
+              const mentions = Math.round(base + trend + dip + (Math.sin(i * 0.7) * 3));
+              return { date: d.toISOString().slice(0, 10), mentions: Math.max(mentions, 15) };
             }),
             today_highlights: [
               { title: "Hybrid RAG Performance Improvements", source: "arxiv", score: 0.94, url: "https://arxiv.org/search/?query=retrieval+augmented+generation&searchtype=all" },
@@ -448,28 +480,31 @@ export default function Dashboard({ onGoToApp }) {
       {/* ── Tech Topic Highlights ── */}
       <section className="db-section" style={{ borderTop: "none" }}>
         <h2 className="db-section-title db-gradient-text">Tech Topic Highlights</h2>
-        <p className="db-section-sub">Top trending keywords across all ingested sources in the last 30 days.</p>
-        {insightLoading && <p className="db-note" style={{ textAlign: "center" }}>Loading live topic highlights…</p>}
+        <p className="db-section-sub">Top emerging topics across ingested sources in the last 30 days.</p>
+        {insightLoading && <p className="db-note" style={{ textAlign: "center" }}>Loading live topic highlights...</p>}
         {!insightLoading && insightError && <p className="db-note" style={{ textAlign: "center" }}>Unable to load topic highlights ({insightError}).</p>}
         {!insightLoading && !insightError && (insights?.topic_highlights?.length > 0 || insights?.topic_highlight) && (
           <div className="db-topic-grid">
             {(insights.topic_highlights || [insights.topic_highlight]).map((topic, idx) => {
               const g = topic.growth_pct ?? 0;
-              const arrow = g > 1 ? "↑" : g < -1 ? "↓" : "→";
-              const gColor = g > 1 ? "#16a34a" : g < -1 ? "#dc2626" : "#718096";
-              const insight = g > 5 ? "Rapid growth — rising adoption across sources"
-                : g > 1 ? "Steady growth — consistent interest this week"
-                : g < -5 ? "Declining — reduced mentions vs monthly average"
-                : g < -1 ? "Slight decline — marginal drop this week"
-                : "Stable — consistent mention rate";
+              const arrow = g > 1 ? "\u2191" : g < -1 ? "\u2193" : "\u2192";
+              const gColor = g > 1 ? "#16a34a" : g < -1 ? "#dc2626" : "#6366f1";
+              const trendClass = g > 1 ? "rising" : g < -1 ? "declining" : "stable";
+              const fallbackInsight = g > 5 ? "Rapid growth \u2014 rising adoption across sources"
+                : g > 1 ? "Steady growth \u2014 consistent interest this week"
+                : g < -5 ? "Declining \u2014 reduced mentions vs monthly average"
+                : g < -1 ? "Slight decline \u2014 marginal drop this week"
+                : "Stable \u2014 consistent mention rate";
+              const insightText = topic.insight || fallbackInsight;
+              const topSrc = topic.top_source ? (SOURCE_LABELS[topic.top_source] || topic.top_source) : null;
               return (
-                <div key={idx} className={`db-topic-highlight-card${idx === 0 ? " featured" : ""}`} style={{ animationDelay: `${idx * 0.08}s` }}>
+                <div key={idx} className={`db-topic-highlight-card ${trendClass}${idx === 0 ? " featured" : ""}`} style={{ animationDelay: `${idx * 0.08}s` }}>
                   <span className="db-topic-rank">#{idx + 1}</span>
                   <div className="db-topic-badge">{topic.keyword}</div>
                   <div className="db-topic-trend" style={{ color: gColor }}>
                     <span className="db-topic-arrow">{arrow}</span>
                     <span>{g > 0 ? "+" : ""}{g}%</span>
-                    <span className="db-topic-trend-label">vs 30d avg</span>
+                    <span className="db-topic-trend-label">vs prior weekly avg</span>
                   </div>
                   <div className="db-topic-stats">
                     <div className="db-topic-stat">
@@ -485,9 +520,10 @@ export default function Dashboard({ onGoToApp }) {
                       <span className="db-topic-stat-label">Sources</span>
                     </div>
                   </div>
-                  <p className="db-topic-insight">{insight}</p>
+                  <p className="db-topic-insight">{insightText}</p>
                   <p className="db-topic-coverage">
-                    {(topic.sources || []).map(s => SOURCE_LABELS[s] || s).join(" · ")}
+                    {(topic.sources || []).map(s => SOURCE_LABELS[s] || s).join(" \u00B7 ")}
+                    {topSrc && topic.top_source_pct ? ` \u2014 Top: ${topSrc} (${topic.top_source_pct}%)` : ""}
                   </p>
                 </div>
               );
