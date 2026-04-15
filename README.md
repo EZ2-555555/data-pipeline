@@ -481,7 +481,7 @@ data-pipeline/
 |       +-- index.css
 |
 |-- evaluation/
-|   |-- run_eval.py                   # 9-phase evaluation pipeline (7 active, 2 skipped)
+|   |-- run_eval.py                   # 7-phase evaluation pipeline
 |   +-- queries/
 |       |-- eval_queries.json         # 50 queries (3 categories)
 |       +-- probe_queries.json        # 20 probe queries for drift detection
@@ -573,19 +573,17 @@ All settings via environment variables (`.env` or Docker Compose `environment` b
 
 ## Evaluation
 
-The evaluation framework implements a **9-phase pipeline** (7 active, 2 skipped) comparing baseline (vector-only) vs hybrid retrieval:
+The evaluation framework implements a **7-phase pipeline** comparing baseline (vector-only) vs hybrid retrieval:
 
 | Phase | Name | Description |
 |:-----:|:-----|:------------|
 | 1 | RAG Query Execution | 50 queries x 2 modes = 100 RAGAS samples (baseline + hybrid) with per-query latency |
 | 2 | RAGAS LLM-Judged Scoring | Faithfulness, answer relevancy, context precision |
 | 3 | Summary Statistics | Mean, median, p95, citation grounding, token costs per mode |
-| 4 | ~~Grid Search~~ _(skipped)_ | Legacy alpha/beta/gamma sweep -- superseded by weighted RRF with fixed weights |
-| 5 | ~~Sensitivity Analysis~~ _(skipped)_ | Legacy one-at-a-time sweep -- superseded by weighted RRF |
-| 6 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
-| 7 | Drift Validation | 4 simulated scenarios (normal, Shewhart breach, catastrophic) |
-| 8 | Composite Metric | 0.35 x Faithfulness + 0.25 x Relevancy + 0.20 x Precision + 0.20 x CitationGrounding |
-| 9 | Cost Projection | Monthly cost for 50/100/200 queries/day vs free-tier ceilings |
+| 4 | Statistical Tests | Wilcoxon signed-rank, Cohen's d effect size, bootstrap 95% CI |
+| 5 | Drift Validation | 4 simulated scenarios (normal, Shewhart breach, catastrophic) |
+| 6 | Composite Metric | 0.35 x Faithfulness + 0.25 x Relevancy + 0.20 x Precision + 0.20 x CitationGrounding |
+| 7 | Cost Projection | Monthly cost for 50/100/200 queries/day vs free-tier ceilings |
 
 **Key Results:**
 
@@ -634,7 +632,7 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 - [x] S3 medallion data lake + SQS-decoupled ingestion pipeline
 - [x] 3-layer hallucination verification + retrieval quality drift detection
 - [x] 8 CloudWatch custom metrics + deep health checks + 3 alarms
-- [x] RAGAS evaluation framework: 100 samples, 9-phase pipeline, statistical tests -- hybrid composite 0.723 vs baseline 0.676 (+4.7 pp)
+- [x] RAGAS evaluation framework: 100 samples, 7-phase pipeline, statistical tests -- hybrid composite 0.723 vs baseline 0.676 (+4.7 pp)
 - [x] AWS IaC via SAM (Free Tier + production templates)
 - [x] GitHub Actions CI/CD: lint, test, SAM validate, deploy, S3 frontend upload
 - [x] 208 unit tests across 15 modules
