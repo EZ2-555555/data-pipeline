@@ -124,6 +124,7 @@ function AnimatedNumber({ value, duration = 1200 }) {
   const str = String(value);
   const isFloat = str.includes(".");
   const isPlus = str.startsWith("+");
+  const isDollar = str.includes("$");
   const clean = str.replace(/[^0-9.]/g, "");
   const target = parseFloat(clean);
   const isValid = !isNaN(target);
@@ -140,13 +141,14 @@ function AnimatedNumber({ value, duration = 1200 }) {
       const cur = target * ease;
       let formatted = isFloat ? cur.toFixed(str.split(".")[1]?.replace(/[^0-9]/g, "").length || 1) : String(Math.round(cur));
       if (isPlus) formatted = "+" + formatted;
+      if (isDollar) formatted = "$" + formatted;
       if (str.endsWith("pp")) formatted += "pp";
       setDisplay(formatted);
       if (t < 1) rafId = requestAnimationFrame(step);
     };
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
-  }, [vis, value, duration, isValid, isFloat, isPlus, str, target]);
+  }, [vis, value, duration, isValid, isFloat, isPlus, isDollar, str, target]);
   return <span ref={ref}>{display}</span>;
 }
 
