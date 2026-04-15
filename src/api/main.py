@@ -670,7 +670,9 @@ class AskRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return deep_health_check()
+    result = deep_health_check()
+    status_code = 200 if result.get("status") == "ok" else 503
+    return JSONResponse(content=result, status_code=status_code)
 
 
 @app.post("/drift")
@@ -717,7 +719,17 @@ def ask_endpoint(req: AskRequest, request: Request):
 # ---------------------------------------------------------------------------
 # Lambda handlers (used by SAM / CDK deployments via Mangum)
 # ---------------------------------------------------------------------------
-handler = Mangum(app, api_gateway_base_path=f"/{settings.STAGE}")
+_mangum = Mangum(app, api_gateway_base_path=f"/{settings.STAGE}")
+
+
+def handler(event, context):
+    """Main Lambda entry point — handles warmup pings and real API requests."""
+    # Scheduled warmup ping: return immediately to keep container warm.
+    # The WarmupPing ScheduleV2 event sends {"httpMethod": "WARMUP"}.
+    if event.get("httpMethod") == "WARMUP" or event.get("source") == "aws.scheduler":
+        logger.info("Warmup ping received — container is warm")
+        return {"statusCode": 200, "body": "warm"}
+    return _mangum(event, context)
 
 
 def health_handler(event, context):

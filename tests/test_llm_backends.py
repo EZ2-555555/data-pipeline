@@ -107,15 +107,14 @@ def test_generate_ollama_retries(mock_settings, mock_post, mock_sleep):
 
     import requests
     mock_post.side_effect = [
-        requests.RequestException("timeout"),
-        requests.RequestException("timeout"),  # MAX_RETRIES = 1, so 2 total attempts
+        requests.RequestException("timeout"),  # MAX_RETRIES = 0, so 1 attempt only
     ]
 
     from src.orchestrator.llm_backends import _generate_ollama
     with pytest.raises(requests.RequestException):
         _generate_ollama("hello", 512)
 
-    assert mock_post.call_count == 2  # 1 + 1 retry
+    assert mock_post.call_count == 1  # no retries
 
 
 # ---------------------------------------------------------------------------
@@ -180,15 +179,14 @@ def test_generate_huggingface_retries(mock_settings, mock_post, mock_sleep):
 
     import requests
     mock_post.side_effect = [
-        requests.RequestException("error"),
-        requests.RequestException("error"),  # MAX_RETRIES = 1, so 2 total attempts
+        requests.RequestException("error"),  # MAX_RETRIES = 0, so 1 attempt only
     ]
 
     from src.orchestrator.llm_backends import _generate_huggingface
     with pytest.raises(requests.RequestException):
         _generate_huggingface("hello", 100)
 
-    assert mock_post.call_count == 2  # 1 + 1 retry
+    assert mock_post.call_count == 1  # no retries
 
 
 # ---------------------------------------------------------------------------

@@ -18,10 +18,12 @@ from src.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Retry configuration — keep total time under ~25 s so the Lambda responds
-# before the API-Gateway HTTP-API 30-second integration timeout.
-MAX_RETRIES = 1
-BACKOFF_BASE_S = 1.0  # exponential: 1 s
+# Retry configuration — zero retries per backend; fallback chain provides
+# the second attempt on a *different* provider.  With retrieval overhead
+# (~5-10 s) + embeddings, a single 15 s Groq timeout + 1 s backoff + 15 s
+# retry already reaches 31 s — past the API-Gateway 30 s hard limit.
+MAX_RETRIES = 0
+BACKOFF_BASE_S = 1.0  # only used if MAX_RETRIES > 0
 
 
 # Fallback order — keep short (one fallback) to stay within the 30-second
@@ -77,7 +79,7 @@ def _generate_ollama(prompt: str, max_tokens: int) -> str:
                     "stream": False,
                     "options": {"num_predict": max_tokens, "temperature": 0.2, "num_ctx": 4096},
                 },
-                timeout=300,
+                timeout=20,
             )
             resp.raise_for_status()
             return resp.json()["response"]
@@ -108,7 +110,7 @@ def _generate_groq(prompt: str, max_tokens: int) -> str:
                     "max_tokens": max_tokens,
                     "temperature": 0.2,
                 },
-                timeout=60,
+                timeout=15,
             )
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]
@@ -126,7 +128,13 @@ def _generate_bedrock(prompt: str, max_tokens: int) -> str:
     if boto3 is None:
         raise RuntimeError("boto3 is required for the 'bedrock' backend")
 
-    client = boto3.client("bedrock-runtime", region_name=settings.AWS_REGION)
+    from botocore.config import Config
+
+    client = boto3.client(
+        "bedrock-runtime",
+        region_name=settings.AWS_REGION,
+        config=Config(read_timeout=15, connect_timeout=5, retries={"max_attempts": 0}),
+    )
     response = client.converse(
         modelId=settings.BEDROCK_MODEL_ID,
         messages=[{"role": "user", "content": [{"text": prompt}]}],
@@ -149,7 +157,7 @@ def _generate_huggingface(prompt: str, max_tokens: int) -> str:
                     "max_tokens": max_tokens,
                     "temperature": 0.2,
                 },
-                timeout=60,
+                timeout=20,
             )
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]

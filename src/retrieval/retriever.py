@@ -250,6 +250,7 @@ def _execute_retrieval_query(query_emb, recency_days, sources, candidate_limit,
                               _max_retries=2):
     """Execute the retrieval SQL with automatic reconnection on stale connections."""
     import psycopg2
+    import psycopg2.pool as _pg_pool
     for attempt in range(_max_retries + 1):
         conn = get_connection()
         try:
@@ -277,7 +278,8 @@ def _execute_retrieval_query(query_emb, recency_days, sources, candidate_limit,
                 rows = cur.fetchall()
             put_connection(conn)
             return rows
-        except (psycopg2.InterfaceError, psycopg2.OperationalError) as exc:
+        except (psycopg2.InterfaceError, psycopg2.OperationalError,
+                _pg_pool.PoolError) as exc:
             logger.warning("DB connection error (attempt %d/%d): %s",
                            attempt + 1, _max_retries + 1, exc)
             # Discard the broken connection and reset the pool
@@ -303,6 +305,7 @@ def hybrid_retrieve(
     top_k: int | None = None,
     recency_days: int = 180,
     sources: list[str] | None = None,
+    _deadline: float | None = None,
 ) -> list[dict]:
     """Hybrid retrieval: parallel vector + full-corpus BM25 search, fused via weighted RRF.
 
@@ -439,18 +442,28 @@ def hybrid_retrieve(
         all_candidates = [c for c in all_candidates if c["score"] >= p25_threshold]
 
     # --- Cross-encoder reranking ---
-    # Re-score (query, passage) pairs with a discriminative cross-encoder before
-    # URL deduplication so that the best-ranked chunk per URL is also the most
-    # relevant one.  The cross-encoder sees both texts jointly, capturing exact
-    # term matches and semantic nuances missed by embedding similarity.
-    # Based on: Nogueira & Cho (2019) "Passage Re-ranking with BERT";
-    #           Nogueira et al. (2019) "Multi-Stage Document Ranking with BERT".
-    ce = _get_cross_encoder()
+    # Skip if running low on time (Lambda cold-start budget) or model unavailable.
+    remaining = (_deadline - time.time()) if _deadline else 999
+    ce = _get_cross_encoder() if remaining > 5 else None
+    if ce is None and _deadline and remaining <= 5:
+        logger.info("Cross-encoder skipped — only %.1fs remaining before deadline", remaining)
     if ce is not None and all_candidates:
         ce_inputs = [(query, c["chunk_text"]) for c in all_candidates]
         ce_scores = ce.predict(ce_inputs)
         for cand, ce_score in zip(all_candidates, ce_scores):
-            cand["score"] = float(ce_score)
+            # Sigmoid converts logits to 0-1 probabilities for display.
+            cand["score"] = 1.0 / (1.0 + math.exp(-float(ce_score)))
         all_candidates.sort(key=lambda c: c["score"], reverse=True)
+    elif all_candidates:
+        # Normalize RRF scores to 0-1 via min-max so the frontend can display
+        # them as meaningful relevance percentages.
+        scores = [c["score"] for c in all_candidates]
+        min_s, max_s = min(scores), max(scores)
+        if max_s > min_s:
+            for c in all_candidates:
+                c["score"] = (c["score"] - min_s) / (max_s - min_s)
+        else:
+            for c in all_candidates:
+                c["score"] = 1.0
 
     return _deduplicate_by_url(all_candidates)[:top_k]

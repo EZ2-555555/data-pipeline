@@ -233,6 +233,7 @@ export default function App() {
       try {
         const body = await res.json();
         if (body && typeof body.detail === "string") detail = body.detail;
+        else if (body && Array.isArray(body.detail) && body.detail.length > 0) detail = body.detail.map(e => e.msg || e.message || JSON.stringify(e)).join("; ");
         else if (body && typeof body.answer === "string") detail = body.answer;
       } catch { /* body was not JSON */ }
 

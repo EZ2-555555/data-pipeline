@@ -203,11 +203,16 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
         If citation grounding fails, the answer is replaced with an
         abstention message and 'hallucination_check.flagged' is True.
     """
+    # API Gateway HTTP API has a hard 30s integration timeout.
+    # Give retrieval a deadline so it can skip expensive steps (cross-encoder)
+    # and leave enough time for LLM generation.
+    _request_deadline = time.time() + 25  # 25s budget (5s safety margin)
+
     retrieval_start = time.perf_counter()
     if mode == "baseline":
         results = baseline_retrieve(query)
     else:
-        results = hybrid_retrieve(query, sources=sources)
+        results = hybrid_retrieve(query, sources=sources, _deadline=_request_deadline)
     retrieval_s = time.perf_counter() - retrieval_start
     logger.info("Retrieval completed in %.3fs (mode=%s)", retrieval_s, mode)
 
@@ -225,7 +230,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
     if _check_budget_exceeded():
         return {
             "answer": BUDGET_HALT_MESSAGE,
-            "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", "")} for r in results],
+            "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", ""), "score": r.get("score", 0), "snippet": r.get("chunk_text", ""), "published_at": str(r["published_at"]) if r.get("published_at") else None} for r in results],
             "mode": mode,
             "budget_halted": True,
             "hallucination_check": {"grounded": True, "flagged": False},
@@ -240,7 +245,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
         logger.error("LLM generation failed (%s), falling back to retrieval-only", exc)
         return {
             "answer": LLM_FALLBACK_MESSAGE,
-            "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", ""), "score": r["score"], "chunk_text": r["chunk_text"]} for r in results],
+            "sources": [{"title": r["title"], "source": r["source"], "url": r.get("url", ""), "score": r["score"], "snippet": r["chunk_text"], "published_at": str(r["published_at"]) if r.get("published_at") else None} for r in results],
             "mode": mode,
             "llm_fallback": True,
             "llm_error": str(exc),
@@ -276,7 +281,7 @@ def ask(query: str, mode: str = "hybrid", sources: list[str] | None = None) -> d
     return {
         "answer": answer,
         "sources": [
-            {"title": r["title"], "source": r["source"], "url": r["url"], "score": r["score"], "chunk_text": r["chunk_text"]}
+            {"title": r["title"], "source": r["source"], "url": r["url"], "score": r["score"], "snippet": r["chunk_text"], "published_at": str(r["published_at"]) if r.get("published_at") else None}
             for r in results
         ],
         "mode": mode,

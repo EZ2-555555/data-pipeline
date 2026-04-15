@@ -376,7 +376,7 @@ Resources:
       ImageConfig:
         Command: ["src.api.main.handler"]
       Description: FastAPI RAG endpoint served via Mangum
-      MemorySize: 1024
+      MemorySize: 2048
       Timeout: 120
       Role: !GetAtt LambdaExecutionRole.Arn
       Events:
@@ -392,6 +392,12 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /
             Method: ANY
+        WarmupPing:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            Description: Keep RAG Lambda warm to avoid cold-start 503s
+            Input: '{"httpMethod":"WARMUP"}'
 
   # ============================
   # Lambda — Health Check
