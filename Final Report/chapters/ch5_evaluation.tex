@@ -195,7 +195,7 @@ To demonstrate that the drift detection mechanism (Section~\ref{sec:drift}) corr
 \subsection{Monthly Cost Projection}
 \label{sec:cost_projection}
 
-Cost feasibility is validated by measuring per-query token consumption (prompt + completion) during the evaluation phase and projecting monthly costs for three workload scenarios: 50, 100, and 200 queries/day. The projection includes LLM inference costs (Groq free tier: 500{,}000 tokens/day; Bedrock: pay-per-token) and AWS infrastructure (RDS db.t3.micro, Lambda, S3, SQS within free-tier ceilings). A feasibility assessment flags whether any scenario exceeds the USD~15/month budget target.
+Cost feasibility is validated by measuring per-query token consumption (prompt + completion) during the evaluation phase and projecting monthly costs for three workload scenarios: 50, 100, and 200 queries/day. The design-time budget target of USD~15/month at 1,500 queries/month (Section~\ref{sec:method_rationale}) corresponds to the 50~queries/day scenario; the 100 and 200~queries/day scenarios are included to characterise cost scaling beyond the design threshold. The projection includes LLM inference costs (Groq free tier: 500{,}000 tokens/day; Bedrock: pay-per-token) and AWS infrastructure (RDS db.t3.micro, Lambda, S3, SQS within free-tier ceilings). A feasibility assessment flags whether any scenario exceeds the USD~15/month budget target.
 
 \begin{table}[H]
 \caption{Summary of Evaluation Metrics and Targets.}
@@ -327,12 +327,12 @@ Figure~\ref{fig:viz_latency_cdf} presents the cumulative distribution of latenci
 \label{fig:viz_latency_cdf}
 \end{figure}
 
-Figure~\ref{fig:viz_per_query} shows per-query metric scatter, plotting composite scores against per-query latency observations for all 50 evaluations. Points are colored by query type (research\_trend, tool\_technology, comparative) to reveal potential category-specific performance patterns.
+Figure~\ref{fig:viz_per_query} shows per-query metric scatter, plotting citation grounding ratio against per-query latency observations for all 50 evaluations. Points are colored by query type (research\_trend, tool\_technology, comparative) to reveal potential category-specific performance patterns.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.82\textwidth]{per_query_scatter.png}
-\caption{Scatter: composite score vs. latency.}
+\caption{Scatter: citation grounding ratio vs. latency.}
 \label{fig:viz_per_query}
 \end{figure}
 
