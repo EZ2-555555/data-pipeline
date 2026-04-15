@@ -76,7 +76,7 @@ Globals:
         SQS_ENABLED: "true"
         SQS_QUEUE_URL: !Ref IngestionQueue
         CLOUDWATCH_ENABLED: "true"
-        CITATION_GROUNDING_THRESHOLD: "0.5"
+        CITATION_GROUNDING_THRESHOLD: "0.25"
         BUDGET_HALT_ENABLED: "true"
         MONTHLY_BUDGET_USD: !Ref MonthlyBudgetUSD
         ALLOWED_ORIGINS: !Sub "https://${FrontendBucket}.s3.${AWS::Region}.amazonaws.com"

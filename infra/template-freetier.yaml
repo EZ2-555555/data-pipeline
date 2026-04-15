@@ -147,7 +147,7 @@ Globals:
         SQS_ENABLED: "true"
         SQS_QUEUE_URL: !Ref IngestionQueue
         CLOUDWATCH_ENABLED: "true"
-        CITATION_GROUNDING_THRESHOLD: "0.5"
+        CITATION_GROUNDING_THRESHOLD: "0.25"
         BUDGET_HALT_ENABLED: "false"
         ALLOWED_ORIGINS: "*"
 
@@ -217,6 +217,11 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "arn:aws:logs:*:*:*"
+              # Cost Explorer — budget guard
+              - Effect: Allow
+                Action:
+                  - ce:GetCostAndUsage
+                Resource: "*"
 
   # ============================
   # Security Group for RDS

@@ -80,7 +80,6 @@ const IconCompare = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="
 const IconNew = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const IconClear = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 const IconExternal = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
-const IconChevron = ({ up }) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={up ? { transform: "rotate(180deg)" } : {}}><polyline points="6 9 12 15 18 9"/></svg>;
 const IconSidebar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>;
 const IconSearch = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
 const IconDash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>;
@@ -89,7 +88,6 @@ const IconLab = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none
 
 /* -- Source card with expandable snippet -- */
 function SourceCard({ s, i }) {
-  const [expanded, setExpanded] = useState(false);
   const badge = SOURCE_BADGES[s.source] || { label: s.source, bg: "#777" };
   const scorePct = (s.score * 100).toFixed(1);
   return (
@@ -106,12 +104,10 @@ function SourceCard({ s, i }) {
             <span className="source-score">{scorePct}%</span>
           </div>
           <div className="source-btns">
-            {s.snippet && <button className="source-tiny-btn" onClick={() => setExpanded(!expanded)} aria-label="Toggle snippet" title="Preview"><IconChevron up={expanded} /></button>}
             <a href={s.url} target="_blank" rel="noopener noreferrer" className="source-tiny-btn" aria-label="Open source" title="Open original"><IconExternal /></a>
           </div>
         </div>
       </div>
-      {expanded && s.snippet && <div className="source-snippet">{s.snippet}</div>}
     </li>
   );
 }
@@ -263,7 +259,7 @@ export default function App() {
     try {
       const data = await doFetch(query, mode, controller.signal);
       setResult(data);
-      const entry = { id: Date.now(), query: query.trim(), mode, answer: data.answer, sources: data.sources?.length || 0, ts: new Date().toISOString(), status: "success" };
+      const entry = { id: Date.now(), query: query.trim(), mode, result: data, ts: new Date().toISOString(), status: "success" };
       const updated = [entry, ...history.filter(h => h.query !== query.trim())].slice(0, 50);
       setHistory(updated);
       saveHistory(updated);
@@ -272,7 +268,7 @@ export default function App() {
         setCancelled(true);
       } else {
         setError(err.message);
-        const entry = { id: Date.now(), query: query.trim(), mode, answer: null, sources: 0, ts: new Date().toISOString(), status: "failed" };
+        const entry = { id: Date.now(), query: query.trim(), mode, result: null, ts: new Date().toISOString(), status: "failed" };
         const updated = [entry, ...history].slice(0, 50);
         setHistory(updated);
         saveHistory(updated);
@@ -326,7 +322,8 @@ export default function App() {
 
   function handleHistoryClick(h) {
     setQuery(h.query); setMode(h.mode); setPage("main");
-    setResult(null); setError(null); setCancelled(false);
+    setError(null); setCancelled(false);
+    setResult(h.result || null);
   }
 
   function handleClearHistory() { setHistory([]); saveHistory([]); }

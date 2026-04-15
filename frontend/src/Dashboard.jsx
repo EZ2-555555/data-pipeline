@@ -121,16 +121,17 @@ function useVisible(threshold = 0.18) {
 }
 
 function AnimatedNumber({ value, duration = 1200 }) {
-  const [display, setDisplay] = useState("0");
+  const str = String(value);
+  const isFloat = str.includes(".");
+  const isPlus = str.startsWith("+");
+  const clean = str.replace(/[^0-9.]/g, "");
+  const target = parseFloat(clean);
+  const isValid = !isNaN(target);
+
+  const [display, setDisplay] = useState(isValid ? "0" : str);
   const [ref, vis] = useVisible(0.3);
   useEffect(() => {
-    if (!vis) return;
-    const str = String(value);
-    const isFloat = str.includes(".");
-    const isPlus = str.startsWith("+");
-    const clean = str.replace(/[^0-9.]/g, "");
-    const target = parseFloat(clean);
-    if (isNaN(target)) { setDisplay(str); return; }
+    if (!vis || !isValid) return;
     let rafId;
     const start = performance.now();
     const step = (now) => {
@@ -145,7 +146,7 @@ function AnimatedNumber({ value, duration = 1200 }) {
     };
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
-  }, [vis, value, duration]);
+  }, [vis, value, duration, isValid, isFloat, isPlus, str, target]);
   return <span ref={ref}>{display}</span>;
 }
 
