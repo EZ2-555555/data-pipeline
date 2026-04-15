@@ -94,10 +94,10 @@ The TechPulse architecture is designed in explicit alignment with the AWS Well-A
 \midrule
 \textbf{Operational Excellence} & Automated ingestion via EventBridge (6-hour cloud cycle; per-source intervals in Table~\ref{tab:data_sources}); CI/CD pipeline using GitHub Actions and SAM; CloudWatch logging, custom metrics, and health-check Lambda (5-minute interval) \\[4pt]
 \textbf{Security} & Controlled API access via Amazon API Gateway with CORS; rate limiting via slowapi; all services managed within AWS default VPC; no direct model invocation from the frontend \\[4pt]
-\textbf{Reliability} & Decoupled ingestion and embedding pipelines via SQS; Dead Letter Queue for failure recovery and replay with 14-day retention; bounded retry logic with exponential backoff for LLM invocations; automatic LLM backend fallback chain \\[4pt]
+\textbf{Reliability} & Decoupled ingestion and embedding pipelines via SQS; Dead Letter Queue for failure recovery and replay with 14-day retention; automatic LLM backend fallback chain (zero per-backend retries; fallback to next tier provides redundancy within the 30\,s API Gateway timeout); request-level deadline budget with adaptive cross-encoder skip \\[4pt]
 \textbf{Performance Efficiency} & Serverless Lambda scaling; lightweight MiniLM embedding model (384-dim); metadata pre-filtering reduces vector search scope; HNSW index for approximate nearest-neighbor search \\[4pt]
 \textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; Groq free-tier inference as primary backend (500k tokens/day); Amazon Bedrock available in Free Tier; db.t3.micro RDS instance \\[4pt]
-\textbf{Sustainability} & Event-driven processing avoids idle compute; SQS decoupling prevents over-provisioning; right-sized Lambda memory allocations (512MB--1024MB) \\
+\textbf{Sustainability} & Event-driven processing avoids idle compute; SQS decoupling prevents over-provisioning; right-sized Lambda memory allocations (512MB--2048MB depending on workload); 5-minute warmup pings to keep critical Lambda functions warm \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -126,7 +126,7 @@ RSS/Atom Feeds & Batch & Curated technology journalism (10 feeds) & Every 30 min
 
 The frequencies in Table~\ref{tab:data_sources} reflect the local scheduler (\texttt{scheduler.py}), which provides fine-grained per-source intervals. On AWS, a single EventBridge rule triggers the ingestion Lambda every 6 hours, executing all five sources in one invocation.
 
-The combination provides complementary temporal and authority profiles: ArXiv contributes rigorously authored research with stable identifiers; Hacker News contributes practitioner signals and community-curated trending discussions; DEV.to provides developer-focused tutorials and implementation insights; GitHub Trending captures emerging open-source tools and frameworks; and curated RSS feeds from outlets including Ars Technica, TechCrunch, Wired, IEEE Spectrum, and MIT News provide technology journalism coverage.
+The combination provides complementary temporal and authority profiles: ArXiv contributes rigorously authored research with stable identifiers; Hacker News contributes practitioner signals and community-curated trending discussions; DEV.to provides developer-focused tutorials and implementation insights; GitHub Trending captures emerging open-source tools and frameworks; and curated RSS feeds from outlets including Ars Technica, TechCrunch, Wired, IEEE Spectrum, and MIT News provide technology journalism coverage. Incoming source values are validated at the API boundary against \texttt{VALID\_SOURCES = \{arxiv, hn, github, devto, rss\}}. The preprocessing pipeline also applies approximately 110 ecosystem-specific domain stopwords (covering terms such as ``model'', ``framework'', ``training'', ``evaluation'') that are too prevalent in the technology corpus to carry discriminative retrieval or keyword-extraction value.
 
 \section{Data Engineering Pipeline}
 \label{sec:pipeline}
@@ -370,6 +370,18 @@ The implemented hybrid retrieval pipeline combines vector similarity, full-text 
 \label{fig:retrieval_pipeline}
 \end{figure}
 
+\subsubsection{Request Deadline and Adaptive Cross-Encoder Skip}
+
+The API Gateway HTTP API imposes a hard 30-second integration timeout. To ensure the full RAG pipeline (retrieval + LLM generation) completes within this budget, a 25-second request deadline is set at the start of each query (\texttt{\_request\_deadline = time.time() + 25}). This deadline is passed to the hybrid retrieval function, which monitors remaining time before invoking the cross-encoder reranking stage. If fewer than 5 seconds remain when cross-encoder execution would begin, the stage is skipped entirely and the RRF-fused scores are returned directly---preserving enough time for LLM generation. This adaptive behavior prevents gateway timeouts on queries with unusually slow retrieval (e.g., large BM25 corpus scans or PostgreSQL connection pool contention).
+
+\subsubsection{Score Normalization}
+
+Two normalization strategies are applied depending on the pipeline path. When the cross-encoder executes, raw logit scores are transformed via \textbf{sigmoid normalization} ($\sigma(x) = 1/(1 + e^{-x})$) to map the unbounded logit range ($-\infty, +\infty$) into $[0, 1]$ for consistent display and ranking. When the cross-encoder is skipped (deadline or failure), \textbf{min-max normalization} is applied to the RRF fusion scores to produce the same $[0, 1]$ output range. Both strategies ensure that source confidence scores displayed to the user are interpretable percentages regardless of the retrieval path taken.
+
+\subsubsection{Connection Pool Resilience}
+
+The retrieval layer wraps database queries in a retry mechanism that catches \texttt{psycopg2.InterfaceError}, \texttt{psycopg2.OperationalError}, and \texttt{psycopg2.pool.PoolError}. On transient connection failures (e.g., pool exhaustion under concurrent requests), the system discards the failed connection, acquires a fresh one from the pool, and retries the query once before propagating the error. This prevents intermittent PostgreSQL connection drops from surfacing as user-visible failures.
+
 \section{Storage Architecture (Medallion Layout)}
 \label{sec:storage}
 
@@ -490,7 +502,7 @@ INSTRUCTION:
 Provide a concise answer and cite supporting sources.
 \end{lstlisting}
 
-If retrieval returns insufficient evidence or if the citation grounding check fails, the system returns an abstention response rather than generating unsupported content.
+If retrieval returns insufficient evidence or if the citation grounding check fails, the system returns an abstention response rather than generating unsupported content. Three distinct fallback messages are defined: (1)~\texttt{ABSTENTION\_MESSAGE} when grounding verification fails (``The system could not produce a sufficiently grounded response\ldots''); (2)~\texttt{BUDGET\_HALT\_MESSAGE} when the runtime budget guard (\texttt{\_check\_budget\_exceeded()}) detects that monthly Cost Explorer spend has reached the configured threshold, halting LLM invocation while still returning retrieval results; and (3)~\texttt{LLM\_FALLBACK\_MESSAGE} when all backends in the fallback chain are exhausted (``The language model is temporarily unavailable\ldots'').
 
 \section{LLM Backend Fallback Chain}
 \label{sec:llm_fallback}
@@ -513,13 +525,15 @@ To ensure generation availability across diverse deployment environments, TechPu
 \end{tabular}
 \end{table}
 
-All four backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with bounded retry logic (4 retries with exponential backoff) before cascading to the next tier. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
+All four backends produce responses compatible with the same structured prompt template, ensuring that evaluation results remain comparable across backends. Each backend is configured with zero per-backend retries; instead, the fallback chain itself provides redundancy by cascading immediately to the next tier on failure. This design is driven by the API Gateway HTTP API's hard 30-second integration timeout: a single Groq timeout (15\,s) plus one retry (15\,s) would already exhaust the budget before reaching any fallback. By eliminating retries and relying on the fallback chain, the system maximizes the probability of returning a generated answer within the timeout window. The Bedrock backend in particular enforces its timeout via \texttt{botocore.Config(read\_timeout=15, connect\_timeout=5, retries=\{"max\_attempts": 0\})}, ensuring that a slow AWS endpoint cannot silently consume the remaining deadline. If all backends fail, the system degrades gracefully by returning a retrieval-only summary constructed from the top-$k$ documents without generative expansion.
 
 % ---- TikZ: LLM Backend Fallback Chain Flowchart ----
 \begin{figure}[H]
 \centering
 \resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=0.6cm and 2.0cm, font=\small, every path/.style={thick}]
+\begin{tikzpicture}[node distance=0.6cm and 2.0cm, font=\small, every path/.style={thick},
+                     tier/.style={rectangle, rounded corners=4pt, minimum width=2.8cm,
+                                  minimum height=0.7cm, align=center, text width=2.6cm}]
 
 % Entry node
 \node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
@@ -527,40 +541,35 @@ All four backends produce responses compatible with the same structured prompt t
   (query) {Query Received};
 
 % Tier 1: Groq
-\node[rectangle, draw=awsorange, fill=awslightorange, rounded corners=4pt,
-      minimum width=2.8cm, minimum height=0.7cm, below=0.8cm of query]
+\node[tier, draw=awsorange, fill=awslightorange, below=0.8cm of query]
   (groq) {1. Groq (Primary)\\Llama 3.1 8B};
 
 % Retry logic (implicit, shown in label)
 \draw[parrow] (query) -- (groq);
 \draw[-{Stealth}, thick, dashed, color=awsorange!70]
   ([xshift=1.4cm]groq.east) arc (0:-90:0.8cm)
-  node[right, font=\scriptsize, color=awsorange!70] {retry (4x)};
+  node[right, font=\scriptsize, color=awsorange!70] {fallback};
 
 % Tier 2: Bedrock (fork on Groq failure)
-\node[rectangle, draw=awspurple, fill=awslightpurple, rounded corners=4pt,
-      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of groq]
+\node[tier, draw=awspurple, fill=awslightpurple, right=2.0cm of groq]
   (bedrock) {2. Bedrock (Nova)\\AWS Free Tier};
 \draw[parrow, color=propred!80] (groq.east) -- (bedrock.west)
   node[above, font=\scriptsize, color=propred!80] {fail};
 
 % Tier 3: Ollama (fork on Bedrock failure)
-\node[rectangle, draw=awsgreen, fill=awslightgreen, rounded corners=4pt,
-      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of bedrock]
+\node[tier, draw=awsgreen, fill=awslightgreen, right=2.0cm of bedrock]
   (ollama) {3. Ollama (Local)\\Inference API};
 \draw[parrow, color=propred!80] (bedrock.east) -- (ollama.west)
   node[above, font=\scriptsize, color=propred!80] {fail};
 
 % Tier 4: HuggingFace (fork on Ollama failure)
-\node[rectangle, draw=propblue!70, fill=propblue!20, rounded corners=4pt,
-      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of ollama]
+\node[tier, draw=propblue!70, fill=propblue!20, right=2.0cm of ollama]
   (hf) {4. HuggingFace\\Mistral-7B-Instruct};
 \draw[parrow, color=propred!80] (ollama.east) -- (hf.west)
   node[above, font=\scriptsize, color=propred!80] {fail};
 
 % Fallback (all fail)
-\node[rectangle, draw=propred!80, fill=propred!20, rounded corners=4pt,
-      minimum width=2.8cm, minimum height=0.7cm, right=2.0cm of hf]
+\node[tier, draw=propred!80, fill=propred!20, right=2.0cm of hf]
   (fallback) {Fallback:\\Retrieval-Only};
 \draw[parrow, color=propred!80] (hf.east) -- (fallback.west)
   node[above, font=\scriptsize, color=propred!80] {all fail};
@@ -568,7 +577,7 @@ All four backends produce responses compatible with the same structured prompt t
 % Success paths (arcs returning downward from each backend)
 \node[rectangle, draw=awsblue, fill=awslightblue, rounded corners=4pt,
       minimum width=3.0cm, minimum height=0.7cm, below=1.2cm of bedrock,
-      xshift=1.0cm]
+      xshift=1.0cm, align=center, text width=2.8cm]
   (result) {Response Sent\\(with grounded citation)};
 
 % Success arrows from each tier
@@ -654,15 +663,15 @@ Generation is performed through the configured LLM backend with the following pa
 \midrule
 Max Output Tokens & 300 & Cost control \\
 Temperature & 0.2 & Reduce hallucination risk \\
-Timeout & 300 seconds (Ollama) / 60 seconds (Groq, HuggingFace) & Backend-appropriate limits \\
-Retry Attempts & 4 & Transient failure handling \\
-Backoff Base & 3 seconds & Exponential backoff \\
+Timeout & 15\,s (Groq) / 20\,s (Ollama, HuggingFace) / 15\,s read + 5\,s connect (Bedrock) & Tight budgets within 30\,s API Gateway limit \\
+Retry Attempts & 0 (fallback chain provides redundancy) & Single attempt per backend; cascade on failure \\
+Backoff Base & 1\,s (unused; retained for future configuration) & ---  \\
 Context Window & 128k tokens (Groq, Bedrock) / 4096 tokens (Ollama) & Model-appropriate context \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-If all LLM backends fail after exhausting retries and fallback chains, the system degrades gracefully by returning a retrieval-only summary and logging the error to CloudWatch.
+If all LLM backends fail after exhausting the fallback chain, the system degrades gracefully by returning a retrieval-only summary with the fallback message ``The language model is temporarily unavailable. Below are the most relevant sources retrieved for your query.'' and logging the error to CloudWatch.
 
 \subsection{Drift Detection and Remediation}
 \label{sec:drift}
@@ -727,7 +736,7 @@ Figure~\ref{fig:aws_deploy} presents the AWS cloud deployment topology, showing 
 \section{User Interface}
 \label{sec:ui}
 
-The user interface is implemented as a lightweight React single-page application. It provides natural language query submission, structured response rendering with citation display, and retrieval metadata transparency. All responses are constrained through the RAG pipeline; direct model invocation is not permitted. When retrieval evidence is insufficient or hallucination is detected, the system returns an explicit fail-safe abstention message.
+The user interface is implemented as a lightweight React single-page application. It provides natural language query submission, structured response rendering with citation display, and retrieval metadata transparency. All responses are constrained through the RAG pipeline; direct model invocation is not permitted. When retrieval evidence is insufficient or hallucination is detected, the system returns an explicit fail-safe abstention message. The sidebar maintains a recent-query history backed by browser \texttt{localStorage}; each history entry persists the full result object (answer, sources, metadata), enabling instant restoration of previous answers without re-issuing the API call.
 
 \medskip
 \noindent This chapter described the complete system architecture: the six-layer model, data engineering pipeline, document state lifecycle, preprocessing, storage schema, LLM fallback chain, drift detection, and cloud deployment topology. Chapter~5 presents the evaluation framework designed to measure retrieval and generation quality.

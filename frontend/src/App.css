@@ -856,7 +856,6 @@ body::before {
   border-color: rgba(0,0,0,0.15);
   color: var(--text);
 }
-.action-btn.copied { color: #16a34a; border-color: rgba(22,163,74,0.3); }
 .action-btn.compare:hover { color: var(--accent-solid); border-color: rgba(232,84,46,0.3); }
 
 .abstention-hint {
@@ -1031,8 +1030,8 @@ body::before {
 .compare-panel {
   background: var(--surface-solid);
   border-radius: 20px;
-  width: 100%;
-  max-width: 960px;
+  width: 92vw;
+  max-width: 1280px;
   max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 25px 60px rgba(0,0,0,0.2);

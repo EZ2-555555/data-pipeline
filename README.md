@@ -109,8 +109,8 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 <tr><td>
 
 **Generation & Safety**
-- Multi-backend LLM fallback: Groq → Bedrock → Ollama → HuggingFace
-- LLM retry with exponential backoff (4 retries, 3s base)
+- Multi-backend LLM fallback (Groq ↔ Bedrock, Ollama → Groq, HF → Groq)
+- Zero per-backend retries; single-fallback chain stays within 30s API GW limit
 - 3-layer hallucination verification
 - Structured `[Source N]` citations with grounding check
 - Budget guard — halts when monthly spend ≥ threshold
@@ -123,7 +123,7 @@ The system **runs locally via Docker Compose** and is **deployed to AWS via GitH
 - Deep health checks (DB, S3, SQS, LLM)
 - Retrieval quality drift detection (dual-criteria: 10% threshold + Shewhart 3σ)
 - Per-query token & cost tracking via tiktoken
-- API rate limiting (10 req/min per IP)
+- API rate limiting (`/ask` 10 req/min, `/drift` 2 req/min per IP)
 - Connection pooling (1–25 connections)
 
 </td></tr>
@@ -201,7 +201,7 @@ Pipeline (normalise → chunk [RAW→PROCESSED] → MiniLM embed [→EMBEDDED] �
 Retrieval (metadata filter → vector + BM25 → weighted RRF → cross-encoder reranking → top-k)
     │
     ▼
-RAG Orchestrator (budget guard → build context → structured prompt → LLM [retry] → hallucination check → token cost)
+RAG Orchestrator (budget guard → build context → structured prompt → LLM [fallback chain] → hallucination check → token cost)
     │
     ▼
 FastAPI (/ask + /health + /drift) → CloudWatch metrics → React Frontend
@@ -582,7 +582,7 @@ pytest tests/ -v --cov=src --cov-report=term-missing           # unit tests + co
 - [x] 5-source data ingestion pipeline (ArXiv, HN, DEV.to, GitHub, RSS) with SHA-256 deduplication
 - [x] Token-based chunking + fastembed MiniLM embedding (ONNX — no PyTorch)
 - [x] Hybrid retrieval: pgvector + BM25 + weighted RRF + cross-encoder reranking (ms-marco-MiniLM-L-6-v2)
-- [x] Multi-backend LLM fallback chain (Groq → Bedrock → Ollama → HuggingFace)
+- [x] Multi-backend LLM fallback chain (Groq ↔ Bedrock; Ollama/HF → Groq)
 - [x] FastAPI backend (`/health`, `/ask`, `/drift`, `/dashboard/insights`) + React frontend (Vite)
 - [x] Docker Compose (6 services) + container-image Lambda deployment via ECR
 - [x] S3 medallion data lake + SQS-decoupled ingestion pipeline

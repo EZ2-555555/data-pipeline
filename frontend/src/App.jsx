@@ -74,7 +74,6 @@ function FloatingTechIcons() {
 /* -- Inline SVG Icons -- */
 const IconSend = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>;
 const IconStop = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>;
-const IconCopy = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>;
 const IconRegen = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>;
 const IconCompare = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="8" height="18" rx="1"/><rect x="14" y="3" width="8" height="18" rx="1"/></svg>;
 const IconNew = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
@@ -169,7 +168,6 @@ export default function App() {
   const [error, setError] = useState(null);
   const [cancelled, setCancelled] = useState(false);
   const [heroIn, setHeroIn] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState(loadHistory);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try { return localStorage.getItem("tp_sidebar") !== "false"; } catch { return true; }
@@ -311,12 +309,6 @@ export default function App() {
         { answer: "Failed to load", mode: "baseline", sources: [] },
         { answer: "Failed to load", mode: "hybrid", sources: [] },
       ]);
-    }
-  }
-
-  function handleCopy() {
-    if (result?.answer) {
-      navigator.clipboard.writeText(result.answer).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
     }
   }
 
@@ -515,7 +507,6 @@ export default function App() {
                       {result.sources?.length > 0 && <span className="answer-grounding">Grounded in {result.sources.length} sources</span>}
                     </div>
                     <div className="answer-actions">
-                      <button className={`action-btn ${copied ? "copied" : ""}`} onClick={handleCopy} title="Copy answer"><IconCopy />{copied ? "Copied!" : "Copy"}</button>
                       <button className="action-btn" onClick={handleRegenerate} title="Regenerate"><IconRegen />Regenerate</button>
                       <button className="action-btn compare" onClick={handleCompare} title="Compare Baseline vs Hybrid"><IconCompare />Compare</button>
                     </div>

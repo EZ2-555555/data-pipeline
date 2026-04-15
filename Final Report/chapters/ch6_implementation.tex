@@ -171,7 +171,7 @@ Additionally, the drift detection module publishes \texttt{DriftMeanSimilarity} 
 Several non-obvious findings arose during implementation that informed the final design:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item \textbf{Lambda cold-start and MiniLM.} Initial cold-start delays of 8--12\,s were resolved by a lazy-initialized singleton and 1{,}024\,MB memory allocation, reducing model load to $<$2\,s on warm invocations.
+  \item \textbf{Lambda cold-start and MiniLM.} Initial cold-start delays of 8--12\,s were resolved by a lazy-initialized singleton and 2{,}048\,MB memory allocation for the RAG API function, reducing model load to $<$2\,s on warm invocations. A 5-minute EventBridge warmup ping (\texttt{ScheduleV2}) keeps the RAG Lambda warm by sending a lightweight \texttt{\{"httpMethod":"WARMUP"\}} event that the handler detects and returns immediately, avoiding cold-start latency for user-facing queries.
 
   \item \textbf{SHA-256 deduplication.} The \texttt{ON CONFLICT DO NOTHING} strategy proved fully effective; ArXiv produced the most hash collisions ($\sim$15--20\% per cycle) due to preprint updates.
 
@@ -204,16 +204,16 @@ TechPulse implements two ingestion orchestration modes: (1) AWS EventBridge-base
 The FastAPI application exposes four primary endpoints:
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \texttt{GET /health} --- Deep health check returning the status of database, S3, SQS, and configured LLM backend (response time: $<$2\,s).
+  \item \texttt{GET /health} --- Deep health check returning the status of database, S3, SQS, and configured LLM backend (response time: $<$2\,s). Returns HTTP~200 when all probes pass, or HTTP~503 with per-component status when any probe fails, enabling load-balancer and uptime-monitor integration.
   
-  \item \texttt{POST /ask} --- Main query endpoint. Accepts \texttt{query} (string), \texttt{mode} (``baseline'' or ``hybrid''), and optional \texttt{top\_k} (default 5). Returns ranked passages, generated answer (if LLM available), per-stage latencies, and citation metadata. Enforced rate limit: 20 requests/minute per IP address (SlowAPI).
+  \item \texttt{POST /ask} --- Main query endpoint. Accepts \texttt{query} (string, 1--2000 characters), \texttt{mode} (``baseline'' or ``hybrid''), and optional \texttt{sources} (list of up to 5 source types to filter, e.g., \texttt{["arxiv", "hn"]}). Source values are validated against \texttt{VALID\_SOURCES = \{arxiv, hn, github, devto, rss\}}; invalid values return HTTP~422 with the allowed set. Returns ranked passages, generated answer (if LLM available), and citation metadata. The top-$k$ parameter is configured server-side via the \texttt{TOP\_K} environment variable (default~5) and is not exposed as a client parameter to prevent abuse. Enforced rate limit: 10 requests/minute per IP address (SlowAPI).
   
-  \item \texttt{POST /drift} --- Manual drift detection trigger. Executes the nine simulated drift scenarios (corpus drift, query drift, embedding shift, LLM change, source imbalance, temporal shift, semantic shift, and label noise) and returns alerting verdicts.
+  \item \texttt{POST /drift} --- Manual drift detection trigger (rate-limited to 2 requests/minute). Executes the nine simulated drift scenarios (corpus drift, query drift, embedding shift, LLM change, source imbalance, temporal shift, semantic shift, and label noise) and returns alerting verdicts.
   
   \item \texttt{GET /dashboard/insights} --- Complex aggregation endpoint returning dashboard data: trending topics (keywords + growth metrics), 30-day mention time-series, source distribution, and live highlight snippets (top 5 by composite score). Optional query parameters: \texttt{days} (7--60, default 30) and \texttt{sources} (comma-separated filter over ARXIV, HN, DEVTO, GITHUB, RSS).
 \end{enumerate}
 
-Rate limiting is implemented via SlowAPI (dependency: \texttt{slowapi}) to provide basic DOS protection and fair resource allocation in shared environments. The 20 req/min limit on \texttt{/ask} is conservative; monitoring during evaluation runs showed peak throughput of $\sim$2--3 queries/min from a single user.
+Rate limiting is implemented via SlowAPI (dependency: \texttt{slowapi}) to provide basic DOS protection and fair resource allocation in shared environments. Per-endpoint limits are set according to computational cost: \texttt{/ask} at 10~req/min (each invocation incurs retrieval, optional cross-encoder reranking, and LLM generation) and \texttt{/drift} at 2~req/min (each invocation runs all nine drift scenarios against the full probe set). Monitoring during evaluation runs showed peak throughput of $\sim$2--3 queries/min from a single user.
 
 \section{Citation Grounding Verification}
 \label{sec:citation_grounding}
@@ -225,7 +225,7 @@ The three-layer hallucination verification strategy includes an output-layer cit
   
   \item \textbf{Citation detection:} Each sentence is checked for presence of citation markers matching the pattern \texttt{r'{\textbackslash}[Source{\textbackslash}s+{\textbackslash}d+{\textbackslash}]'}, where the captured index $N$ must satisfy $1 \leq N \leq \text{num\_sources}$.
   
-  \item \textbf{Citation ratio computation:} The fraction $R = \text{cited\_sentences} / \text{total\_sentences}$ is computed and compared against a configurable threshold \texttt{CITATION\_GROUNDING\_THRESHOLD} (default 0.0 for local dev, recommended $\geq 0.5$ for production with capable LLMs).
+  \item \textbf{Citation ratio computation:} The fraction $R = \text{cited\_sentences} / \text{total\_sentences}$ is computed and compared against a configurable threshold \texttt{CITATION\_GROUNDING\_THRESHOLD} (default 0.0 for local dev; deployed value 0.25 for production with Groq Llama~3.1 8B Instant, balancing citation enforcement against small-model compliance).
   
   \item \textbf{Hallucinated reference detection:} Invalid source indices (e.g., \texttt{[Source 12]} when only 5 sources are available) trigger a hallucination flag.
 \end{enumerate}
@@ -276,13 +276,17 @@ Figure~\ref{fig:demo_compare} shows the same query executed in both retrieval mo
 In addition to the primary search interface, a comprehensive dashboard provides real-time system monitoring and evaluation results visualization. The dashboard aggregates the following functional components:
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Trending Topic Analysis.} Displays the top-ranked keywords aggregated across all five data sources over a configurable time window (default: 30 days). For each topic, the interface reports weekly and monthly mention counts alongside source coverage metrics and growth percentage relative to monthly average.
+  \item \textbf{Trending Topic Analysis.} Displays the top-ranked keywords aggregated across all five data sources over a configurable time window (default: 30 days). Keyword extraction uses a 68-entry canonical phrase map (\texttt{PHRASE\_MAP}) that normalises variant spellings and compound terms to a single canonical form (e.g., ``large language model'' $\to$ ``LLM'', ``retrieval augmented generation'' $\to$ ``RAG''). Domain-specific stopwords ($\sim$110 terms) are excluded before frequency counting. For each topic, the interface reports weekly and monthly mention counts alongside source coverage metrics and growth percentage (relative change of daily mentions in the past~7 days versus the preceding period). Topics appearing in three or more distinct sources are flagged as \emph{cross-source buzz} signals.
+
+  \item \textbf{Research-vs-Practice Gap Detection.} A supplementary analytic layer classifies each trending keyword by its dominant source profile: \textit{Research-heavy} topics appear predominantly in ArXiv; \textit{Practice-heavy} topics appear predominantly in Hacker News, DEV.to, and GitHub. This gap metric highlights emerging technologies that have strong academic attention but limited practitioner adoption, or vice versa.
+
+  \item \textbf{Insight Template System.} To produce human-readable narrative summaries, trending keywords are mapped to one of seven trend categories (\texttt{rapid\_rise}, \texttt{steady\_rise}, \texttt{slight\_decline}, \texttt{steep\_decline}, \texttt{stable}, \texttt{research\_heavy}, \texttt{practice\_heavy}) with pre-authored natural-language templates. Template selection is deterministic per keyword via hash-based indexing (\texttt{hash(keyword) \% len(pool)}), ensuring consistent presentation across page refreshes.
 
   \item \textbf{Time-Series Trend Visualization.} A line chart tracking mention frequency for trending topics over 30 days, enabling stakeholders to observe temporal patterns in technology adoption.
 
   \item \textbf{Source Distribution Analytics.} A bar chart and tabular view showing document counts per ingestion source (ArXiv, Hacker News, DEV.to, GitHub, RSS), allowing corpus composition assessment.
 
-  \item \textbf{Live Insight Explorer.} An interactive panel enabling source-based filtering of daily highlights (top 5 items by composite score per ingestion cycle). Highlights are presented as clickable links that resolve to source-specific search interfaces: ArXiv API search, GitHub repository search, Hacker News Algolia index, DEV.to tagged search, or Bing News feed search. Resolution logic falls back to topic-aware search queries when direct URLs are unavailable.
+  \item \textbf{Live Insight Explorer.} An interactive panel enabling source-based filtering of daily highlights (top 5 items by composite score per ingestion cycle). Composite scoring combines keyword overlap with current trending terms, content length, and a source-type boost (ArXiv documents receive $+0.4$ to prioritise peer-reviewed research). Highlights are presented as clickable links that resolve to source-specific search interfaces: ArXiv API search, GitHub repository search, Hacker News Algolia index, DEV.to tagged search, or Bing News feed search. Resolution logic (\texttt{\_resolve\_highlight\_url()}) falls back to topic-aware search queries when direct URLs are unavailable.
 
   \item \textbf{Pipeline Architecture Diagram.} A sequential six-stage flowchart visualizing the ingestion-to-generation pipeline (Data Sources → Ingestion → Embedding → pgvector DB → Hybrid Retrieval → LLM Answer Generation), providing non-technical stakeholders with system architecture intuition.
 

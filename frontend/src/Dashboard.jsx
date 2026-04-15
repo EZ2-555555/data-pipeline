@@ -72,7 +72,7 @@ const KEY_STATS = [
   { num: "100",    label: "RAGAS Samples" },
   { num: "0.723",  label: "Hybrid Composite" },
   { num: "+4.7pp", label: "Composite Gain" },
-  { num: "$0",     label: "Monthly Infra Cost" },
+  { num: "$0.33",  label: "Monthly Infra Cost" },
 ];
 
 const TEAM_MEMBERS = [

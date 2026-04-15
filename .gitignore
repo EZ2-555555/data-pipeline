@@ -31,6 +31,23 @@ env/
 .DS_Store
 Thumbs.db
 
+# Backup files
+*.bak
+
+# Session / scratch files
+*.session.sql
+Update_*.md
+
+# One-off scripts & legacy docs (kept locally, not in repo)
+generate_cost_chart.py
+generate_latency_waterfall.py
+generate_tier3_diagrams.py
+verify_eval.py
+deploy-frontend.sh
+deploy-frontend.ps1
+techpulse_progress_report.tex
+techpulse_proposal_revised.tex
+
 # AWS SAM
 .aws-sam/
 .lambda-light-deps/
