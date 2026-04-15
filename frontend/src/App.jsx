@@ -216,13 +216,20 @@ export default function App() {
   }
 
   async function doFetch(q, m, signal) {
-    const res = await fetch(`${API_BASE}/ask`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: q.trim(), mode: m }),
-      signal,
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q.trim(), mode: m }),
+        signal,
+      });
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      throw new Error("Unable to reach the API. Check your network connection or try again shortly.");
+    }
+    if (res.status === 429) throw new Error("Rate limit exceeded. Please wait a moment and try again.");
+    if (!res.ok) throw new Error(`Server error (HTTP ${res.status}). Please try again.`);
     return res.json();
   }
 
@@ -342,7 +349,7 @@ export default function App() {
             <IconSearch /> Search
           </button>
           <button className={`sb-nav-item ${page === "dashboard" ? "active" : ""}`} onClick={() => setPage("dashboard")}>
-            <IconDash /> Dashboard
+            <IconDash /> Home
           </button>
         </nav>
 

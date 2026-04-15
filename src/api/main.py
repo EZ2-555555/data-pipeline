@@ -79,6 +79,178 @@ STOPWORDS = {
     "tech", "technology", "article", "articles", "com", "www", "org", "github",
 }
 
+# Generic ML/CS tokens that are too ambiguous as standalone topic labels
+DOMAIN_STOPWORDS = {
+    "model", "models", "code", "coding", "language", "languages", "large", "learning",
+    "built", "building", "method", "methods", "approach", "approaches", "framework",
+    "performance", "training", "task", "tasks", "evaluation", "implementation",
+    "feature", "features", "network", "networks", "layer", "layers", "input", "output",
+    "step", "steps", "process", "tool", "tools", "test", "testing", "example", "examples",
+    "application", "applications", "problem", "problems", "solution", "solutions",
+    "generate", "generation", "different", "specific", "general", "simple", "complex",
+    "design", "update", "state", "function", "type", "support", "service", "access",
+    "key", "value", "base", "level", "point", "structure", "token", "tokens",
+    "enable", "project", "projects", "release", "version", "introduces", "propose",
+    "proposed", "present", "existing", "ability", "technique", "techniques",
+}
+
+# Phrase patterns to recognise and merge (lowercased ngrams -> canonical label)
+PHRASE_MAP: dict[str, str] = {
+    # RAG
+    "retrieval augmented generation": "retrieval-augmented generation",
+    "retrieval-augmented generation": "retrieval-augmented generation",
+    "rag pipeline": "retrieval-augmented generation",
+    "rag pipelines": "retrieval-augmented generation",
+    "rag system": "retrieval-augmented generation",
+    "rag systems": "retrieval-augmented generation",
+    "rag framework": "retrieval-augmented generation",
+    # Vector DB
+    "vector database": "vector databases",
+    "vector databases": "vector databases",
+    "vector db": "vector databases",
+    "vector store": "vector databases",
+    "embedding store": "vector databases",
+    "pgvector": "vector databases",
+    "qdrant": "vector databases",
+    "pinecone": "vector databases",
+    "chromadb": "vector databases",
+    "chroma db": "vector databases",
+    "weaviate": "vector databases",
+    "milvus": "vector databases",
+    # Cross-encoder / reranking
+    "cross encoder": "cross-encoder reranking",
+    "cross-encoder": "cross-encoder reranking",
+    "reranking": "cross-encoder reranking",
+    "re-ranking": "cross-encoder reranking",
+    "reranker": "cross-encoder reranking",
+    # Prompt engineering
+    "prompt engineering": "prompt engineering",
+    "prompt tuning": "prompt engineering",
+    "prompt design": "prompt engineering",
+    "few-shot prompting": "prompt engineering",
+    "chain of thought": "prompt engineering",
+    "chain-of-thought": "prompt engineering",
+    # Agents
+    "llm agent": "LLM agents",
+    "llm agents": "LLM agents",
+    "agentic workflow": "LLM agents",
+    "agentic workflows": "LLM agents",
+    "agentic system": "LLM agents",
+    "ai agent": "LLM agents",
+    "ai agents": "LLM agents",
+    "autonomous agent": "LLM agents",
+    "tool use": "LLM agents",
+    "function calling": "LLM agents",
+    # Knowledge graphs
+    "knowledge graph": "knowledge graphs",
+    "knowledge graphs": "knowledge graphs",
+    "graphrag": "knowledge graphs",
+    "graph rag": "knowledge graphs",
+    # Quantization
+    "model quantization": "model quantization",
+    "quantization": "model quantization",
+    "gguf": "model quantization",
+    "gptq": "model quantization",
+    # Fine-tuning
+    "fine tuning": "fine-tuning",
+    "fine-tuning": "fine-tuning",
+    "finetuning": "fine-tuning",
+    "lora": "fine-tuning",
+    "qlora": "fine-tuning",
+    "peft": "fine-tuning",
+    # Evaluation
+    "llm evaluation": "LLM evaluation",
+    "model evaluation": "LLM evaluation",
+    "ragas": "LLM evaluation",
+    "faithfulness score": "LLM evaluation",
+    "hallucination detection": "LLM evaluation",
+    # Embeddings
+    "text embedding": "embedding models",
+    "embedding model": "embedding models",
+    "embedding models": "embedding models",
+    "sentence embedding": "embedding models",
+    "sentence transformer": "embedding models",
+    # Multimodal
+    "multimodal": "multimodal AI",
+    "multi-modal": "multimodal AI",
+    "vision language model": "multimodal AI",
+    "vision language": "multimodal AI",
+}
+
+# Insight templates keyed by trend direction and source composition
+_INSIGHT_TEMPLATES = {
+    "rapid_rise": [
+        "Rapid growth driven by broad multi-source adoption",
+        "Strong surge in mentions across research and practitioner channels",
+    ],
+    "steady_rise": [
+        "Steady growth reflecting sustained community interest",
+        "Consistent upward trend across tracked sources",
+    ],
+    "slight_decline": [
+        "Marginal cooling after a period of elevated activity",
+        "Slight dip likely due to topic maturation in the ecosystem",
+    ],
+    "steep_decline": [
+        "Declining as community focus shifts to newer approaches",
+        "Reduced mentions suggest consolidation phase",
+    ],
+    "stable": [
+        "Stable mention rate indicating established topic relevance",
+        "Consistent activity reflecting ongoing steady interest",
+    ],
+    "research_heavy": [
+        "Primarily research-driven activity from academic sources",
+    ],
+    "practice_heavy": [
+        "Developer-led trend with strong practitioner adoption",
+    ],
+}
+
+
+def _generate_insight(keyword: str, growth_pct: float, sources: list[str]) -> str:
+    """Generate a short interpretive insight for a topic highlight."""
+    research_sources = {"arxiv"}
+    practice_sources = {"devto", "github", "hn"}
+    src_set = set(sources)
+    research_count = len(src_set & research_sources)
+    practice_count = len(src_set & practice_sources)
+
+    if growth_pct > 8:
+        pool = _INSIGHT_TEMPLATES["rapid_rise"]
+    elif growth_pct > 1:
+        pool = _INSIGHT_TEMPLATES["steady_rise"]
+    elif growth_pct < -8:
+        pool = _INSIGHT_TEMPLATES["steep_decline"]
+    elif growth_pct < -1:
+        pool = _INSIGHT_TEMPLATES["slight_decline"]
+    else:
+        pool = _INSIGHT_TEMPLATES["stable"]
+
+    # Pick deterministically based on keyword hash
+    base = pool[hash(keyword) % len(pool)]
+
+    # Append source-driven qualifier
+    if research_count > 0 and practice_count == 0:
+        base += " (research-driven)"
+    elif practice_count >= 2 and research_count == 0:
+        base += " (practitioner-driven)"
+
+    return base
+
+
+def _find_top_source(keyword: str, source_keyword_docs: dict) -> tuple[str, int]:
+    """Find the source contributing the most mentions for a keyword."""
+    best_src, best_count, total = "", 0, 0
+    for src, counter in source_keyword_docs.items():
+        cnt = counter.get(keyword, 0)
+        total += cnt
+        if cnt > best_count:
+            best_count = cnt
+            best_src = src
+    pct = round((best_count / total) * 100) if total > 0 else 0
+    return best_src, pct
+
 
 def _resolve_highlight_url(source: str, title: str, raw_url: str) -> str:
     if raw_url and raw_url.startswith(("http://", "https://")):
@@ -98,21 +270,40 @@ def _resolve_highlight_url(source: str, title: str, raw_url: str) -> str:
 
 
 def _extract_keywords(text: str, max_terms: int = 24) -> list[str]:
-    """Extract normalized topical keywords from document text."""
+    """Extract normalized topical keywords from document text.
+
+    Prefers multi-word phrases (via PHRASE_MAP) over single tokens.
+    Filters out generic ML/CS terms that are poor standalone topic labels.
+    """
     if not text:
         return []
 
+    lower = text.lower()
+
     terms: list[str] = []
     seen: set[str] = set()
-    for token in TOKEN_RE.findall(text.lower()):
-        if token in STOPWORDS:
+
+    # Phase 1: extract known phrases (bigrams/trigrams from PHRASE_MAP)
+    for pattern, canonical in PHRASE_MAP.items():
+        if canonical in seen:
+            continue
+        if pattern in lower:
+            seen.add(canonical)
+            terms.append(canonical)
+            if len(terms) >= max_terms:
+                return terms
+
+    # Phase 2: single-token fallback (skip domain stopwords)
+    all_stops = STOPWORDS | DOMAIN_STOPWORDS
+    for token in TOKEN_RE.findall(lower):
+        if token in all_stops:
             continue
         if token.isdigit():
             continue
         if len(token) < 3 or len(token) > 32:
             continue
         norm = token[:-1] if token.endswith("s") and len(token) > 4 else token
-        if norm in STOPWORDS or norm in seen:
+        if norm in all_stops or norm in seen:
             continue
         seen.add(norm)
         terms.append(norm)
@@ -327,49 +518,88 @@ def dashboard_insights(days: int = 30, sources: str | None = None):
     ]
 
     # Build top-7 topic highlights from cross-source buzz + weekly keywords
+    # Prefer multi-word phrases; skip single generic tokens
     topic_highlights: list[dict] = []
     seen_kws: set[str] = set()
+
+    def _is_quality_topic(kw: str) -> bool:
+        """Return True if keyword is suitable as a dashboard topic label."""
+        if kw.lower() in DOMAIN_STOPWORDS or kw.lower() in STOPWORDS:
+            return False
+        # Prefer phrases (2+ words) but allow known single-word terms
+        if " " not in kw and "-" not in kw and len(kw) < 6:
+            return False
+        return True
+
+    def _add_topic(kw: str) -> bool:
+        if kw in seen_kws or not _is_quality_topic(kw):
+            return False
+        seen_kws.add(kw)
+        weekly = week_counter.get(kw, 0)
+        monthly = keyword_docs.get(kw, 0)
+        # growth = (this week daily rate) vs (prior 23-day daily rate)
+        prior_mentions = max(monthly - weekly, 0)
+        prior_days = max(days - 7, 1)
+        prior_daily = prior_mentions / prior_days if prior_mentions else 0
+        weekly_daily = weekly / 7 if weekly else 0
+        growth_pct = round(((weekly_daily - prior_daily) / prior_daily) * 100, 1) if prior_daily > 0 else 0.0
+        srcs = sorted(keyword_sources.get(kw, set()))
+        top_src, top_src_pct = _find_top_source(kw, source_keyword_docs)
+        topic_highlights.append({
+            "keyword": kw,
+            "weekly_mentions": weekly,
+            "monthly_mentions": monthly,
+            "source_coverage": len(srcs),
+            "sources": srcs,
+            "growth_pct": growth_pct,
+            "insight": _generate_insight(kw, growth_pct, srcs),
+            "top_source": top_src,
+            "top_source_pct": top_src_pct,
+        })
+        return True
+
+    # Pass 1: cross-source buzz (phrases first)
     for entry in cross_source_buzz:
         if len(topic_highlights) >= 7:
             break
-        kw = entry["keyword"]
-        if kw in seen_kws:
-            continue
-        seen_kws.add(kw)
-        weekly = week_counter.get(kw, 0)
-        monthly = keyword_docs.get(kw, 0)
-        # growth = weekly rate vs monthly avg daily rate
-        monthly_daily = monthly / 30 if monthly else 0
-        weekly_daily = weekly / 7 if weekly else 0
-        growth_pct = round(((weekly_daily - monthly_daily) / monthly_daily) * 100, 1) if monthly_daily > 0 else 0.0
-        topic_highlights.append({
-            "keyword": kw,
-            "weekly_mentions": weekly,
-            "monthly_mentions": monthly,
-            "source_coverage": len(keyword_sources.get(kw, set())),
-            "sources": sorted(keyword_sources.get(kw, set())),
-            "growth_pct": growth_pct,
-        })
+        _add_topic(entry["keyword"])
+
+    # Pass 2: weekly top keywords
     for entry in top_keywords_week:
         if len(topic_highlights) >= 7:
             break
-        kw = entry["keyword"]
-        if kw in seen_kws:
-            continue
-        seen_kws.add(kw)
-        weekly = week_counter.get(kw, 0)
-        monthly = keyword_docs.get(kw, 0)
-        monthly_daily = monthly / 30 if monthly else 0
-        weekly_daily = weekly / 7 if weekly else 0
-        growth_pct = round(((weekly_daily - monthly_daily) / monthly_daily) * 100, 1) if monthly_daily > 0 else 0.0
-        topic_highlights.append({
-            "keyword": kw,
-            "weekly_mentions": weekly,
-            "monthly_mentions": monthly,
-            "source_coverage": len(keyword_sources.get(kw, set())),
-            "sources": sorted(keyword_sources.get(kw, set())),
-            "growth_pct": growth_pct,
-        })
+        _add_topic(entry["keyword"])
+
+    # Pass 3: if still short, relax filter to allow any keyword with >= 2 sources
+    if len(topic_highlights) < 5:
+        candidates = sorted(keyword_docs.items(), key=lambda x: -x[1])
+        for kw, _ in candidates:
+            if len(topic_highlights) >= 7:
+                break
+            if kw in seen_kws:
+                continue
+            if len(keyword_sources.get(kw, set())) >= 2:
+                seen_kws.add(kw)
+                weekly = week_counter.get(kw, 0)
+                monthly = keyword_docs.get(kw, 0)
+                prior_mentions = max(monthly - weekly, 0)
+                prior_days = max(days - 7, 1)
+                prior_daily = prior_mentions / prior_days if prior_mentions else 0
+                weekly_daily = weekly / 7 if weekly else 0
+                growth_pct = round(((weekly_daily - prior_daily) / prior_daily) * 100, 1) if prior_daily > 0 else 0.0
+                srcs = sorted(keyword_sources.get(kw, set()))
+                top_src, top_src_pct = _find_top_source(kw, source_keyword_docs)
+                topic_highlights.append({
+                    "keyword": kw,
+                    "weekly_mentions": weekly,
+                    "monthly_mentions": monthly,
+                    "source_coverage": len(srcs),
+                    "sources": srcs,
+                    "growth_pct": growth_pct,
+                    "insight": _generate_insight(kw, growth_pct, srcs),
+                    "top_source": top_src,
+                    "top_source_pct": top_src_pct,
+                })
 
     # Keep backward-compat single field (first item or None)
     topic_highlight = topic_highlights[0] if topic_highlights else None

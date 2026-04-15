@@ -422,8 +422,18 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: !Ref Stage
-      # CORS handled by FastAPI CORSMiddleware — no API Gateway CORS needed
       Description: TechPulse HTTP API
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        MaxAge: 86400
 
   # ============================
   # SNS — Alert topic
