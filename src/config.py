@@ -135,7 +135,7 @@ class _Settings:
 
     @property
     def CITATION_GROUNDING_THRESHOLD(self) -> float:
-        return float(os.getenv("CITATION_GROUNDING_THRESHOLD", "0.0"))
+        return float(os.getenv("CITATION_GROUNDING_THRESHOLD", "0.25"))
 
     @property
     def LLM_MAX_TOKENS(self) -> int:

@@ -12,7 +12,9 @@ The core hypotheses under evaluation are stated formally as:
   \item \textbf{H\textsubscript{1}}: Hybrid retrieval achieves statistically higher mean context precision than baseline retrieval (one-sided Wilcoxon signed-rank test, $\alpha = 0.05$).
 \end{itemize}
 
-A secondary performance hypothesis requires that the hybrid retrieval pipeline does not exceed the p95 latency bound ($\tau = 2.0$~seconds for the retrieval stage) or the monthly cost ceiling (USD~15 at an assumed workload of 1,500 queries/month, i.e., USD~0.01 per query). The evaluation is designed to be informative regardless of outcome: if H\textsubscript{0} cannot be rejected, the study characterises the conditions under which hybrid and baseline converge---an empirically valuable finding given the widespread adoption of hybrid retrieval in production RAG systems without controlled comparative evidence. These hypotheses are tested through a controlled experiment comparing both configurations under identical corpus and embedding conditions.
+\noindent Secondary evaluation metrics (faithfulness, answer relevancy, and composite score) are analyzed descriptively and are not subject to formal hypothesis testing, serving to characterize the broader impact of hybrid retrieval beyond context precision alone.
+
+A secondary performance hypothesis requires that the hybrid retrieval pipeline does not exceed the p95 latency bound ($\tau = 2.0$~seconds for the retrieval stage; end-to-end latency including LLM generation may exceed this bound and is reported separately as an informational metric) or the monthly cost ceiling (USD~15 at an assumed workload of 1,500 queries/month, i.e., USD~0.01 per query). The evaluation is designed to be informative regardless of outcome: if H\textsubscript{0} cannot be rejected, the study characterises the conditions under which hybrid and baseline converge---an empirically valuable finding given the widespread adoption of hybrid retrieval in production RAG systems without controlled comparative evidence. These hypotheses are tested through a controlled experiment comparing both configurations under identical corpus and embedding conditions.
 
 \section{Why This Approach is Suitable}
 \label{sec:method_rationale}
@@ -24,7 +26,7 @@ Three considerations motivate the hybrid RAG approach. First, emerging technolog
 
 The engineering contribution of TechPulse lies not in any single component but in their integration into a coherent, cost-governed MLOps system. Specifically, four design decisions represent well-motivated engineering choices that distinguish this system from typical RAG prototypes.
 
-\textbf{True parallel hybrid retrieval with weighted fusion and cross-encoder reranking:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with weighted Reciprocal Rank Fusion (RRF; Cormack et al., 2009), where each signal receives a data-informed weight (vector~0.50, BM25~0.35, recency~0.15). A third recency signal is integrated as an additional RRF ranking. Following fusion, a lightweight cross-encoder (ms-marco-MiniLM-L-6-v2) reranks the top candidates to capture fine-grained query--passage interactions that embedding similarity alone cannot model (Nogueira \& Cho, 2019). A design-phase comparison against weighted $\alpha$/$\beta$/$\gamma$ linear reranking showed that linear scoring is sensitive to corpus composition and incurs prohibitive tail latency. In full evaluation, the linear configuration reached p95\,=\,25\,s, violating the retrieval-stage latency constraint ($\tau = 2.0$\,s), and was therefore not suitable for production deployment; the empirical evidence is documented in Section~\ref{sec:sensitivity}.
+\textbf{True parallel hybrid retrieval with weighted fusion and cross-encoder reranking:} The system performs two independent retrieval passes---cosine vector search (pgvector) and BM25 keyword search (BM25Okapi over the full indexed corpus)---and fuses their rankings with weighted Reciprocal Rank Fusion (RRF; Cormack et al., 2009), where each signal receives a data-informed weight (vector~0.50, BM25~0.35, recency~0.15). A third recency signal is integrated as an additional RRF ranking. Following fusion, a lightweight cross-encoder (ms-marco-MiniLM-L-6-v2) reranks the top candidates to capture fine-grained query--passage interactions that embedding similarity alone cannot model (Nogueira \& Cho, 2019). A design-phase comparison against weighted $\alpha$/$\beta$/$\gamma$ linear reranking showed that linear scoring is sensitive to corpus composition and incurs prohibitive tail latency. In full evaluation, the linear configuration reached p95\,=\,25\,s, violating the retrieval-stage latency constraint ($\tau = 2.0$\,s), and was therefore not suitable under the latency constraints of this system; the empirical evidence is documented in Section~\ref{sec:sensitivity}.
 
 \textbf{Unified vector--relational retrieval without dedicated infrastructure:} PostgreSQL with pgvector combines structured SQL metadata filtering and cosine vector search in a single managed database, eliminating the need for separate vector store infrastructure (Section~\ref{sec:storage}).
 
@@ -35,7 +37,7 @@ The engineering contribution of TechPulse lies not in any single component but i
 \subsection{Scope of Machine Learning Development}
 \label{sec:ml_scope}
 
-TechPulse does not train a foundation model from scratch. Instead, the machine learning contribution lies in the selection, integration, configuration, and controlled evaluation of pretrained components within a production-grade RAG pipeline. The system uses a pretrained sentence-transformer embedding model (\texttt{all-MiniLM-L6-v2}), a pretrained cross-encoder reranker (\texttt{ms-marco-MiniLM-L-6-v2}), and configurable LLM backends for answer generation. Model development is operationalised as comparative system design: baseline vector-only retrieval is contrasted against a hybrid configuration whose retrieval-stage parameters---RRF weights, candidate pool sizing, BM25 quality gate, recency decay, and cross-encoder integration---were tuned through a design-phase grid search and iterative ablation (Section~\ref{sec:sensitivity}). The project therefore addresses machine learning model development through model selection, retrieval-stage tuning, and empirical evaluation under deployment constraints, which is appropriate for a production-oriented RAG system in a cost-constrained academic setting. A conventional supervised training workflow, formal experiment tracker (e.g., MLflow), and model registry were outside the current prototype scope; these are identified as future work in Section~\ref{sec:future}.
+TechPulse does not train a foundation model from scratch. Instead, the machine learning contribution lies in the selection, integration, configuration, and controlled evaluation of pretrained components within a production-grade RAG pipeline. The system uses fastembed (ONNX Runtime) with the pretrained embedding model \texttt{sentence-transformers/all-MiniLM-L6-v2}, a pretrained cross-encoder reranker (\texttt{ms-marco-MiniLM-L-6-v2}), and configurable LLM backends for answer generation. Model development is operationalised as comparative system design: baseline vector-only retrieval is contrasted against a hybrid configuration whose retrieval-stage parameters---RRF weights, candidate pool sizing, BM25 quality gate, recency decay, and cross-encoder integration---were tuned through a design-phase grid search and iterative ablation (Section~\ref{sec:sensitivity}). The project therefore addresses machine learning model development through model selection, retrieval-stage tuning, and empirical evaluation under deployment constraints, which is appropriate for a production-oriented RAG system in a cost-constrained academic setting. A conventional supervised training workflow, formal experiment tracker (e.g., MLflow), and model registry were outside the current prototype scope; these are identified as future work in Section~\ref{sec:future}.
 
 \section{Baseline Retrieval Configuration}
 \label{sec:baseline}
@@ -67,6 +69,8 @@ The hybrid configuration introduces five refinement stages applied before genera
   \label{eq:bm25}
 \end{equation}
 
+Intuitively, BM25 prioritizes passages that contain query keywords frequently while down-weighting terms that are common across the corpus, providing strong lexical precision for exact or near-exact terminology matches.
+
 \noindent where $f(q_i, D)$ is the term frequency of $q_i$ in $D$, $|D|$ is the document length, $\text{avgdl}$ is the average document length across the corpus, and $k_1 = 1.5$, $b = 0.75$ are the BM25Okapi defaults. Crucially, IDF is computed over the \emph{full} indexed corpus ($N = 6{,}220$ chunks at evaluation time), not over the filtered candidate set---computing IDF over a small candidate pool would produce up to $6\times$ error in term weighting (observed empirically during development). The BM25 index is built once and cached at the module level with a 30-minute TTL, refreshed automatically to capture newly ingested documents.
 
 The same source-type and recency filters applied in Stage~1 are enforced on BM25 candidates in Python, ensuring both retrieval signals operate over an identical filtered corpus.
@@ -85,7 +89,9 @@ The same source-type and recency filters applied in Stage~1 are enforced on BM25
   \label{eq:weighted_rrf}
 \end{equation}
 
-The asymmetric weights reflect a domain-informed prior: semantic similarity (0.50) dominates because the AI/ML corpus has strong embedding coverage; BM25 (0.35) captures keyword matches missed by semantic embeddings; recency (0.15) is a weak signal to avoid promoting freshly-published but thin content over semantically richer articles. The weights were chosen based on internal ablation experiments (Ma et al., 2023; Lin, 2021).
+Intuitively, weighted RRF is robust because it fuses multiple ranked lists by position rather than raw score scale, so no single retrieval signal can dominate purely due to score calibration differences.
+
+The asymmetric weights reflect a domain-informed prior: semantic similarity (0.50) dominates because the AI/ML corpus has strong embedding coverage; BM25 (0.35) captures keyword matches missed by semantic embeddings; recency (0.15) is a weak signal to avoid promoting freshly-published but thin content over semantically richer articles. The weights were chosen based on internal ablation experiments conducted during design-phase tuning (Ma et al., 2023; Lin, 2021); detailed results are summarized in Section~\ref{sec:sensitivity}.
 
 \textbf{Stage 5 --- Cross-Encoder Reranking:} After RRF fusion and a post-fusion quality gate (bottom-quartile removal), the top candidates are reranked by a cross-encoder model (\texttt{ms-marco-MiniLM-L-6-v2}; Nogueira \& Cho, 2019). Unlike embedding-based similarity, cross-encoders jointly encode the query and passage, enabling them to capture fine-grained interactions such as negations, exact keyword positions, and partial overlap---distinctions invisible to independent embedding comparison. The cross-encoder is lazy-loaded once and cached for the process lifetime to avoid repeated model loading in serverless environments. This stage adds the final precision layer before URL deduplication and top-$k$ selection.
 
@@ -167,7 +173,7 @@ Figure~\ref{fig:retrieval_comparison} illustrates the three retrieval strategies
 
 \end{tikzpicture}%
 }
-\caption{Retrieval strategy comparison: baseline (vector-only) vs. hybrid with RRF fusion.}
+\caption{Retrieval strategy comparison: baseline (vector-only) vs. hybrid with RRF fusion. The figure illustrates the evolution of retrieval strategies and highlights the latency reduction achieved through RRF-based fusion (p95~2.44\,s) compared to earlier linear weighted reranking approaches (p95~25\,s).}
 \label{fig:retrieval_comparison}
 \end{figure}
 
@@ -183,6 +189,8 @@ TechPulse applies a three-layer verification approach to detect and flag potenti
 
   \item \textbf{Output layer --- Citation traceability:} At runtime, automated citation grounding verification analyzes each response sentence-by-sentence to compute a citation ratio---the fraction of sentences containing valid \texttt{[Source N]} references. Responses falling below the configurable citation grounding threshold are flagged as potentially hallucinated and replaced with an abstention message, with the original response preserved in metadata for review.
 \end{enumerate}
+
+\noindent This strategy reduces but does not eliminate hallucination risk, particularly under limited or noisy retrieval contexts where evidence coverage is insufficient.
 
 \section{Optimization Objective}
 \label{sec:optimization}
@@ -212,7 +220,8 @@ Table~\ref{tab:tools} summarizes the implemented tools and their justification. 
 Ingestion orchestration & AWS Lambda + EventBridge & Serverless, scheduled/event-driven, no cluster management \\
 Message queue & Amazon SQS + DLQ & Decouples ingestion from embedding; failure resilience \\
 Raw storage & Amazon S3 (medallion layout) & Cost-effective, durable, prefix-based lineage tracking \\
-Embedding model & MiniLM (sentence-transformers) & Low latency, 384-dim, serverless-compatible \\
+Embedding model & fastembed (ONNX Runtime; 
+\texttt{sentence-transformers/all-MiniLM-L6-v2}) & Low latency, 384-dim, no PyTorch dependency in Lambda container \\
 Vector + relational store & RDS PostgreSQL + pgvector & Unified hybrid retrieval; AWS Free Tier compatible \\
 Generative model & Groq (Llama 3.1 8B Instant, primary); Bedrock (Amazon Nova Micro, fallback); Ollama / HuggingFace (local fallbacks) & Auto-cascade fallback chain; Groq free-tier API available across all environments \\
 Frontend & React (S3 static hosting) & Lightweight, decoupled from backend \\

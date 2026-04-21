@@ -738,7 +738,7 @@ def run_sensitivity_analysis(queries: list[dict], best_config: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Phase 6: Statistical significance tests (professor feedback item #7)
+# Phase 4: Statistical significance tests (professor feedback item #7)
 # ---------------------------------------------------------------------------
 
 def compute_statistical_tests(raw_results: dict, ragas_scores: dict | None = None) -> dict:
@@ -872,7 +872,7 @@ def compute_statistical_tests(raw_results: dict, ragas_scores: dict | None = Non
 
 
 # ---------------------------------------------------------------------------
-# Phase 7: Drift detector validation (professor feedback item #10)
+# Phase 5: Drift detector validation (professor feedback item #10)
 # ---------------------------------------------------------------------------
 
 def run_drift_validation() -> dict:
@@ -1105,31 +1105,31 @@ def main():
     logger.info("Phase 3: Computing summary statistics…")
     summary = compute_summary(raw_results, ragas_scores)
 
-    # Phase 4 & 5: Grid search and sensitivity analysis are SKIPPED.
+    # Phases 4 & 5 (legacy grid search / sensitivity analysis) are SKIPPED.
     # The hybrid retriever now uses weighted RRF (vector=0.50, BM25=0.35,
     # recency=0.15) instead of the legacy α/β/γ linear combination, so
-    # the old α/β/γ sweeps are not applicable.
+    # the old α/β/γ sweeps are not applicable.  Renumbering continues from 4.
     from src.db.connection import close_pool
     close_pool()
-    logger.info("Phase 4-5: SKIPPED — weighted RRF replaces legacy α/β/γ tuning")
+    logger.info("Phases 4-5 (legacy grid search): SKIPPED — weighted RRF replaces α/β/γ tuning")
 
-    # Phase 6: Statistical significance tests (paired baseline vs hybrid)
-    logger.info("Phase 6: Statistical significance tests…")
+    # Phase 4: Statistical significance tests (paired baseline vs hybrid)
+    logger.info("Phase 4: Statistical significance tests…")
     stat_tests = compute_statistical_tests(raw_results, ragas_scores)
     summary["statistical_tests"] = stat_tests
 
-    # Phase 7: Drift detector validation
-    logger.info("Phase 7: Drift detector validation…")
+    # Phase 5: Drift detector validation
+    logger.info("Phase 5: Drift detector validation…")
     drift_validation = run_drift_validation()
     summary["drift_validation"] = drift_validation
 
-    # Phase 8: Composite performance metric (RAGAS + citation grounding)
-    logger.info("Phase 8: Composite performance metric…")
+    # Phase 6: Composite performance metric (RAGAS + citation grounding)
+    logger.info("Phase 6: Composite performance metric…")
     composite = compute_composite_score(summary)
     summary["composite_metric"] = composite
 
-    # Phase 9: Monthly cost projection
-    logger.info("Phase 9: Monthly cost projection…")
+    # Phase 7: Monthly cost projection
+    logger.info("Phase 7: Monthly cost projection…")
     cost_projection = compute_monthly_cost_projection(summary)
     summary["cost_projection"] = cost_projection
 

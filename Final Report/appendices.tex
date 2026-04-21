@@ -14,7 +14,13 @@ The complete source code for TechPulse is maintained on GitHub:
 \url{http://techpulse-dev-frontend-939514668437.s3-website-us-east-1.amazonaws.com/}
 \end{center}
 
-The repository includes: five data ingesters (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS); 17-step preprocessing with tiktoken chunking; MiniLM-L6-v2 embedding; hybrid retrieval (metadata filter, pgvector, BM25, weighted RRF, cross-encoder reranking); RAG orchestration with three-layer hallucination verification; four-backend LLM fallback chain; dual-criteria drift detection; AWS SAM infrastructure-as-code; React frontend; 50-query evaluation framework (100 paired samples) with RAGAS and statistical tests; four-stage CI/CD via GitHub Actions; 208 unit tests across 15 modules; and Docker Compose local development (6 services).
+\noindent A screen-recording walkthrough of the live system is available at:
+
+\begin{center}
+\url{https://youtu.be/iQ6LFZnk8F8}
+\end{center}
+
+The repository includes: five data ingesters (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS); 17-step preprocessing with tiktoken chunking; fastembed (ONNX Runtime) embedding with \texttt{sentence-transformers/all-MiniLM-L6-v2}; hybrid retrieval (metadata filter, pgvector, BM25, weighted RRF, cross-encoder reranking); RAG orchestration with three-layer hallucination verification; four-backend LLM fallback chain; dual-criteria drift detection; AWS SAM infrastructure-as-code; React frontend; paired evaluation framework (50 queries $\times$ 2 configurations) with RAGAS and statistical tests; four-stage CI/CD via GitHub Actions; 208 unit tests across 15 modules; and Docker Compose local development (6 services).
 
 \chapter{System Setup and Reproduction Steps}
 \label{app:setup}
@@ -24,7 +30,7 @@ This appendix provides step-by-step instructions for reproducing the TechPulse s
 \section*{Prerequisites}
 
 \begin{itemize}[leftmargin=0.5in]
-  \item Python 3.13+ and \texttt{pip}
+  \item Python 3.11+ and \texttt{pip}
   \item Docker and Docker Compose
   \item Node.js 18+ and npm (for frontend)
   \item AWS CLI v2 and AWS SAM CLI (for cloud deployment)

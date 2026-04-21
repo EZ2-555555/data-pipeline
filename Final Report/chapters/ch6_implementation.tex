@@ -34,7 +34,7 @@ SQS Queue + DLQ & Integration-tested & Ingestion--embedding decoupling (LocalSta
 Drift Detection & Unit-tested & Dual-criteria: 10\% threshold + Shewhart $3\sigma$ \\
 Health Monitoring & Integration-tested & 4-probe deep health check (DB, S3, SQS, LLM) \\
 CloudWatch Integration & Cloud-validated & 8 metrics in 1 namespace (\texttt{TechPulse/\{stage\}}) \\
-Evaluation Framework & Cloud-validated & 100-sample run (50 baseline + 50 hybrid), RAGAS, statistical tests, and cost projection; follow-on drift-impact analysis remains future work \\
+Evaluation Framework & Cloud-validated & Paired 50-query run (baseline + hybrid configurations), RAGAS, statistical tests, and cost projection; follow-on drift-impact analysis remains future work \\
 CI/CD Pipeline & Cloud-validated & 4-stage GitHub Actions + SAM \\
 SAM Infrastructure & Cloud-validated & Full SAM template; stack deployed and operational \\
 Docker Compose (Local) & Integration-tested & 6 services (db, pgadmin, api, frontend, scheduler, localstack) \\
@@ -108,7 +108,7 @@ S3 + EventBridge + SQS & \$0.00 & Storage, routing, queue services & \checkmark 
 
 \noindent\textsuperscript{$\dagger$}Groq inference is free within the 500k tokens/day allowance; \$0.12 represents the imputed cost at equivalent commercial per-token rates to enable fair cost projection if the free tier were unavailable.
 
-\noindent Costs are derived from observed token usage and Lambda invocation metrics collected during the evaluation run. At higher workloads exceeding the Groq free-tier allowance (500,000 tokens/day), the automatic LLM backend fallback chain (Bedrock → Ollama → HuggingFace) enables cost-controlled scaling. The monthly total of \$0.33 is well below the \$15 budget target, providing a 45$\times$ safety margin.
+\noindent Costs are derived from observed token usage and Lambda invocation metrics collected during the evaluation run. At higher workloads exceeding the Groq free-tier allowance (500,000 tokens/day), the automatic LLM backend fallback chain (Groq $\to$ Bedrock; each backend has one designated fallback partner) enables cost-controlled scaling. The monthly total of \$0.33 is well below the \$15 budget target, providing a 45$\times$ safety margin.
 
 \begin{figure}[htbp]
 \centering
@@ -142,12 +142,12 @@ All infrastructure is defined in a SAM template (\texttt{template-freetier.yaml}
 \section{Test Coverage}
 \label{sec:tests}
 
-The system includes 208 unit tests distributed across 15 test modules covering all major subsystems: ingestion (5 sources), preprocessing (17 normalization steps), embedding, retrieval (BM25 caching, RRF fusion, age-days computation, cross-encoder reranking), RAG orchestration, LLM backend fallback, observability (CloudWatch metrics, drift detection), pipeline orchestration, queue management, storage, API endpoints (including /dashboard/insights smoke tests), and scheduler. All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
+The system includes 208 unit tests distributed across 15 test modules covering all major subsystems: ingestion (5 sources), preprocessing (17 normalization steps), embedding, retrieval (BM25 caching, RRF fusion, age-days computation, cross-encoder reranking), RAG orchestration, LLM backend fallback, observability (CloudWatch metrics, drift detection), pipeline orchestration, queue management, storage, API endpoints (including /dashboard/insights smoke tests), scheduler, and data sync/migration utilities (\texttt{test\_sync\_to\_aws.py}). All tests execute without external dependencies (database, AWS services) using mocked interfaces where appropriate.
 
 \section{Experiment Tracking and Result Versioning}
 \label{sec:experiment_tracking}
 
-Experiment results are tracked through structured JSON artifacts versioned alongside the source code in Git. Each evaluation run produces three output files: \texttt{eval\_summary.json} (aggregate metrics, latency statistics, and cost projections for both configurations), \texttt{ragas\_scores.json} (per-query RAGAS faithfulness, answer relevancy, and context precision scores for all 100 observations), and \texttt{raw\_results.json} (complete per-query records including retrieved contexts, generated answers, citation grounding details, and timing breakdowns). This file-based approach was chosen over a dedicated experiment tracking platform (e.g., MLflow, Weights \& Biases) for three reasons: (1) the evaluation compares exactly two fixed configurations (baseline vs.\ hybrid) rather than a large hyperparameter sweep requiring run management; (2) JSON artifacts are directly consumable by the statistical analysis and visualization scripts without additional API dependencies; and (3) Git versioning provides full traceability of which code revision produced which results, with \texttt{git diff} enabling precise identification of changes between evaluation runs. The design-phase grid search results (\texttt{stale-results-hybrid/}) are similarly retained under version control to document the design evolution from linear scoring to RRF-based fusion.
+Experiment results are tracked through structured JSON artifacts versioned alongside the source code in Git. Each evaluation run produces three output files: \texttt{eval\_summary.json} (aggregate metrics, latency statistics, and cost projections for both configurations), \texttt{ragas\_scores.json} (per-query RAGAS faithfulness, answer relevancy, and context precision scores for all 100 observations), and \texttt{raw\_results.json} (complete per-query records including retrieved contexts, generated answers, citation grounding details, and timing breakdowns). This file-based approach was chosen over a dedicated experiment tracking platform (e.g., MLflow, Weights \& Biases) for three reasons: (1) the evaluation compares exactly two fixed configurations (baseline vs.\ hybrid) rather than a large hyperparameter sweep requiring run management; (2) JSON artifacts are directly consumable by the statistical analysis and visualization scripts without additional API dependencies; and (3) Git versioning provides full traceability of which code revision produced which results, with \texttt{git diff} enabling precise identification of changes between evaluation runs. The design-phase grid search results (\texttt{evaluation/stale-results-hybrid/}) are similarly retained under version control to document the design evolution from linear scoring to RRF-based fusion.
 
 \section{Custom CloudWatch Metrics}
 \label{sec:metrics}
@@ -181,6 +181,8 @@ Several non-obvious findings arose during implementation that informed the final
 
   \item \textbf{pgvector HNSW index build.} Index rebuilds took 45--90\,s on db.t3.micro for corpora above $\sim$10k chunks---acceptable for batch but would need management for real-time updates.
 \end{itemize}
+
+\noindent These implementation decisions reflect practical trade-offs between performance, cost, and system complexity in a constrained cloud environment.
 
 \section{Hybrid Retrieval: BM25 Index Caching \& Architectural Details}
 \label{sec:bm25_caching}
@@ -235,7 +237,7 @@ Responses flagged as under-grounded (citation ratio $< $ threshold) or containin
 \section{System Demonstration}
 \label{sec:demo}
 
-This section presents screenshots from the deployed system, demonstrating end-to-end functionality across key components.
+This section presents screenshots from the deployed system, demonstrating end-to-end functionality across key components. A full screen-recording walkthrough of the live system is available at: \url{https://youtu.be/iQ6LFZnk8F8}.
 
 \subsection{Frontend: Overview and Search Interface}
 

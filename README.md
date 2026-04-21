@@ -25,6 +25,10 @@
 
 ### Live Deployment
 
+<img src="docs/demo.gif" alt="TechPulse Demo" width="100%">
+
+▶ **[Watch full demo on YouTube](https://youtu.be/iQ6LFZnk8F8)**
+
 **Frontend:** [TechPulse Live Demo](http://techpulse-dev-frontend-939514668437.s3-website-us-east-1.amazonaws.com/)
 
 Running on AWS Free Tier
@@ -151,7 +155,7 @@ The system runs locally via Docker Compose and is deployed to AWS via GitHub Act
 </td><td>
 
 **Retrieval and Ranking**
-- MiniLM semantic embeddings (all-MiniLM-L6-v2, 384-dim, ONNX)
+- fastembed (ONNX Runtime) semantic embeddings (sentence-transformers/all-MiniLM-L6-v2, 384-dim)
 - HNSW vector index for fast ANN search
 - 5-stage hybrid retrieval: metadata filter, vector + BM25, weighted RRF, cross-encoder reranking
 - Reciprocal Rank Fusion (weighted RRF: vector 0.50, BM25 0.35, recency 0.15)
@@ -226,7 +230,7 @@ Ingestion (fetch + SHA-256 dedup -> DB + S3 raw tier + SQS message)
     +---- SQS Queue (decouples ingestion from embedding)
     |
     v
-Pipeline (normalise -> chunk [RAW->PROCESSED] -> MiniLM embed [->EMBEDDED] -> S3 + DB [->INDEXED])
+Pipeline (normalise -> chunk [RAW->PROCESSED] -> fastembed MiniLM embed [->EMBEDDED] -> S3 + DB [->INDEXED])
     |
     v
 Retrieval (metadata filter -> vector + BM25 -> weighted RRF -> cross-encoder reranking -> top-k)

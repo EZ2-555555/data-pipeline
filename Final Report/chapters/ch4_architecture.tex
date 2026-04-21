@@ -77,12 +77,12 @@ TechPulse has been implemented as a six-layer, cloud-native system deployed on t
 \end{figure}
 
 \textbf{Layer Architecture Overview:}
-TechPulse implements a six-layer, cloud-native stack with well-defined interfaces enabling modular development and testing. The right-hand arrows illustrate the upward data ingestion pipeline: raw documents from five sources (ArXiv, Hacker News, DEV.to, GitHub, RSS) flow through Layer~1 (Ingestion), are normalized and chunked in Layer~2 (Preprocessing), indexed in Layer~3 (Vector Storage with pgvector HNSW), ranked by the Hybrid Retrieval Pipeline in Layer~4 (which combines BM25 and vector similarity via weighted RRF fusion with cross-encoder reranking), synthesized by the LLM backend in Layer~5 with automatic fallback logic (Groq $\to$ Bedrock $\to$ Ollama), and finally exposed via Layer~6 (Monitoring, API Gateway, and React frontend). The left-hand dashed arrow represents the inbound query path from Layer~6 to Layer~4 for retrieval initiation. This layered design aligns with the AWS Well-Architected Framework principles while maintaining Free Tier cost constraints.
+TechPulse implements a six-layer, cloud-native stack with well-defined interfaces enabling modular development and testing. The right-hand arrows illustrate the upward data ingestion pipeline: raw documents from five sources (ArXiv, Hacker News, DEV.to, GitHub, RSS) flow through Layer~1 (Ingestion), are normalized and chunked in Layer~2 (Preprocessing), indexed in Layer~3 (Vector Storage with pgvector HNSW), ranked by the Hybrid Retrieval Pipeline in Layer~4 (which combines BM25 and vector similarity via weighted RRF fusion with cross-encoder reranking), synthesized by the LLM backend in Layer~5 with automatic fallback logic (Groq $\to$ Bedrock; each backend has one designated fallback to stay within the 30\,s API Gateway timeout), and finally exposed via Layer~6 (Monitoring, API Gateway, and React frontend). The left-hand dashed arrow represents the inbound query path from Layer~6 to Layer~4 for retrieval initiation. This layered design aligns with the AWS Well-Architected Framework principles while maintaining Free Tier cost constraints.
 
 \section{Alignment with the AWS Well-Architected Framework}
 \label{sec:well_architected}
 
-The TechPulse architecture is designed in explicit alignment with the AWS Well-Architected Framework (AWS, 2023). Table~\ref{tab:well_arch} summarizes how each pillar is addressed within the implemented system.
+The TechPulse architecture is designed with consideration for the AWS Well-Architected Framework (AWS, 2023). Table~\ref{tab:well_arch} summarizes how each pillar is addressed within the implemented system.
 
 \begin{table}[H]
 \caption{TechPulse Alignment with the AWS Well-Architected Framework Six Pillars.}
@@ -95,8 +95,8 @@ The TechPulse architecture is designed in explicit alignment with the AWS Well-A
 \textbf{Operational Excellence} & Automated ingestion via EventBridge (6-hour cloud cycle; per-source intervals in Table~\ref{tab:data_sources}); CI/CD pipeline using GitHub Actions and SAM; CloudWatch logging, custom metrics, and health-check Lambda (5-minute interval) \\[4pt]
 \textbf{Security} & Controlled API access via Amazon API Gateway with CORS; rate limiting via slowapi; all services managed within AWS default VPC; no direct model invocation from the frontend \\[4pt]
 \textbf{Reliability} & Decoupled ingestion and embedding pipelines via SQS; Dead Letter Queue for failure recovery and replay with 14-day retention; automatic LLM backend fallback chain (zero per-backend retries; fallback to next tier provides redundancy within the 30\,s API Gateway timeout); request-level deadline budget with adaptive cross-encoder skip \\[4pt]
-\textbf{Performance Efficiency} & Serverless Lambda scaling; lightweight MiniLM embedding model (384-dim); metadata pre-filtering reduces vector search scope; HNSW index for approximate nearest-neighbor search \\[4pt]
-\textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; Groq free-tier inference as primary backend (500k tokens/day); Amazon Bedrock available in Free Tier; db.t3.micro RDS instance \\[4pt]
+\textbf{Performance Efficiency} & Serverless Lambda scaling; lightweight fastembed (ONNX Runtime) pipeline using MiniLM (384-dim); metadata pre-filtering reduces vector search scope; HNSW index for approximate nearest-neighbor search \\[4pt]
+\textbf{Cost Optimization} & Serverless-only execution (pay-per-invocation); programmatic budget guard via Cost Explorer; Groq free-tier inference as primary backend (500k tokens/day); Amazon Bedrock (Nova Micro, pay-per-token) retained as fallback---negligible cost at fallback-only usage levels; db.t3.micro RDS instance \\[4pt]
 \textbf{Sustainability} & Event-driven processing avoids idle compute; SQS decoupling prevents over-provisioning; right-sized Lambda memory allocations (512MB--2048MB depending on workload); 5-minute warmup pings to keep critical Lambda functions warm \\
 \bottomrule
 \end{tabular}
@@ -229,9 +229,14 @@ The pipeline has been implemented around four design principles: determinism (id
 
 \subsection{Ingestion and Decoupling}
 
-Ingestion has been implemented through AWS Lambda functions orchestrated by Amazon EventBridge, supporting both scheduled and event-driven execution. Each of the five ingesters (ArXiv, Hacker News, DEV.to, GitHub, RSS) operates independently with source-specific data extraction logic. Raw artifacts are persisted in Amazon S3 under a structured prefix hierarchy (\texttt{/raw/arxiv/}, \texttt{/raw/hn/}, \texttt{/raw/devto/}, \texttt{/raw/github/}, \texttt{/raw/rss/}, \texttt{/processed/}) to preserve transformation lineage. The ingestion pipeline is decoupled from the embedding pipeline via Amazon SQS, providing backpressure control, failure isolation, and independent horizontal scaling. Messages that fail processing after three retry attempts are routed to a Dead Letter Queue with 14-day retention for controlled replay.
+Ingestion has been implemented through AWS Lambda functions orchestrated by Amazon EventBridge, supporting both scheduled and event-driven execution. Each of the five ingesters (ArXiv, Hacker News, DEV.to, GitHub, RSS) operates independently with source-specific data extraction logic. Raw artifacts are persisted in Amazon S3 under a structured prefix hierarchy (\texttt{/raw/arxiv/}, \texttt{/raw/hn/}, \texttt{/raw/devto/}, \texttt{/raw/github/}, \texttt{/raw/rss/}, \texttt{/processed/}, \texttt{/embeddings/}) to preserve transformation lineage. The ingestion pipeline is decoupled from the embedding pipeline via Amazon SQS, providing backpressure control, failure isolation, and independent horizontal scaling. Messages that fail processing after three retry attempts are routed to a Dead Letter Queue with 14-day retention for controlled replay.
+
+In addition to queue-level retries, all HTTP-based ingesters share a common \texttt{requests.Session} retry layer (\texttt{src/ingestion/\_http.py}) configured with exponential backoff (
+\texttt{Retry(total=3, backoff\_factor=1, status\_forcelist=[429,500,502,503,504])}). This protects source fetches from transient API throttling and intermittent upstream failures before documents enter the queueing path.
 
 All five ingesters share a common architectural pattern: (1) fetch data from API or feed; (2) extract and normalize fields; (3) compute SHA-256 content hash over canonicalized fields; (4) insert into the \texttt{documents} table with \texttt{ON CONFLICT (content\_hash) DO NOTHING} for idempotent deduplication; (5) write raw JSON to S3; and (6) enqueue document ID to SQS for downstream processing. After indexing, a RAG orchestrator coordinates retrieval and generation by interfacing with the LLM backend fallback chain, as illustrated in Figure~\ref{fig:pipeline} and detailed in Section~\ref{sec:llm_fallback}.
+
+Conceptually, this pipeline follows a classical ETL structure adapted to cloud-native operation: \textbf{Extract} (source API/feed ingestion across five sources), \textbf{Transform} (normalization, deduplication, and chunking), and \textbf{Load} (persistence to S3 medallion tiers and PostgreSQL/pgvector for retrieval). This structured ETL design ensures reproducibility, traceability, and failure recovery---key requirements for production-grade data engineering systems.
 
 \subsection{Document State Lifecycle}
 
@@ -247,7 +252,7 @@ Each document progresses through a four-state deterministic lifecycle to guarant
 \midrule
 RAW & Document ingested from API & Amazon S3 & Successful API fetch \\
 PROCESSED & Cleaned, normalized, chunked & S3 (\texttt{/processed}) & Preprocessing complete \\
-EMBEDDED & Vector representation generated & RDS (pgvector) & Embedding computed \\
+EMBEDDED & Vector representation generated & S3 (\texttt{/embeddings}) + RDS (pgvector) & Embedding computed \\
 INDEXED & Available for retrieval & RDS metadata table & Vector committed \\
 \bottomrule
 \end{tabular}
@@ -291,7 +296,7 @@ Figure~\ref{fig:state_machine} illustrates the document state machine, showing t
 \label{fig:state_machine}
 \end{figure}
 
-To guarantee idempotency, canonicalized content fields are hashed using SHA-256 (as described in Section~\ref{sec:innovation}) and deduplicated via PostgreSQL \texttt{ON CONFLICT} clauses, ensuring consistent corpus integrity across experimental runs.
+To guarantee idempotency, canonicalized content fields are hashed using SHA-256 (as described in Section~\ref{sec:innovation}) and deduplicated via PostgreSQL \texttt{ON CONFLICT} clauses, ensuring consistent corpus integrity across experimental runs. This state machine enables deterministic reprocessing and simplifies debugging, replay, and system monitoring.
 
 \subsection{Preprocessing and Chunking}
 
@@ -320,7 +325,7 @@ Following normalization, documents are segmented using token-based chunking with
 \section{Embedding and Indexing}
 \label{sec:embedding}
 
-Semantic representations are generated using the \texttt{all-MiniLM-L6-v2} sentence-transformer model (Wang et al., 2020), producing 384-dimensional embeddings. The model is loaded as a lazy-initialized singleton to minimize memory overhead under serverless execution constraints. Embeddings are stored in RDS PostgreSQL using the pgvector extension with an HNSW (Hierarchical Navigable Small World) index configured with $m = 16$ and $\text{ef\_construction} = 64$, enabling efficient approximate nearest-neighbor search with cosine distance. The parameters $m = 16$ (maximum number of bidirectional links per node) and $\text{ef\_construction} = 64$ (size of the dynamic candidate list during index construction) follow the pgvector recommended defaults for datasets up to $\sim$100k vectors, providing a favorable balance between index build time, memory footprint, and recall (pgvector documentation recommends $m \in [8, 64]$ and $\text{ef\_construction} \geq 2 \times m$).
+Semantic representations are generated with \texttt{fastembed} (ONNX Runtime backend) using the \texttt{sentence-transformers/all-MiniLM-L6-v2} model (Wang et al., 2020), producing 384-dimensional embeddings. This implementation avoids a PyTorch runtime dependency in the Lambda container image while preserving model quality and dimensionality. The model is loaded as a lazy-initialized singleton to minimize memory overhead under serverless execution constraints. Embeddings are stored in RDS PostgreSQL using the pgvector extension with an HNSW (Hierarchical Navigable Small World) index configured with $m = 16$ and $\text{ef\_construction} = 64$, enabling efficient approximate nearest-neighbor search with cosine distance. The parameters $m = 16$ (maximum number of bidirectional links per node) and $\text{ef\_construction} = 64$ (size of the dynamic candidate list during index construction) follow the pgvector recommended defaults for datasets up to $\sim$100k vectors, providing a favorable balance between index build time, memory footprint, and recall (pgvector documentation recommends $m \in [8, 64]$ and $\text{ef\_construction} \geq 2 \times m$).
 
 \section{Hybrid Retrieval Pipeline Architecture}
 \label{sec:retrieval_detail}
@@ -336,7 +341,7 @@ The implemented hybrid retrieval pipeline combines vector similarity, full-text 
 
 \subsubsection{Request Deadline and Adaptive Cross-Encoder Skip}
 
-The API Gateway HTTP API imposes a hard 30-second integration timeout. To ensure the full RAG pipeline (retrieval + LLM generation) completes within this budget, a 25-second request deadline is set at the start of each query (\texttt{\_request\_deadline = time.time() + 25}). This deadline is passed to the hybrid retrieval function, which monitors remaining time before invoking the cross-encoder reranking stage. If fewer than 5 seconds remain when cross-encoder execution would begin, the stage is skipped entirely and the RRF-fused scores are returned directly---preserving enough time for LLM generation. This adaptive behavior prevents gateway timeouts on queries with unusually slow retrieval (e.g., large BM25 corpus scans or PostgreSQL connection pool contention).
+The API Gateway HTTP API imposes a hard 30-second integration timeout. To ensure the full RAG pipeline (retrieval + LLM generation) completes within this budget, a 25-second request deadline is set at the start of each query (\texttt{\_request\_deadline = time.time() + 25}). This deadline is passed to the hybrid retrieval function, which monitors remaining time before invoking the cross-encoder reranking stage. If fewer than 5 seconds remain when cross-encoder execution would begin, the stage is skipped entirely and the RRF-fused scores are returned directly---preserving enough time for LLM generation. This adaptive mechanism prioritizes system responsiveness over marginal ranking improvements under tight time constraints. This adaptive behavior prevents gateway timeouts on queries with unusually slow retrieval (e.g., large BM25 corpus scans or PostgreSQL connection pool contention).
 
 \subsubsection{Score Normalization}
 
@@ -359,10 +364,13 @@ The retrieval layer wraps database queries in a retry mechanism that catches \te
 \midrule
 Raw (Bronze) & Amazon S3 (\texttt{/raw/\{source\}/}) & Store unprocessed API responses \\
 Processed (Silver) & Amazon S3 (\texttt{/processed/}) & Store cleaned and chunked documents \\
-Vector (Gold) & RDS PostgreSQL + pgvector & Store embeddings and structured metadata \\
+Embeddings (Silver+) & Amazon S3 (\texttt{/embeddings/\{source\}/}) & Store embedding metadata and indexing lineage \\
+Vector (Gold) & RDS PostgreSQL + pgvector & Store vector embeddings and retrieval metadata \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+When \texttt{USE\_S3=false} or AWS credentials are unavailable, the storage layer transparently falls back to a local \texttt{data\_lake/} directory while preserving the same medallion key layout. This fallback path is used in local development and test environments where LocalStack is not enabled.
 
 \section{Database Schema}
 \label{sec:schema}
@@ -481,10 +489,10 @@ To ensure generation availability across diverse deployment environments, TechPu
 \toprule
 \textbf{Tier} & \textbf{Backend} & \textbf{Fallback Chain} & \textbf{Notes} \\
 \midrule
-1 & Groq (Llama 3.1 8B Instant) & $\to$ Bedrock $\to$ Ollama $\to$ HuggingFace & Primary backend; free-tier API; 500k tokens/day \\[4pt]
-2 & Amazon Bedrock (Nova Micro) & $\to$ Groq $\to$ Ollama $\to$ HuggingFace & AWS-native fallback; Free Tier eligible \\[4pt]
-3 & Ollama (local) & $\to$ Groq $\to$ HuggingFace & OpenAI-compatible API; local inference \\[4pt]
-4 & HuggingFace Inference API & $\to$ Groq $\to$ Ollama & Fallback option; Mistral-7B-Instruct \\
+1 & Groq (Llama 3.1 8B Instant) & $\to$ Bedrock & Primary backend; free-tier API; 500k tokens/day \\[4pt]
+2 & Amazon Bedrock (Nova Micro) & $\to$ Groq & AWS-native fallback; Free Tier eligible \\[4pt]
+3 & Ollama (local) & $\to$ Groq & OpenAI-compatible API; local inference \\[4pt]
+4 & HuggingFace Inference API & $\to$ Groq & Fallback option; Mistral-7B-Instruct \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -607,7 +615,7 @@ Results are logged to CloudWatch. Three CloudWatch alarms are configured: RAG AP
 A four-stage CI/CD pipeline has been implemented using GitHub Actions:
 
 \begin{enumerate}[leftmargin=0.5in]
-  \item \textbf{Lint and Test} --- Python 3.13 setup, dependency installation, Ruff linting across \texttt{src/} and \texttt{tests/}, Pytest execution with coverage reporting.
+  \item \textbf{Lint and Test} --- Python 3.11 CI runner setup, dependency installation, Ruff linting across \texttt{src/} and \texttt{tests/}, Pytest execution with coverage reporting.
   \item \textbf{Docker Build} --- Builds \texttt{techpulse-backend} and \texttt{techpulse-frontend} container images.
   \item \textbf{SAM Build} --- Builds and validates the SAM templates (\texttt{template-freetier.yaml} and \texttt{template.yaml}).
   \item \textbf{Deploy (main branch only)} --- Deploys to AWS via SAM with parameterized database credentials and VPC configuration from GitHub Secrets.
@@ -627,3 +635,5 @@ The user interface is implemented as a lightweight React single-page application
 
 \medskip
 \noindent This chapter described the complete system architecture: the six-layer model, data engineering pipeline, document state lifecycle, preprocessing, storage schema, LLM fallback chain, drift detection, and cloud deployment topology. Chapter~5 presents the evaluation framework designed to measure retrieval and generation quality.
+
+\textbf{Design rationale---PostgreSQL over alternatives:} PostgreSQL was selected over document-oriented stores (e.g., MongoDB) because TechPulse requires transactional integrity for idempotent ingestion (SHA-256 unique constraint), structured SQL metadata filtering in the same query as vector similarity search, and a single managed AWS RDS Free Tier instance. A document store would necessitate a separate aggregation pipeline for each SQL-style filter, increasing operational complexity and potentially introducing consistency gaps between the metadata index and the vector store. \textbf{Design rationale---pgvector over standalone FAISS:} A standalone vector database (e.g., FAISS, Pinecone) would require separate infrastructure and remove the ability to perform hybrid SQL\,+\,vector queries atomically; FAISS in particular is in-memory-only and lacks ACID guarantees, native SQL join capability, and persistence across restarts. pgvector's HNSW implementation achieves approximate nearest-neighbour recall comparable to FAISS on sub-100k corpora while operating within the same RDS instance, eliminating a separate vector-index process and keeping the architecture within the Free Tier cost envelope.

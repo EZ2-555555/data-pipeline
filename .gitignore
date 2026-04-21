@@ -83,3 +83,6 @@ htmlcov/
 *.out
 *.toc
 *.synctex.gz
+
+# Screen recordings
+*.mp4

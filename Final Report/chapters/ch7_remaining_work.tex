@@ -8,11 +8,11 @@ This study designed, implemented, and evaluated TechPulse, a cloud-native Hybrid
 \begin{enumerate}[leftmargin=0.5in]
   \item \textbf{Data Engineering (RQ1):} A deterministic, idempotent ingestion pipeline serves five heterogeneous data sources (ArXiv, Hacker News, DEV.to, GitHub Trending, RSS feeds) with SHA-256 content-addressed deduplication. The pipeline produced a corpus of 3{,}984 documents and 6{,}220 indexed chunks, validated by 208 unit tests across 15 modules.
 
-  \item \textbf{Retrieval Optimization (RQ2):} A five-stage hybrid retrieval pipeline---metadata filtering, vector similarity search, full-corpus BM25, weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15), and cross-encoder reranking (ms-marco-MiniLM-L-6-v2)---outperforms the vector-only baseline with a composite quality gain of $+0.047$ (0.723 vs.\ 0.676). Faithfulness improved by $+0.058$, answer relevancy by $+0.065$, and context precision by $+0.070$. Citation grounding remained stable ($-0.020$, no significant difference).
+  \item \textbf{Retrieval Optimization (RQ2):} A five-stage hybrid retrieval pipeline---metadata filtering, vector similarity search, full-corpus BM25, weighted Reciprocal Rank Fusion (vector~0.50, BM25~0.35, recency~0.15), and cross-encoder reranking (ms-marco-MiniLM-L-6-v2)---demonstrates improved performance over the vector-only baseline with a composite quality gain of $+0.047$ (0.723 vs.\ 0.676). Faithfulness improved by $+0.058$, answer relevancy by $+0.065$, and context precision by $+0.070$. Citation grounding remained stable ($-0.020$, no significant difference).
 
   \item \textbf{Operational Trade-offs (RQ3):} The hybrid pipeline introduces a moderate latency trade-off (mean 1.13\,s $\to$ 2.49\,s; Cohen's $d = -0.34$, small effect; 95\% CI $[-2.56, -0.72]$\,s). Monthly cost is \$0.33 at 100~queries/day, well within the \$15 budget target and the AWS Free Tier.
 
-  \item \textbf{MLOps Integration (RQ4):} Dual-criteria drift detection (10\% threshold + Shewhart $3\sigma$ with minimum std floor) achieves 100\% accuracy across four simulated drift scenarios. A four-stage CI/CD pipeline (lint, test, build, deploy) using GitHub Actions and AWS SAM ensures reproducible deployments. Eight custom CloudWatch metrics provide operational visibility.
+  \item \textbf{MLOps Integration (RQ4):} Dual-criteria drift detection (10\% threshold + Shewhart $3\sigma$ with minimum std floor) correctly identified all simulated drift scenarios in controlled experiments (4/4 simulated scenarios). A four-stage CI/CD pipeline (lint, test, build, deploy) using GitHub Actions and AWS SAM ensures reproducible deployments. Eight custom CloudWatch metrics provide operational visibility.
 \end{enumerate}
 
 \section{Project Phases}
@@ -29,7 +29,7 @@ The work was organized into four phases, all completed. Table~\ref{tab:remaining
 \textbf{Phase} & \textbf{Focus} & \textbf{Timeline} & \textbf{Status} & \textbf{Key Deliverables} \\
 \midrule
 A & System Validation \& Corpus Building & Mar W3--W4 & Done & 3{,}984 docs; 6{,}220 chunks; local integration verified \\
-B & Evaluation \& Experimentation & Mar W4--Apr W1 & Done & 100-sample eval; statistical analysis (Ch.~5) \\
+B & Evaluation \& Experimentation & Mar W4--Apr W1 & Done & Paired 50-query eval; statistical analysis (Ch.~5) \\
 C & Analysis, Monitoring \& Dashboard & Apr W1--W2 & Done & Drift validation (4/4); visualizations; 9 retrieval improvements \\
 D & Final Report \& Submission & Apr W2--W3 & Done & Completed report with empirical evidence \\
 \bottomrule
@@ -40,7 +40,7 @@ D & Final Report \& Submission & Apr W2--W3 & Done & Completed report with empir
 
 \textbf{Phase~B} executed the initial 50-query evaluation in both baseline and hybrid modes, applied Wilcoxon signed-rank tests with Cohen's $d$ and bootstrap 95\% CIs, and profiled per-stage latency with cost projections for 50/100/200 queries/day.
 
-\textbf{Phase~C} applied nine research-backed retrieval improvements (weighted RRF, improved BM25 tokenization, candidate quality gate, asymmetric limits, post-fusion gate, Shewhart std floor, evaluation threading fix, cross-encoder reranking, NaN retry), re-ran the full 100-sample evaluation, validated drift detection (4/4 scenarios correct), and generated result visualizations and comparison tables.
+\textbf{Phase~C} applied nine research-backed retrieval improvements (weighted RRF, improved BM25 tokenization, candidate quality gate, asymmetric limits, post-fusion gate, Shewhart std floor, evaluation threading fix, cross-encoder reranking, NaN retry), re-ran the full paired 50-query evaluation, validated drift detection (4/4 scenarios correct), and generated result visualizations and comparison tables.
 
 \textbf{Phase~D} completed the evaluation analysis, integrated all empirical findings into the final report, and prepared the submission package.
 
@@ -50,7 +50,9 @@ D & Final Report \& Submission & Apr W2--W3 & Done & Completed report with empir
 \begin{enumerate}[leftmargin=0.5in]
   \item The evaluation corpus is limited to five technology-focused sources; generalizability to other domains requires further study.
 
-  \item The 50-query evaluation set (100 paired observations) provides sufficient power for the paired Wilcoxon test but a larger set would strengthen external validity.
+  \item The 50-query evaluation set provides sufficient power for the paired Wilcoxon test but a post-hoc power analysis indicates that detecting the observed context precision effect ($+0.070$) at $\alpha = 0.05$ with 80\% power would require approximately 100--120 query pairs. The marginal $p = 0.073$ result for context precision should therefore be interpreted cautiously; the consistent directional improvements across all other quality metrics provide corroborating evidence but cannot substitute for a fully powered experiment.
+
+  \item Context precision (0.21/0.28) and faithfulness (0.69/0.75) remain below their design-time targets ($> 0.75$ and $\geq 0.80$ respectively). As discussed in Chapter~5, these targets were adopted from RAGAS benchmarks calibrated for narrow factoid Q\&A datasets and are not well-suited to the broad trend-synthesis queries used in this evaluation. The high answer relevancy ($\geq 0.87$) and citation grounding ($\geq 0.86$) scores confirm the system produces grounded, useful responses despite the precision shortfall; nonetheless, future work should recalibrate evaluation thresholds or adopt query types more aligned with RAGAS scoring assumptions.
 
   \item Amazon Bedrock has not been evaluated as the primary backend; however, the evaluation methodology is backend-agnostic, so comparative findings remain transferable.
 
@@ -65,6 +67,14 @@ D & Final Report \& Submission & Apr W2--W3 & Done & Completed report with empir
   \item The top-$k = 5$ retrieval at 500 tokens/chunk fits Groq and Bedrock context windows but may be silently truncated by Ollama's 4{,}096-token Llama~3.2~3B; a pre-prompt token budget check is identified as a near-term improvement.
 
   \item API keys are stored as Lambda environment variables; migration to AWS Secrets Manager is recommended for production hardening.
+
+  \item The BM25 cache currently rebuilds the full index on cache miss within the query path; under concurrent load this can increase tail latency because no background rebuild strategy is implemented.
+
+  \item The fastembed singleton model instance is shared at process scope and is validated for the current Lambda execution pattern, but thread-safety under alternative multi-worker or highly concurrent runtime models has not been formally stress-tested.
+
+  \item The \texttt{/ask} endpoint returns a fixed top-$k$ response without pagination or cursor-based continuation; as corpus size increases, metadata pre-filtering may still produce large candidate sets before final ranking.
+
+  \item The local \texttt{data\_lake/} fallback improves development resilience but creates a durability risk if activated silently in production without explicit alerting or fail-closed policy.
 \end{enumerate}
 
 \section{Project Timeline}
@@ -229,13 +239,20 @@ Figure~\ref{fig:gantt} presents the complete project timeline.
 Several extensions are identified for post-prototype development:
 
 \begin{itemize}[leftmargin=0.5in]
-  \item \textbf{Scaling:} Migration to Aurora Serverless; expansion to additional data sources (StackExchange, conference proceedings); ANN-optimized indexing (pgvector HNSW) for sub-linear retrieval at larger corpora
+  \item \textbf{Scaling:} Migration to Aurora Serverless; expansion to additional data sources (StackExchange, conference proceedings); tuning HNSW index parameters ($m$, $\text{ef\_construction}$, $\text{ef\_search}$) or migrating to a dedicated vector store for sub-linear retrieval at corpus scales beyond 100k chunks
   \item \textbf{Retrieval quality:} Alternative cross-encoder models (e.g., larger ColBERT variants); embedding model fine-tuning or replacement based on drift analysis; adaptive weight tuning for RRF via online feedback
   \item \textbf{Machine learning lifecycle:} Adoption of a formal experiment tracking platform (e.g., MLflow or Weights \& Biases) for versioned evaluation runs; a model registry for embedding and reranker artifacts; domain-specific relevance labeling for supervised fine-tuning of embeddings or rerankers; and periodic re-evaluation triggered by corpus growth milestones
-  \item \textbf{Operational hardening:} Full Bedrock evaluation as primary backend; integration test suite with containerized database; token budget management for constrained-context-window backends; Secrets Manager migration for API key handling
+  \item \textbf{Operational hardening:} Full Bedrock evaluation as primary backend; integration test suite with containerized database; token budget management for constrained-context-window backends; Secrets Manager migration for API key handling; and production guardrails that fail closed or alert immediately when local \texttt{data\_lake/} fallback is activated
+  \item \textbf{Retrieval and API scalability:} Asynchronous/background BM25 index refresh to avoid cache-miss rebuild in the request path; concurrency stress tests for the fastembed singleton under multi-worker execution; and cursor-based pagination or bounded candidate windows for \texttt{/ask}
   \item \textbf{User experience:} User feedback loop for continuous retrieval quality improvement; query auto-completion; saved searches and alerts for tracked topics
   \item \textbf{Orchestration and human oversight:} Migration from single-Lambda execution to AWS Step Functions for multi-stage pipeline orchestration with per-stage error handling, retry policies, and parallel execution of independent ingestion sources. Integration of a human-in-the-loop (HITL) review stage---where low-confidence answers (e.g., composite score below a configurable threshold) are routed to a manual review queue before delivery---was considered but excluded from the current prototype for two reasons: (1)~the project targets a fully automated, zero-operational-cost pipeline suitable for a two-person academic team without 24/7 human availability; and (2)~the free-tier deployment constraint precludes the additional AWS services (Step Functions state transitions, SNS/SES notifications, DynamoDB task queues) that a robust HITL workflow requires. A Step Functions--based orchestrator with an optional HITL approval gate is identified as the natural next step for production deployment where operational staff are available.
 \end{itemize}
+
+\medskip
+\noindent In summary, this work demonstrates that hybrid retrieval can improve retrieval quality in a production-oriented RAG system, but such improvements are accompanied by increased latency and system complexity. The findings highlight the importance of balancing retrieval effectiveness with operational constraints, particularly in cost-limited, real-time environments.
+
+\medskip
+\noindent\textbf{Engineering takeaway.} For single-domain technical corpora, hybrid retrieval offers limited but consistent quality gains, suggesting that system design should prioritize efficiency and scalability over excessive retrieval complexity; the marginal improvements observed here are real but bounded by the semantic saturation inherent to a topically homogeneous corpus.
 
 \medskip
 \noindent\textbf{Closing reflection.} This study demonstrates that the primary challenge in modern RAG systems is not retrieval accuracy alone, but the integration of retrieval quality, system reliability, and cost governance into a unified, production-grade architecture. TechPulse contributes an end-to-end reference implementation showing that meaningful quality gains are achievable within free-tier infrastructure constraints, and that lightweight statistical evaluation can rigorously quantify those gains even with modest evaluation budgets.
