@@ -689,6 +689,15 @@ body::before {
   font-size: 0.78rem;
   color: var(--muted);
 }
+
+.loading-retry-note {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-solid);
+}
+
 .loading-hint kbd {
   padding: 0.1rem 0.4rem;
   border-radius: 4px;

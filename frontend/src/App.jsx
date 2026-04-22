@@ -27,6 +27,21 @@ const LOADING_STAGES = [
   "Generating grounded answer...",
 ];
 
+function waitWithAbort(ms, signal) {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(resolve, ms);
+    if (!signal) return;
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      const abortError = new Error("Request aborted");
+      abortError.name = "AbortError";
+      reject(abortError);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    setTimeout(() => signal.removeEventListener("abort", onAbort), ms + 10);
+  });
+}
+
 /* -- localStorage helpers -- */
 function loadHistory() {
   try { return JSON.parse(localStorage.getItem("tp_history") || "[]"); } catch { return []; }
@@ -167,6 +182,7 @@ export default function App() {
   const [loadingStage, setLoadingStage] = useState(0);
   const [error, setError] = useState(null);
   const [cancelled, setCancelled] = useState(false);
+  const [retrying503, setRetrying503] = useState(false);
   const [heroIn, setHeroIn] = useState(false);
   const [history, setHistory] = useState(loadHistory);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -210,17 +226,28 @@ export default function App() {
   }
 
   async function doFetch(q, m, signal) {
-    let res;
-    try {
-      res = await fetch(`${API_BASE}/ask`, {
+    async function fetchAsk() {
+      return fetch(`${API_BASE}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q.trim(), mode: m }),
         signal,
       });
+    }
+
+    let res;
+    try {
+      res = await fetchAsk();
+      if (res.status === 503) {
+        setRetrying503(true);
+        await waitWithAbort(1200, signal);
+        res = await fetchAsk();
+      }
     } catch (err) {
       if (err.name === "AbortError") throw err;
       throw new Error("Unable to reach the API. Check your network connection or try again shortly.");
+    } finally {
+      setRetrying503(false);
     }
     if (!res.ok) {
       let detail = null;
@@ -252,6 +279,7 @@ export default function App() {
     setError(null);
     setResult(null);
     setCancelled(false);
+    setRetrying503(false);
     startStageTimer();
 
     try {
@@ -492,6 +520,7 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                  {retrying503 && <p className="loading-retry-note">Temporary backend issue detected. Auto-retrying now...</p>}
                   <p className="loading-hint">Press <kbd>Esc</kbd> to cancel</p>
                 </div>
               </div>
